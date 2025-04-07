@@ -17,7 +17,8 @@ export const authOptions: AuthOptions = {
       clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
       authorization: {
         params: {
-          scope: "identify email"
+          scope: "identify email",
+          prompt: "consent"
         }
       },
       profile(profile: DiscordProfile) {
