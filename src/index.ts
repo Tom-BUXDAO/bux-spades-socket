@@ -8,6 +8,11 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
+// Add health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // Configure CORS
 const io = new Server(httpServer, {
   cors: {
