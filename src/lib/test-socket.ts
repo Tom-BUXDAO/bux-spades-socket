@@ -2,17 +2,17 @@ import { useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import type { GameState, Card } from '@/types/game';
 
-const TEST_SOCKET_URL = 'http://localhost:3002';
-
 // Create a factory function for socket creation
 function createSocket(clientId: string) {
-  return io(TEST_SOCKET_URL, {
-    transports: ['websocket'],
+  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://bux-spades-socket-production.up.railway.app';
+  
+  return io(SOCKET_URL, {
+    transports: ['websocket', 'polling'],
     query: { clientId },
     reconnection: true,
-    reconnectionAttempts: 3,
+    reconnectionAttempts: 5,
     reconnectionDelay: 1000,
-    timeout: 5000,
+    timeout: 60000,
     path: '/socket.io/',
     forceNew: true
   });
