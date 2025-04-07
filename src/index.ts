@@ -16,10 +16,21 @@ app.get('/', (_req: express.Request, res: express.Response) => {
 // Configure CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: [
+      process.env.CLIENT_URL || "http://localhost:3000",
+      "https://bux-spades-buxdaos-projects.vercel.app"
+    ],
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+    allowedHeaders: ["Content-Type"]
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  connectTimeout: 45000,
+  maxHttpBufferSize: 1e8,
+  path: '/socket.io/'
 });
 
 interface Player {
