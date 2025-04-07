@@ -45,6 +45,7 @@ if (typeof window === "undefined" && !io) {
           }],
           currentPlayer: user.id,
           currentTrick: [],
+          completedTricks: [],
           team1Score: 0,
           team2Score: 0,
           team1Bags: 0,
