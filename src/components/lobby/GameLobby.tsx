@@ -30,6 +30,7 @@ export default function GameLobby({
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
   const [showNameInput, setShowNameInput] = useState(false);
   const [playerName, setPlayerName] = useState("");
+  const [selectedGame, setSelectedGame] = useState<{ gameId: string; team: 1 | 2 } | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [testPlayerName, setTestPlayerName] = useState("");
   const [browserSessionId] = useState(() => {
@@ -88,21 +89,48 @@ export default function GameLobby({
   const handleJoinGame = async (gameId: string, team: 1 | 2) => {
     if (!user?.id) return;
 
+    if (!user.name) {
+      setShowNameInput(true);
+      setSelectedGame({ gameId, team });
+      return;
+    }
+
     if (testPlayerName) {
       // Join as test player with browser session tracking
       const testPlayer = {
         name: testPlayerName,
         team,
-        browserSessionId // Add browser session ID to track ownership
+        browserSessionId
       };
       const testPlayerId = `test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       joinGame(gameId, testPlayerId, testPlayer);
     } else {
-      // Join as current user
-      joinGame(gameId, user.id);
+      // Join as current user with team selection
+      joinGame(gameId, user.id, { name: user.name, team });
     }
     setTestPlayerName("");
-    setSelectedGameId(null);
+    setSelectedGame(null);
+  };
+
+  const handleNameSubmit = () => {
+    if (playerName.trim()) {
+      setShowNameInput(false);
+      if (selectedGame) {
+        if (testPlayerName) {
+          const testPlayer = {
+            name: testPlayerName,
+            team: selectedGame.team,
+            browserSessionId
+          };
+          const testPlayerId = `test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          joinGame(selectedGame.gameId, testPlayerId, testPlayer);
+        } else {
+          joinGame(selectedGame.gameId, user.id, { name: playerName, team: selectedGame.team });
+        }
+      }
+      setPlayerName("");
+      setSelectedGame(null);
+    }
   };
 
   const handleLogout = () => {
