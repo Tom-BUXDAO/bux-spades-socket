@@ -519,7 +519,8 @@ export default function GameTable({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)] overflow-hidden">
+    <div className="flex flex-col h-screen bg-gray-900">
+      <div className="py-4"></div>
       {/* Header */}
       <div className="bg-gray-800 text-white px-6 py-2 flex justify-between items-center">
         <div className="flex items-center space-x-6">
@@ -543,7 +544,11 @@ export default function GameTable({
         {/* Game table area - 70% */}
         <div className="w-[70%] p-4 flex flex-col">
           {/* Game table */}
-          <div className="relative flex-1 bg-green-800 rounded-lg mb-4">
+          <div className="relative flex-1 mb-4" style={{ 
+            background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
+            borderRadius: '64px',
+            border: '2px solid #855f31'
+          }}>
             {/* Players around the table */}
             {[0, 1, 2, 3].map((position) => (
               <div key={`player-position-${position}`}>
@@ -590,8 +595,6 @@ export default function GameTable({
                     );
                   })}
                 </div>
-              ) : game.status === "BIDDING" ? (
-                <div className="text-white text-xl">Bidding Phase</div>
               ) : null}
             </div>
 
@@ -605,7 +608,7 @@ export default function GameTable({
           </div>
 
           {/* Cards area below table */}
-          <div className="h-32 bg-gray-800/50 rounded-lg relative">
+          <div className="h-32 bg-gray-800/50 rounded-lg relative" style={{ clipPath: 'inset(-100% 0 0 0)' }}>
             {renderPlayerHand()}
           </div>
         </div>
