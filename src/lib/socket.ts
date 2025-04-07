@@ -97,6 +97,10 @@ export function useSocket(clientId: string = '') {
     };
   };
 
+  const startGame = (gameId: string) => {
+    socketRef.current?.emit("start_game", gameId);
+  };
+
   return {
     socket: socketRef.current,
     createGame,
@@ -105,5 +109,6 @@ export function useSocket(clientId: string = '') {
     makeBid,
     onGamesUpdate,
     onGameUpdate,
+    startGame,
   };
 } 

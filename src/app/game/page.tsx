@@ -12,7 +12,7 @@ export default function GamePage() {
   const { data: session, status } = useSession();
   const [currentGame, setCurrentGame] = useState<GameState | null>(null);
   const [guestUser, setGuestUser] = useState<any>(null);
-  const { socket, createGame, joinGame, onGamesUpdate } = useSocket("");
+  const { socket, createGame, joinGame, onGamesUpdate, startGame } = useSocket("");
 
   useEffect(() => {
     // Check for guest user in localStorage
@@ -86,6 +86,8 @@ export default function GamePage() {
           joinGame={joinGame}
           onGamesUpdate={onGamesUpdate}
           onLeaveTable={handleLeaveTable}
+          startGame={startGame}
+          user={user}
         />
       ) : (
         <GameLobby 
