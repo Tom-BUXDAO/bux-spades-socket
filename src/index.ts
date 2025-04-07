@@ -1,7 +1,6 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import cors from 'cors';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -18,16 +17,40 @@ const io = new Server(httpServer, {
   }
 });
 
+interface Player {
+  id: string;
+  name: string;
+  hand: string[];
+  tricks: number;
+  team: number;
+  bid?: number;
+  browserSessionId?: string;
+}
+
+interface Game {
+  id: string;
+  status: string;
+  players: Player[];
+  currentPlayer: string;
+  currentTrick: string[];
+  team1Score: number;
+  team2Score: number;
+  team1Bags: number;
+  team2Bags: number;
+  completedTricks: string[][];
+  createdAt: number;
+}
+
 // Store active games
-const games = new Map();
+const games = new Map<string, Game>();
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  socket.on('create_game', ({ gameId, userId, user }) => {
+  socket.on('create_game', ({ gameId, user }) => {
     try {
-      const game = {
+      const game: Game = {
         id: gameId,
         status: "WAITING",
         players: [{
@@ -69,13 +92,13 @@ io.on('connection', (socket) => {
         return;
       }
 
-      if (game.players.some(p => p.id === userId)) {
+      if (game.players.some((player: Player) => player.id === userId)) {
         console.log('Player already in game:', userId);
         socket.emit('error', { message: 'You are already in this game' });
         return;
       }
 
-      const player = {
+      const player: Player = {
         id: userId,
         name: testPlayer?.name || 'Unknown',
         hand: [],
