@@ -9,7 +9,8 @@
     "dev-all": "concurrently \"npm run dev\" \"npm run socket-server\" \"npm run test-server\"",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^1.5.0",
