@@ -15,14 +15,23 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
-    "express": "^4.18.2",
-    "socket.io": "^4.7.5"
+    "express": "4.21.2",
+    "socket.io": "^4.7.5",
+    "array-flatten": "1.1.1",
+    "cookie": "0.7.1",
+    "destroy": "1.2.0",
+    "encodeurl": "1.0.2",
+    "methods": "1.1.2",
+    "mime": "1.6.0",
+    "ms": "2.0.0",
+    "utils-merge": "1.0.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",
-    "@types/express": "^4.17.17",
-    "@types/node": "^20.11.24",
-    "@types/socket.io": "^3.0.2",
+    "@types/express": "4.17.21",
+    "@types/node": "20.17.30",
+    "@types/socket.io": "3.0.2",
+    "@types/express-serve-static-core": "4.19.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"
   }
