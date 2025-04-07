@@ -16,21 +16,30 @@ export function useSocket(clientId: string = '') {
       // For test connections, create a new socket for each client
       if (!testSockets.has(clientId)) {
         const testSocket = io(SOCKET_URL, {
-          transports: ['websocket', 'polling'],
+          transports: ['websocket'],
           query: { clientId },
           forceNew: true,
           timeout: 60000,
           reconnectionAttempts: 5,
           reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000
+          reconnectionDelayMax: 5000,
+          path: '/socket.io/'
         });
 
         testSocket.on('connect', () => {
           console.log('Test socket connected with ID:', clientId);
         });
 
-        testSocket.on('error', (error: any) => {
+        testSocket.on('connect_error', (error: Error) => {
+          console.error('Test socket connection error:', error);
+        });
+
+        testSocket.on('error', (error: Error) => {
           console.error('Test socket error:', error);
+        });
+
+        testSocket.on('disconnect', (reason: string) => {
+          console.log('Test socket disconnected:', reason);
         });
 
         testSockets.set(clientId, testSocket);
@@ -40,20 +49,29 @@ export function useSocket(clientId: string = '') {
       // For regular connections, use the singleton socket
       if (!regularSocket) {
         regularSocket = io(SOCKET_URL, {
-          transports: ['websocket', 'polling'],
-          reconnectionAttempts: Infinity,
+          transports: ['websocket'],
+          reconnectionAttempts: 5,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
           timeout: 60000,
-          forceNew: true
+          forceNew: true,
+          path: '/socket.io/'
         });
 
         regularSocket.on('connect', () => {
           console.log('Regular socket connected');
         });
 
-        regularSocket.on('error', (error: any) => {
+        regularSocket.on('connect_error', (error: Error) => {
+          console.error('Socket connection error:', error);
+        });
+
+        regularSocket.on('error', (error: Error) => {
           console.error('Regular socket error:', error);
+        });
+
+        regularSocket.on('disconnect', (reason: string) => {
+          console.log('Socket disconnected:', reason);
         });
       }
       socketRef.current = regularSocket;
