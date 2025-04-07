@@ -135,6 +135,7 @@ io.on("connection", (socket) => {
         team2Score: 0,
         team1Bags: 0,
         team2Bags: 0,
+        completedTricks: [],
       };
 
       // Clean up abandoned games (skip test game)
