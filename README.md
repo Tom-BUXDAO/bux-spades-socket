@@ -1,22 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bux Spades
+
+A multiplayer Spades card game with real-time gameplay, chat, and social features.
+
+## Features
+
+- Real-time multiplayer Spades gameplay
+- Discord and Facebook authentication
+- In-game chat system
+- Virtual currency system
+- Modern, responsive UI
+
+## Tech Stack
+
+- Next.js 14 with App Router
+- TypeScript
+- Tailwind CSS
+- Prisma with PostgreSQL (Neon)
+- NextAuth.js for authentication
+- Socket.io for real-time features
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+3. Set up your environment variables:
+   - Copy `.env.example` to `.env`
+   - Fill in your database URL and OAuth credentials
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Set up the database:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+6. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Development
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npx prisma studio` - Open Prisma database UI
+
+## Environment Variables
+
+- `DATABASE_URL` - PostgreSQL connection string
+- `NEXTAUTH_URL` - NextAuth.js URL
+- `NEXTAUTH_SECRET` - NextAuth.js secret
+- `DISCORD_CLIENT_ID` - Discord OAuth client ID
+- `DISCORD_CLIENT_SECRET` - Discord OAuth client secret
+- `FACEBOOK_CLIENT_ID` - Facebook OAuth client ID
+- `FACEBOOK_CLIENT_SECRET` - Facebook OAuth client secret
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
