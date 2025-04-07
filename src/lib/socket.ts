@@ -16,9 +16,10 @@ export function useSocket(clientId: string = '') {
       // For test connections, create a new socket for each client
       if (!testSockets.has(clientId)) {
         const testSocket = io(SOCKET_URL, {
-          transports: ['websocket'],
+          transports: ['websocket', 'polling'],
           query: { clientId },
-          forceNew: true // Force a new connection for each test client
+          forceNew: true,
+          timeout: 60000
         });
 
         testSocket.on('connect', () => {
@@ -36,11 +37,12 @@ export function useSocket(clientId: string = '') {
       // For regular connections, use the singleton socket
       if (!regularSocket) {
         regularSocket = io(SOCKET_URL, {
-          transports: ['websocket'],
+          transports: ['websocket', 'polling'],
           reconnectionAttempts: Infinity,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
-          timeout: 45000
+          timeout: 60000,
+          forceNew: true
         });
 
         regularSocket.on('connect', () => {
