@@ -7,7 +7,7 @@ const httpServer = createServer();
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "https://bux-spades-buxdaos-projects.vercel.app"],
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["Content-Type"]
