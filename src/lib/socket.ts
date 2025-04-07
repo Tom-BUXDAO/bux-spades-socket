@@ -19,7 +19,10 @@ export function useSocket(clientId: string = '') {
           transports: ['websocket', 'polling'],
           query: { clientId },
           forceNew: true,
-          timeout: 60000
+          timeout: 60000,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000
         });
 
         testSocket.on('connect', () => {
