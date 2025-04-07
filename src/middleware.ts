@@ -14,7 +14,11 @@ export function middleware(request: NextRequest) {
   }
 
   // For all other routes, check if user is authenticated
-  const sessionToken = request.cookies.get('next-auth.session-token');
+  const sessionToken = request.cookies.get(
+    process.env.NODE_ENV === 'production' 
+      ? '__Secure-next-auth.session-token' 
+      : 'next-auth.session-token'
+  );
   
   if (!sessionToken) {
     return NextResponse.redirect(new URL('/login', request.url));
