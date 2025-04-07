@@ -4,6 +4,7 @@ import type { GameState, Card } from '@/types/game';
 
 // Create a factory function for socket creation
 function createSocket(clientId: string) {
+  // Use the same socket URL as the regular players
   const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://bux-spades-socket-production.up.railway.app';
   
   return io(SOCKET_URL, {
