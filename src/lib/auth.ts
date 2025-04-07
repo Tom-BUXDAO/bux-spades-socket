@@ -15,6 +15,11 @@ export const authOptions: AuthOptions = {
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID ?? "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
+      authorization: {
+        params: {
+          scope: "identify email guilds"
+        }
+      },
       profile(profile: DiscordProfile) {
         return {
           id: profile.id,
