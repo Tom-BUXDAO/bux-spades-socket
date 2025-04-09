@@ -103,20 +103,22 @@ io.on('connection', (socket) => {
 
       // Check if the user already has a game
       let userAlreadyInGame = false;
-      let existingGame: Game | null = null;
+      let existingGameId = "";
+let foundGame: Game | undefined;
       
       games.forEach((game) => {
         if (game.players.some(player => player.id === user.id)) {
           userAlreadyInGame = true;
-          existingGame = game;
+          existingGameId = game.id;
+foundGame = game;
         }
       });
 
       // If the user is already in a game, don't create a new one
-      if (userAlreadyInGame && existingGame !== null) {
-        console.log(`User ${user.name} (${user.id}) already has a game: ${existingGame.id}`);
-        socket.join(existingGame.id);
-        socket.emit('game_created', { gameId: existingGame.id, game: existingGame });
+      if (userAlreadyInGame && foundGame) {
+        console.log(`User ${user.name} (${user.id}) already has a game: ${existingGameId}`);
+        socket.join(existingGameId);
+        socket.emit('game_created', { gameId: existingGameId, game: foundGame });
         return;
       }
 
