@@ -189,6 +189,12 @@ io.on('connection', (socket) => {
         userConnections.delete(userId);
       }
     });
+
+    // Add handler for get_games event
+    socket.on('get_games', () => {
+      console.log('Client requested games list, socket:', socket.id);
+      socket.emit('games_update', Array.from(games.values()));
+    });
   });
 });
 
