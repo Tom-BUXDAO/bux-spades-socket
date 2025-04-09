@@ -329,53 +329,70 @@ export default function GameTable({
   };
 
   // Update the getCardDisplayPosition function for correct card placement
-  const getCardDisplayPosition = (card: Card, trickIndex: number): number => {
-    // Identify which player played this card
-    if (game.currentTrick.length <= trickIndex) {
-      console.error(`Invalid trick index: ${trickIndex} for trick of length ${game.currentTrick.length}`);
-      return trickIndex; // Fallback
+  const getCardDisplayPosition = (cardIndex: number): number => {
+    if (!game.currentTrick || game.currentTrick.length <= cardIndex) {
+      console.error(`Invalid trick index: ${cardIndex} for trick of length ${game.currentTrick?.length || 0}`);
+      return 0; // Fallback
     }
     
-    // Let's take a simpler approach: since we know trickIndex is the position in the trick array (0-3),
-    // we can just map this directly to visual positions relative to current player
-    
-    // First, find who started the trick (will be needed for proper rotation)
-    let trickStarterIndex = -1;
-    
-    // If we're in the middle of a trick, we need to calculate who started it
-    if (game.currentTrick.length > 0) {
-      // Since cards are played in order, we can determine who played first by looking
-      // at who will play next (currentPlayer) and how many cards have been played
-      // The first player is (currentPlayerIndex - currentTrick.length) % 4 in turn order
-      const currentPlayerIndex = game.players.findIndex(p => p.id === game.currentPlayer);
-      if (currentPlayerIndex >= 0) {
-        trickStarterIndex = (currentPlayerIndex - game.currentTrick.length + 4) % 4;
-      }
+    // First, determine which player played which card in the trick
+    // We need the leading player's position (who played the first card)
+    const leadingPlayerPosition = getLeadingPlayerPosition();
+    if (leadingPlayerPosition === -1) {
+      console.error("Could not determine leading player position");
+      return 0;
     }
     
-    if (trickStarterIndex < 0) {
-      // If we can't determine the trick starter, just use a basic mapping
-      console.warn('Could not determine trick starter, using fallback visual positioning');
-      return trickIndex;
-    }
+    // Calculate which position played this card
+    // (leadingPosition + cardIndex) % 4 gives the position of the player who played this card
+    const cardPlayedByPosition = (leadingPlayerPosition + cardIndex) % 4;
     
-    // Determine which player played this card in the trick sequence
-    const playerIndex = (trickStarterIndex + trickIndex) % 4;
+    // Now, convert to visual position from current player's perspective
+    // If I'm at position 0, then positions 0,1,2,3 correspond to visual positions 0,1,2,3 (S,W,N,E)
+    // If I'm at position 1, then positions 0,1,2,3 correspond to visual positions 3,0,1,2 (E,S,W,N)
+    // And so on...
+    const myPosition = currentPlayer?.position || 0;
     
-    // Now convert to visual position based on the current player's view
-    // Find the position of the current player
-    const myPlayerIndex = game.players.findIndex(p => p.id === currentPlayerId);
-    if (myPlayerIndex < 0) {
-      console.error('Current player not found in game.players');
-      return trickIndex;
-    }
+    // Calculate the visual position ((cardPlayedByPosition - myPosition) + 4) % 4
+    const visualPosition = (cardPlayedByPosition - myPosition + 4) % 4;
     
-    // Calculate visual position relative to current player
-    const visualPosition = (playerIndex - myPlayerIndex + 4) % 4;
-    
-    console.log(`Card at idx ${trickIndex} played by player at idx ${playerIndex}, showing at visual position ${visualPosition}`);
+    console.log(`Card ${cardIndex} played by player at position ${cardPlayedByPosition}, showing at visual position ${visualPosition}`);
     
     return visualPosition;
+  };
+  
+  // Helper function to determine the position of the player who led the trick
+  const getLeadingPlayerPosition = (): number => {
+    if (!game.currentTrick || game.currentTrick.length === 0) {
+      return -1;
+    }
+    
+    // In the game state, we always know the currentPlayer (next to play)
+    // To find who led the trick, we need to go back [tricklength] positions from currentPlayer
+    const currentPlayerIdx = game.players.findIndex(p => p.id === game.currentPlayer);
+    if (currentPlayerIdx === -1) {
+      console.error("Current player not found in players array");
+      return -1;
+    }
+    
+    // Find the player who started the trick
+    // If 2 cards played and current player is at position 2, then player at position 0 led
+    const leadingPlayerIdx = (currentPlayerIdx - game.currentTrick.length + 4) % 4;
+    
+    // Get the position value (0-3) for this player
+    const leadingPlayerPosition = game.players[leadingPlayerIdx]?.position;
+    
+    if (leadingPlayerPosition === undefined) {
+      console.error("Leading player position is undefined", {
+        currentPlayerIdx,
+        leadingPlayerIdx,
+        tricklength: game.currentTrick.length,
+        players: game.players
+      });
+      return -1;
+    }
+    
+    return leadingPlayerPosition;
   };
   
   // Add some debugging info for cards
@@ -384,9 +401,13 @@ export default function GameTable({
       console.log('Current trick:', game.currentTrick);
       console.log('Current trick length:', game.currentTrick.length);
       console.log('Current player:', game.currentPlayer);
+      console.log('Leading player position:', getLeadingPlayerPosition());
       console.log('Players array:', game.players.map(p => `${p.name}(${p.id}) at position ${p.position}`));
+      if (currentPlayer) {
+        console.log('My position:', currentPlayer.position);
+      }
     }
-  }, [game.currentTrick, game.currentPlayer, game.players]);
+  }, [game.currentTrick, game.currentPlayer, game.players, currentPlayer]);
 
   // Add a side effect to force game state sync
   useEffect(() => {
@@ -685,6 +706,74 @@ export default function GameTable({
     onLeaveTable();
   };
 
+  // Replace the trick card rendering part with improved positioning
+  // In the main render function, find where the trick cards are rendered
+  const renderTrickCards = () => {
+    if (!game.currentTrick || game.currentTrick.length === 0) {
+      return null;
+    }
+    
+    // Scale the card size for the trick
+    const trickCardWidth = Math.floor(60 * scaleFactor); 
+    const trickCardHeight = Math.floor(84 * scaleFactor);
+    
+    return (
+      <div className="relative" style={{ 
+        width: `${Math.floor(200 * scaleFactor)}px`, 
+        height: `${Math.floor(200 * scaleFactor)}px` 
+      }}>
+        {game.currentTrick.map((card, index) => {
+          const visualPosition = getCardDisplayPosition(index);
+          
+          // Calculate position based on the player's visual position
+          // These positions align with the player avatars (South, West, North, East)
+          let positionClass;
+          let style = {};
+          
+          switch(visualPosition) {
+            case 0: // South (bottom) position
+              positionClass = "absolute bottom-0 left-1/2 -translate-x-1/2";
+              break;
+            case 1: // West (left) position
+              positionClass = "absolute left-0 top-1/2 -translate-y-1/2";
+              break;
+            case 2: // North (top) position
+              positionClass = "absolute top-0 left-1/2 -translate-x-1/2";
+              break;
+            case 3: // East (right) position
+              positionClass = "absolute right-0 top-1/2 -translate-y-1/2";
+              break;
+            default:
+              positionClass = "absolute";
+              break;
+          }
+          
+          return (
+            <div 
+              key={`trick-card-${index}`} 
+              className={positionClass}
+              style={style}
+            >
+              <Image
+                src={`/cards/${getCardImage(card)}`}
+                alt={`${card.rank}${card.suit}`}
+                width={trickCardWidth}
+                height={trickCardHeight}
+                className="rounded-lg shadow-md"
+              />
+            </div>
+          );
+        })}
+        
+        {/* Add indicator for leading suit */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
+              style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
+          Lead: {game.currentTrick[0].suit}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <LandscapePrompt />
@@ -757,54 +846,7 @@ export default function GameTable({
                     <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
                   </div>
                 ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
-                  <div className="relative" style={{ 
-                    width: `${Math.floor(200 * scaleFactor)}px`, 
-                    height: `${Math.floor(200 * scaleFactor)}px` 
-                  }}>
-                    {/* Actual cards - improved positioning */}
-                    {game.currentTrick.map((card, index) => {
-                      const displayPosition = getCardDisplayPosition(card, index);
-                      
-                      // Scale the card size for the trick
-                      const trickCardWidth = Math.floor(63 * scaleFactor);
-                      const trickCardHeight = Math.floor(88 * scaleFactor);
-                      
-                      // Responsive position spacing
-                      const offsetDistance = Math.floor(24 * scaleFactor);
-                      
-                      // Improved position styles with more distance from center
-                      const positionStyles = [
-                        `absolute bottom-${offsetDistance}px left-1/2 -translate-x-1/2`,         // Bottom (South)
-                        `absolute left-${offsetDistance}px top-1/2 -translate-y-1/2`,            // Left (West) 
-                        `absolute top-${offsetDistance}px left-1/2 -translate-x-1/2`,            // Top (North)
-                        `absolute right-${offsetDistance}px top-1/2 -translate-y-1/2`            // Right (East)
-                      ];
-
-                      return (
-                        <div 
-                          key={`${card.suit}${card.rank}`} 
-                          className={positionStyles[displayPosition]}
-                        >
-                          <Image
-                            src={`/cards/${getCardImage(card)}`}
-                            alt={`${card.rank}${card.suit}`}
-                            width={trickCardWidth}
-                            height={trickCardHeight}
-                            className="rounded-lg shadow-md"
-                            style={{ width: 'auto', height: 'auto' }}
-                          />
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Add indicator for leading suit if needed */}
-                    {game.currentTrick.length > 0 && (
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
-                           style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
-                        Lead: {game.currentTrick[0].suit}
-                      </div>
-                    )}
-                  </div>
+                  renderTrickCards()
                 ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
                   <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
                        style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
