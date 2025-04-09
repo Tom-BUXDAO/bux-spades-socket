@@ -76,6 +76,11 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   // Font sizes based on scale
   const fontSize = Math.max(12, Math.floor(14 * scaleFactor));
   const headerFontSize = Math.max(14, Math.floor(18 * scaleFactor));
+  
+  // Mobile-specific font sizes (smaller than regular sizes)
+  const isMobile = screenSize.width < 640;
+  const mobileFontSize = isMobile ? 11 : fontSize;
+  const mobileHeaderFontSize = isMobile ? 13 : headerFontSize;
 
   // Only use regular socket if not in test mode
   const regularSocket = !socket ? useSocket(gameId) : null;
@@ -245,40 +250,57 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   });
 
   return (
-    <div className="flex flex-col h-full bg-gray-800 rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full bg-gray-800 rounded-lg overflow-hidden border border-gray-600 shadow-lg">
       {/* Chat header */}
-      <div className="bg-gray-900 p-2">
-        <h3 className="text-white font-bold" style={{ fontSize: `${headerFontSize}px` }}>Game Chat</h3>
+      <div className="bg-gray-900 p-2 border-b border-gray-600">
+        <h3 className="text-white font-bold" style={{ fontSize: `${mobileHeaderFontSize}px` }}>Game Chat</h3>
       </div>
       
-      {/* Game status notifications */}
-      <div className="bg-red-900 text-white p-2 text-center" style={{ fontSize: `${fontSize}px` }}>
-        {socket?.connected ? 
-          (userId ? "Connected to game chat" : "Connected to game chat") : 
-          "Connecting to game..."}
-      </div>
-
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: `calc(100% - ${Math.floor(90 * scaleFactor)}px)` }}>
+      <div className="flex-1 overflow-y-auto p-3 bg-gray-850" style={{ maxHeight: `calc(100% - ${Math.floor(90 * scaleFactor)}px)`, backgroundColor: '#1a202c' }}>
         {messages.length === 0 ? (
-          <div className="text-gray-400 text-center" style={{ fontSize: `${fontSize}px` }}>
+          <div className="text-gray-400 text-center" style={{ fontSize: `${mobileFontSize}px` }}>
             No messages yet. Start the conversation!
           </div>
         ) : (
           messages.map((msg, index) => (
             <div
               key={msg.id || index}
-              className={`my-1 p-2 rounded-lg max-w-[85%] ${
-                msg.userId === userId ? 'ml-auto' : 'mr-auto'
-              } ${getMessageClass(msg)}`}
-              style={{ fontSize: `${fontSize}px` }}
+              className={`mb-3 flex items-start ${msg.userId === userId ? 'justify-end' : ''}`}
             >
               {msg.userId !== userId && (
-                <div className={`font-bold ${playerColors[msg.userId] || 'text-gray-300'}`}>
-                  {msg.userName || msg.user}
+                <div className={`w-${isMobile ? '6' : '8'} h-${isMobile ? '6' : '8'} mr-2 rounded-full overflow-hidden flex-shrink-0`}>
+                  <Image 
+                    src={getPlayerAvatar(msg.userId)} 
+                    alt={msg.userName || msg.user || ''} 
+                    width={isMobile ? 24 : 32} 
+                    height={isMobile ? 24 : 32}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               )}
-              <div>{msg.message || msg.text}</div>
+              
+              <div className={`max-w-[80%] ${msg.userId === userId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} rounded-lg px-${isMobile ? '2' : '3'} py-${isMobile ? '1' : '2'}`}>
+                <div className="flex justify-between items-center mb-1">
+                  {msg.userId !== userId && (
+                    <span className="font-medium text-xs opacity-80" style={{ fontSize: isMobile ? '9px' : '' }}>{msg.userName || msg.user}</span>
+                  )}
+                  <span className="text-xs opacity-75 ml-auto" style={{ fontSize: isMobile ? '9px' : '' }}>{formatTime(msg.timestamp)}</span>
+                </div>
+                <p style={{ fontSize: `${mobileFontSize}px` }}>{msg.message || msg.text}</p>
+              </div>
+              
+              {msg.userId === userId && (
+                <div className={`w-${isMobile ? '6' : '8'} h-${isMobile ? '6' : '8'} ml-2 rounded-full overflow-hidden flex-shrink-0`}>
+                  <Image 
+                    src={getPlayerAvatar(msg.userId)} 
+                    alt={msg.userName || msg.user || ''} 
+                    width={isMobile ? 24 : 32} 
+                    height={isMobile ? 24 : 32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
             </div>
           ))
         )}
@@ -286,21 +308,42 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
       </div>
 
       {/* Message input */}
-      <form onSubmit={handleSubmit} className="p-2 bg-gray-900 flex">
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Type a message..."
-          className="bg-gray-700 text-white rounded-l px-3 py-1 flex-1 outline-none"
-          style={{ fontSize: `${fontSize}px` }}
-        />
+      <form onSubmit={handleSubmit} className="p-2 bg-gray-900 flex border-t border-gray-600">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Type a message..."
+            className="bg-gray-700 text-white rounded-l w-full px-3 py-2 outline-none border-0"
+            style={{ fontSize: `${fontSize}px` }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-xl text-yellow-300 hover:text-yellow-200"
+          >
+            😊
+          </button>
+          {showEmojiPicker && (
+            <div className="absolute bottom-full right-0 mb-2 z-10">
+              <Picker 
+                data={data} 
+                onEmojiSelect={onEmojiSelect}
+                theme="dark"
+                previewPosition="none"
+                skinTonePosition="none"
+              />
+            </div>
+          )}
+        </div>
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 rounded-r hover:bg-blue-700"
-          style={{ fontSize: `${fontSize}px` }}
+          className="bg-blue-600 text-white rounded-r hover:bg-blue-700 flex items-center justify-center w-10"
         >
-          Send
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+          </svg>
         </button>
       </form>
     </div>
