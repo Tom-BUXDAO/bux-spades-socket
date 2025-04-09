@@ -677,7 +677,6 @@ io.on('connection', (socket) => {
       
       game.currentTrick.forEach((playedCard, index) => {
         const cardPosition = (winningPosition + index) % 4;
-        const cardPlayer = game.players.find(p => p.position === cardPosition);
         
         // Check if it's a spade (trumps all non-spades)
         if (playedCard.suit === 'S') {
