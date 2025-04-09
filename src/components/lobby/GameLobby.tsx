@@ -44,6 +44,9 @@ export default function GameLobby({
   });
 
   useEffect(() => {
+    // Track if this effect has run to prevent duplicate handlers
+    let isEffectActive = true;
+    
     const unsubscribe = onGamesUpdate(setGames);
 
     // Keep track of games list requests - use ref to maintain state between renders
@@ -61,7 +64,7 @@ export default function GameLobby({
     };
 
     // Ensure the socket is connected and emit 'get_games'
-    if (socket) {
+    if (socket && isEffectActive) {
       // Throttled games request function
       const requestGames = () => {
         cleanup(); // Clear any existing timeout
@@ -76,7 +79,7 @@ export default function GameLobby({
         requestState.timeoutId = setTimeout(() => {
           requestState.hasRequested = false;
           requestState.timeoutId = null;
-        }, 10000); // 10 second cooldown - increased from 5 seconds
+        }, 10000); // 10 second cooldown
       };
 
       // Connect event handler
@@ -91,6 +94,15 @@ export default function GameLobby({
         }
       };
 
+      // One-time initialize
+      console.log("Setting up socket event handlers");
+      
+      // Remove any existing listeners first to prevent duplicates
+      socket.off("connect");
+      socket.off("error");
+      socket.off("game_created");
+      socket.off("game_update");
+      
       // Set up event listeners
       socket.on("connect", handleConnect);
       
@@ -143,8 +155,6 @@ export default function GameLobby({
       // Set up game update handler
       const handleGameUpdate = (game: GameState) => {
         console.log("Received game_update for game:", game.id, "with players:", game.players);
-        // Add detailed logging
-        console.log("Current game state:", game);
         onGameSelect(game);
       };
       
@@ -160,6 +170,9 @@ export default function GameLobby({
 
       // Clean up 
       return () => {
+        // Mark effect as inactive
+        isEffectActive = false;
+        
         cleanup(); // Clear any timeouts
         
         // Remove all event listeners
