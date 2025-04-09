@@ -1,18 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import GameLobby from "@/components/lobby/GameLobby";
 import GameTable from "@/components/game/GameTable";
 import type { GameState } from "@/types/game";
 import { useSocket } from "@/lib/socket";
+import * as socketApi from "@/lib/socket";
 
 export default function GamePage() {
   const { data: session, status } = useSession();
   const [currentGame, setCurrentGame] = useState<GameState | null>(null);
   const [guestUser, setGuestUser] = useState<any>(null);
-  const { socket, createGame, joinGame, onGamesUpdate, startGame, closeAllPreviousConnections } = useSocket("");
+  const [games, setGames] = useState<GameState[]>([]);
+  const { socket, isConnected } = useSocket("");
 
   useEffect(() => {
     // Check for guest user in localStorage
@@ -24,20 +26,24 @@ export default function GamePage() {
 
   // Clean up any lingering game connections when component mounts
   useEffect(() => {
-    if (session?.user?.id) {
-      console.log("Cleaning up previous connections for user:", session.user.id);
-      closeAllPreviousConnections(session.user.id);
-    } else if (guestUser?.id) {
-      console.log("Cleaning up previous connections for guest:", guestUser.id);
-      closeAllPreviousConnections(guestUser.id);
+    if (socket && (session?.user?.id || guestUser?.id)) {
+      const userId = session?.user?.id || guestUser?.id;
+      if (userId) {
+        console.log("Cleaning up previous connections for user:", userId);
+        socket.emit("close_previous_connections", { userId });
+      }
     }
-  }, [session?.user?.id, guestUser?.id, closeAllPreviousConnections]);
+  }, [socket, session?.user?.id, guestUser?.id]);
 
   useEffect(() => {
+    if (!socket) return;
+    
     // Listen for game updates
-    const unsubscribe = onGamesUpdate((games) => {
+    const cleanup = socketApi.getGames(socket, (updatedGames) => {
+      setGames(updatedGames);
+      
       if (currentGame) {
-        const updatedGame = games.find(g => g.id === currentGame.id);
+        const updatedGame = updatedGames.find(g => g.id === currentGame.id);
         if (updatedGame) {
           setCurrentGame(updatedGame);
         } else {
@@ -45,27 +51,12 @@ export default function GamePage() {
           setCurrentGame(null);
         }
       }
+      
+      console.log("Available games:", updatedGames.length);
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [currentGame, onGamesUpdate]);
-
-  // Add another effect to handle initial games list
-  useEffect(() => {
-    const unsubscribe = onGamesUpdate((games) => {
-      // If we're not in a game, we still want to update the lobby
-      if (!currentGame) {
-        // The GameLobby will receive these updates via its own onGamesUpdate subscription
-        console.log("Available games:", games.length);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [currentGame, onGamesUpdate]);
+    return cleanup;
+  }, [socket, currentGame]);
 
   if (status === "loading") {
     return <div>Loading...</div>;
@@ -89,6 +80,47 @@ export default function GamePage() {
   // Use either NextAuth session or guest user data
   const user = session?.user || guestUser;
 
+  // Create wrapper functions to match old API
+  const createGame = (user: any) => {
+    if (socket) socketApi.createGame(socket, user);
+  };
+
+  const joinGame = (gameId: string, userId: string, options?: any) => {
+    if (socket) socketApi.joinGame(socket, gameId, userId, options);
+  };
+
+  const startGame = (gameId: string) => {
+    if (socket) return socketApi.startGame(socket, gameId);
+    return Promise.reject("No socket connection");
+  };
+
+  const closeAllPreviousConnections = (userId: string) => {
+    if (socket) socket.emit("close_previous_connections", { userId });
+  };
+
+  // Create onGamesUpdate with same API as before to avoid changing GameLobby
+  const onGamesUpdate = (callback: (games: GameState[]) => void) => {
+    if (!socket) return () => {};
+    
+    // Initial callback with current games
+    callback(games);
+    
+    // Set up listener
+    socket.on('games_update', callback);
+    
+    // Return cleanup function
+    return () => {
+      socket.off('games_update', callback);
+    };
+  };
+  
+  // Create a type-casting wrapper to fix incompatibility
+  function wrapSetGames(updater: React.Dispatch<React.SetStateAction<GameState[]>>) {
+    return (games: GameState[]) => {
+      updater(games);
+    };
+  }
+
   return (
     <main className="container mx-auto p-4">
       {currentGame ? (
@@ -97,7 +129,7 @@ export default function GamePage() {
           socket={socket}
           createGame={createGame}
           joinGame={joinGame}
-          onGamesUpdate={onGamesUpdate}
+          onGamesUpdate={setGames}
           onLeaveTable={handleLeaveTable}
           startGame={startGame}
           user={user}
@@ -109,7 +141,8 @@ export default function GamePage() {
           socket={socket}
           createGame={createGame}
           joinGame={joinGame}
-          onGamesUpdate={onGamesUpdate}
+          games={games}
+          isConnected={isConnected}
         />
       )}
     </main>

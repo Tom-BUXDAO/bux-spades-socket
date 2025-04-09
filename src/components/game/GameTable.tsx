@@ -15,16 +15,11 @@ interface GameTableProps {
   game: GameState;
   socket: typeof Socket | null;
   createGame: (user: { id: string; name?: string | null }) => void;
-  joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2; position?: number }) => void;
-  onGamesUpdate: (callback: (games: GameState[]) => void) => () => void;
+  joinGame: (gameId: string, userId: string, options?: any) => void;
+  onGamesUpdate: React.Dispatch<React.SetStateAction<GameState[]>>;
   onLeaveTable: () => void;
-  startGame: (gameId: string) => void;
-  user?: {
-    id: string;
-    name?: string | null;
-    isGuest?: boolean;
-    image?: string | null;
-  };
+  startGame: (gameId: string) => Promise<void>;
+  user?: any;
 }
 
 // Fallback avatars 
