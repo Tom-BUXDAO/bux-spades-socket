@@ -153,28 +153,44 @@ io.on('connection', (socket) => {
   socket.on('join_game', ({ gameId, userId, testPlayer }) => {
     try {
       const game = games.get(gameId);
-      if (!game || game.players.length >= 4) {
-        socket.emit('error', { message: 'Game not found or full' });
+      if (!game) {
+        socket.emit('error', { message: 'Game not found' });
         return;
       }
 
-      if (game.players.some((player: Player) => player.id === userId)) {
-        console.log('Player already in game:', userId);
-        socket.emit('error', { message: 'You are already in this game' });
+      if (game.players.length >= 4) {
+        socket.emit('error', { message: 'Game is full' });
         return;
       }
 
-      const player: Player = {
-        id: userId,
-        name: testPlayer?.name || 'Unknown',
-        hand: [],
-        tricks: 0,
-        team: testPlayer?.team || (game.players.length % 2 + 1),
-        bid: undefined,
-        browserSessionId: testPlayer?.browserSessionId
-      };
+      // Check if player is already in this game
+      const existingPlayerIndex = game.players.findIndex((player: Player) => player.id === userId);
+      
+      if (existingPlayerIndex >= 0) {
+        console.log('Player already in game, updating their info:', userId);
+        
+        // If player is already in this game, update their info
+        game.players[existingPlayerIndex] = {
+          ...game.players[existingPlayerIndex],
+          name: testPlayer?.name || game.players[existingPlayerIndex].name || 'Unknown',
+          team: testPlayer?.team || game.players[existingPlayerIndex].team,
+          browserSessionId: testPlayer?.browserSessionId || game.players[existingPlayerIndex].browserSessionId
+        };
+      } else {
+        // Add new player to the game
+        const player: Player = {
+          id: userId,
+          name: testPlayer?.name || 'Unknown',
+          hand: [],
+          tricks: 0,
+          team: testPlayer?.team || (game.players.length % 2 + 1),
+          bid: undefined,
+          browserSessionId: testPlayer?.browserSessionId
+        };
 
-      game.players.push(player);
+        game.players.push(player);
+      }
+      
       socket.join(gameId);
 
       if (game.players.length === 4) {
@@ -185,6 +201,9 @@ io.on('connection', (socket) => {
       games.set(gameId, game);
       io.emit('games_update', Array.from(games.values()));
       io.to(gameId).emit('game_update', game);
+      
+      // Also send a targeted update to ensure this client gets it
+      socket.emit('game_update', game);
     } catch (error) {
       console.error('Error joining game:', error);
       socket.emit('error', { message: 'Failed to join game' });
