@@ -246,8 +246,10 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
               
               <div className={`max-w-[80%] ${msg.userId === userId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} rounded-lg px-3 py-2`}>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-semibold text-sm">{msg.userId === userId ? 'You' : msg.user}</span>
-                  <span className="text-xs opacity-75 ml-2">{formatTime(msg.timestamp)}</span>
+                  {msg.userId !== userId && (
+                    <span className="font-medium text-xs opacity-80">{msg.user}</span>
+                  )}
+                  <span className="text-xs opacity-75 ml-auto">{formatTime(msg.timestamp)}</span>
                 </div>
                 <p>{msg.text}</p>
               </div>
