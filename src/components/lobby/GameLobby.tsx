@@ -68,6 +68,8 @@ export default function GameLobby({
     // Listen for game update
     socket?.on("game_update", (game: GameState) => {
       console.log("Received game_update for game:", game.id, "with players:", game.players);
+      // Add detailed logging
+      console.log("Current game state:", game);
       onGameSelect(game);
     });
 
