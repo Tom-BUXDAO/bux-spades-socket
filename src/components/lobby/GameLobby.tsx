@@ -576,7 +576,7 @@ export default function GameLobby({
         ))}
 
         {games.length === 0 && (
-          <div className="text-center py-8 text-gray-400 bg-gray-800 rounded-lg col-span-2 border border-gray-700">
+          <div className="text-center py-8 text-gray-400 bg-gray-800 rounded-lg col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4 border border-gray-700">
             No games available. Create one to start playing!
           </div>
         )}
