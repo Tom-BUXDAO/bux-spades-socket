@@ -311,32 +311,48 @@ io.on('connection', (socket) => {
       // Create player object
       let player: Player;
       if (testPlayer) {
+        // Explicitly set team based on position
+        // Team 1: positions 0 (South) and 2 (North)
+        // Team 2: positions 1 (West) and 3 (East)
+        const team = position !== undefined 
+          ? (position % 2 === 0 ? 1 : 2) 
+          : testPlayer.team;
+        
         player = {
           id: userId,
           name: testPlayer.name,
           hand: [],
           tricks: 0,
-          team: position !== undefined ? (position % 2 === 0 ? 1 : 2) : testPlayer.team,
+          team: team,
           browserSessionId: testPlayer.browserSessionId || socket.id,
           image: testPlayer.image || undefined
         };
+        
+        console.log(`Created test player ${testPlayer.name} with team ${team} for position ${position}`);
       } else {
+        // Explicitly set team based on position
+        // Team 1: positions 0 (South) and 2 (North) 
+        // Team 2: positions 1 (West) and 3 (East)
+        const team = position !== undefined 
+          ? (position % 2 === 0 ? 1 : 2) 
+          : (game.players.length % 2) + 1 as 1 | 2;
+        
         player = {
           id: userId,
           name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
           hand: [],
           tricks: 0,
-          team: position !== undefined ? (position % 2 === 0 ? 1 : 2) : (game.players.length % 2) + 1 as 1 | 2,
+          team: team,
           browserSessionId: socket.id
         };
+        
+        console.log(`Created regular player with team ${team} for position ${position}`);
       }
 
-      // Make a complete copy of the current players array
-      const currentPlayers = [...game.players];
-      
       // HANDLE POSITION PLACEMENT
       if (position !== undefined) {
-        console.log(`Processing join for ${player.name} at EXPLICIT position ${position}`);
+        console.log(`=============================================`);
+        console.log(`POSITION JOIN REQUEST: Player ${player.name} requesting EXACT position ${position}`);
         
         // Validate position
         if (position < 0 || position > 3) {
@@ -345,35 +361,35 @@ io.on('connection', (socket) => {
         }
         
         // Check if position is already taken
-        const existingPlayerAtPosition = currentPlayers.find((p, idx) => idx === position && p.id);
-        if (existingPlayerAtPosition) {
-          socket.emit('error', { message: `Position ${position} already taken by ${existingPlayerAtPosition.name}` });
+        if (game.players.some(p => game.players.indexOf(p) === position)) {
+          console.log(`Position ${position} already has a player!`);
+          socket.emit('error', { message: `Position ${position} is already taken` });
           return;
         }
         
-        // Create a new players array with exactly 4 slots
-        const newPlayers: (Player | null)[] = [null, null, null, null];
+        // Create a full array with empty slots
+        let newPlayers = Array(4).fill(null);
         
-        // Copy existing players to their exact positions
-        currentPlayers.forEach((p, idx) => {
-          if (p && p.id) {
-            newPlayers[idx] = p;
-          }
+        // Copy existing players in their current positions
+        game.players.forEach(p => {
+          const currentPos = game.players.indexOf(p);
+          newPlayers[currentPos] = p;
         });
         
-        // Place new player in their requested position
+        // Place the new player at their EXACT requested position
         newPlayers[position] = player;
         
-        // Filter out null values and update game.players
+        // Remove all null entries
         game.players = newPlayers.filter(p => p !== null) as Player[];
         
-        console.log(`Player ${player.name} joined at EXPLICIT position ${position}`);
-        console.log('Players array after positioning:');
-        game.players.forEach((p, idx) => {
-          console.log(`Position ${idx}: ${p.name} (team ${p.team})`);
-        });
+        console.log(`POSITION ASSIGNMENT COMPLETED: Player ${player.name} placed at position ${position}`);
+        console.log(`Team for this position: ${player.team}`);
+        console.log(`Current players array:`, game.players.map((p, idx) => 
+          `Position ${game.players.indexOf(p)}: ${p.name} (Team ${p.team})`
+        ));
+        console.log(`=============================================`);
       } else {
-        // No position specified, just add to the end
+        // No position specified, add to the end as before
         game.players.push(player);
         console.log(`Player ${player.name} joined at the end (no position specified)`);
       }
