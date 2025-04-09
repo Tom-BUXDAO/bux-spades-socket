@@ -141,8 +141,7 @@ export default function GamePage() {
           socket={socket}
           createGame={createGame}
           joinGame={joinGame}
-          games={games}
-          isConnected={isConnected}
+          onGamesUpdate={onGamesUpdate}
         />
       )}
     </main>
