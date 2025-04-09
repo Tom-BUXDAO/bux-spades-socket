@@ -73,6 +73,7 @@ interface BiddingProps {
 
 const BiddingInterface = ({ onBid, currentBid }: BiddingProps) => {
   const [selectedBid, setSelectedBid] = useState<number | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleBidSelect = (bid: number) => {
     setSelectedBid(bid);
@@ -80,13 +81,16 @@ const BiddingInterface = ({ onBid, currentBid }: BiddingProps) => {
 
   const handleConfirm = () => {
     if (selectedBid !== undefined) {
+      setSubmitting(true);
       onBid(selectedBid);
+      // No need to reset the selection since the component will unmount
+      // when the turn changes
     }
   };
 
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800 p-6 rounded-lg shadow-lg">
-      <div className="text-white text-xl mb-4 text-center">Make your bid</div>
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800 p-6 rounded-lg shadow-lg border-2 border-yellow-400">
+      <div className="text-yellow-400 text-xl mb-4 text-center font-bold">YOUR TURN - Make your bid</div>
       <div className="flex flex-col gap-2">
         {/* First row: 1-6 */}
         <div className="flex gap-2 justify-center">
@@ -94,11 +98,12 @@ const BiddingInterface = ({ onBid, currentBid }: BiddingProps) => {
             <button
               key={num}
               onClick={() => handleBidSelect(num)}
+              disabled={submitting}
               className={`w-12 h-12 rounded ${
                 selectedBid === num
                   ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
                   : 'bg-gray-600 hover:bg-gray-500 text-white'
-              }`}
+              } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {num}
             </button>
@@ -111,11 +116,12 @@ const BiddingInterface = ({ onBid, currentBid }: BiddingProps) => {
             <button
               key={num}
               onClick={() => handleBidSelect(num)}
+              disabled={submitting}
               className={`w-12 h-12 rounded ${
                 selectedBid === num
                   ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
                   : 'bg-gray-600 hover:bg-gray-500 text-white'
-              }`}
+              } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {num}
             </button>
@@ -126,11 +132,12 @@ const BiddingInterface = ({ onBid, currentBid }: BiddingProps) => {
         <div className="flex gap-2 justify-center mt-2">
           <button
             onClick={() => handleBidSelect(0)}
+            disabled={submitting}
             className={`w-24 h-12 rounded ${
               selectedBid === 0
                 ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
                 : 'bg-gray-600 hover:bg-gray-500 text-white'
-            }`}
+            } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Nil
           </button>
@@ -142,14 +149,14 @@ const BiddingInterface = ({ onBid, currentBid }: BiddingProps) => {
           </button>
           <button
             onClick={handleConfirm}
-            disabled={selectedBid === undefined}
+            disabled={selectedBid === undefined || submitting}
             className={`w-24 h-12 rounded ${
-              selectedBid !== undefined
+              selectedBid !== undefined && !submitting
                 ? 'bg-green-600 hover:bg-green-700 text-white'
                 : 'bg-gray-700 text-gray-500 cursor-not-allowed'
             }`}
           >
-            Confirm
+            {submitting ? 'Submitting...' : 'Confirm'}
           </button>
         </div>
       </div>
@@ -314,6 +321,19 @@ export default function GameTable({
       console.error('Cannot bid: No current player ID');
       return;
     }
+    
+    // Validate that it's actually this player's turn
+    if (game.currentPlayer !== currentPlayerId) {
+      console.error(`Cannot bid: Not your turn. Current player is ${game.currentPlayer}`);
+      return;
+    }
+    
+    // Validate game state
+    if (game.status !== 'BIDDING') {
+      console.error(`Cannot bid: Game is not in bidding state (${game.status})`);
+      return;
+    }
+    
     console.log(`Submitting bid: ${bid} for player ${currentPlayerId} in game ${game.id}`);
     socket?.emit("make_bid", { gameId: game.id, userId: currentPlayerId, bid });
     console.log('Game status:', game.status, 'Current player:', game.currentPlayer);
@@ -630,6 +650,10 @@ export default function GameTable({
                   <div className="font-bold">Waiting for Host</div>
                   <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
                 </div>
+              ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
+                <div className="px-6 py-3 bg-gray-700 text-white rounded-lg text-center animate-pulse">
+                  <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
+                </div>
               ) : game.currentTrick && game.currentTrick.length > 0 ? (
                 <div className="relative w-48 h-48">
                   {/* Actual cards */}
@@ -664,7 +688,7 @@ export default function GameTable({
             </div>
 
             {/* Bidding interface */}
-            {game.status === "BIDDING" && isCurrentPlayersTurn && (
+            {game.status === "BIDDING" && game.currentPlayer === currentPlayerId && (
               <BiddingInterface
                 onBid={handleBid}
                 currentBid={orderedPlayers[0]?.bid}
