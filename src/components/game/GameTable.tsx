@@ -264,24 +264,10 @@ export default function GameTable({
   // @ts-ignore - position property might not be on the type yet
   const currentPlayerPosition = currentPlayer?.position !== undefined ? currentPlayer.position : game.players.findIndex(p => p.id === currentPlayerId);
 
-  console.log("CURRENT PLAYER:", currentPlayer?.name);
-  console.log("CURRENT PLAYER POSITION:", currentPlayerPosition);
-  console.log("RAW PLAYERS ARRAY:", 
-    // @ts-ignore - position property might not be on the type yet
-    game.players.map(p => `Position ${p.position !== undefined ? p.position : game.players.indexOf(p)}: ${p.name}`)
-  );
-
-  // Log player details including teams
-  console.log("PLAYERS WITH TEAMS:", game.players.map(p => 
-    // @ts-ignore - position property might not be on the type yet
-    `${p.name} at position ${p.position !== undefined ? p.position : game.players.indexOf(p)} on team ${p.team}`
-  ));
-
   // FIXED ROTATION: Always put current player at bottom (South)
   const rotatePlayersForCurrentView = () => {
     // If we can't find the current player, don't rotate
     if (currentPlayerPosition === -1) {
-      console.log("No rotation - current player not found");
       // Create a placeholder array for 4 positions
       const positions = Array(4).fill(null);
       
@@ -296,8 +282,6 @@ export default function GameTable({
     }
 
     // Create a rotated array where current player is at position 0 (South)
-    console.log(`Rotating view: player at position ${currentPlayerPosition} should appear at South (bottom)`);
-
     // Create a new array with 4 positions
     const rotated = Array(4).fill(null);
     
@@ -314,8 +298,6 @@ export default function GameTable({
       // This ensures current player is at position 0
       const newPos = (4 + originalPos - currentPlayerPosition) % 4;
       rotated[newPos] = player;
-      
-      console.log(`Player ${player.name} from position ${originalPos} moved to ${newPos}`);
     });
     
     return rotated;
@@ -396,7 +378,6 @@ export default function GameTable({
     const player = orderedPlayers[position];
     if (!player) {
       // Empty seat
-      console.log(`Empty seat at position ${position}`);
       return null;
     }
 
@@ -595,16 +576,6 @@ export default function GameTable({
         >
           Leave Table
         </button>
-      </div>
-
-      {/* Diagnostic Overlay */}
-      <div className="absolute top-0 right-0 bg-black/50 p-2 text-xs text-white z-50 max-w-[400px] overflow-auto">
-        <div className="font-bold">PLAYER POSITIONS:</div>
-        {game.players.map((p, idx) => (
-          <div key={idx} className={`text-${p.team === 1 ? 'red' : 'blue'}-300`}>
-            Position {p.position !== undefined ? p.position : idx}: {p.name} (Team {p.team})
-          </div>
-        ))}
       </div>
 
       {/* Main content area */}
