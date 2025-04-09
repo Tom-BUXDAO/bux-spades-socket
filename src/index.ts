@@ -256,7 +256,10 @@ io.on('connection', (socket) => {
           browserSessionId: testPlayer?.browserSessionId || game.players[existingPlayerIndex].browserSessionId
         };
       } else {
-        // Add new player to the game
+        // Check if a specific position was requested
+        const position = testPlayer?.position !== undefined ? testPlayer.position : undefined;
+        
+        // Create player object
         const player: Player = {
           id: userId,
           name: testPlayer?.name || 'Unknown',
@@ -267,7 +270,40 @@ io.on('connection', (socket) => {
           browserSessionId: testPlayer?.browserSessionId
         };
 
-        game.players.push(player);
+        // If position is specified and that position is empty, put player there
+        if (position !== undefined) {
+          // Validate position is within range
+          if (position < 0 || position > 3) {
+            socket.emit('error', { message: 'Invalid position' });
+            return;
+          }
+          
+          // Check if the requested position is available
+          if (game.players[position]) {
+            socket.emit('error', { message: 'Position already taken' });
+            return;
+          }
+          
+          // Place player at the requested position
+          // First, ensure the array has enough slots
+          while (game.players.length <= position) {
+            game.players.push(null);
+          }
+          
+          // Set the player at the requested position
+          game.players[position] = player;
+          
+          console.log(`Player ${player.name} (${userId}) joined at position ${position}`);
+        } else {
+          // No position specified, add to the end as before
+          game.players.push(player);
+          console.log(`Player ${player.name} (${userId}) joined at the end`);
+        }
+        
+        // Clean up any null positions if there are still empty seats
+        if (game.players.length < 4) {
+          game.players = game.players.filter(p => p !== null);
+        }
       }
       
       socket.join(gameId);
