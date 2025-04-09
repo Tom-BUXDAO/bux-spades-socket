@@ -259,15 +259,22 @@ export default function GameTable({
   // Find the current player's position and team
   const currentPlayer = game.players.find(p => p.id === currentPlayerId);
   const currentTeam = currentPlayer?.team;
-  const currentPlayerPosition = game.players.findIndex(p => p.id === currentPlayerId);
+
+  // Use the explicit position property if available, otherwise fall back to array index
+  // @ts-ignore - position property might not be on the type yet
+  const currentPlayerPosition = currentPlayer?.position !== undefined ? currentPlayer.position : game.players.findIndex(p => p.id === currentPlayerId);
 
   console.log("CURRENT PLAYER:", currentPlayer?.name);
   console.log("CURRENT PLAYER POSITION:", currentPlayerPosition);
-  console.log("RAW PLAYERS ARRAY:", game.players.map((p, i) => `${i}: ${p.name}`));
+  console.log("RAW PLAYERS ARRAY:", 
+    // @ts-ignore - position property might not be on the type yet
+    game.players.map(p => `Position ${p.position !== undefined ? p.position : game.players.indexOf(p)}: ${p.name}`)
+  );
 
   // Log player details including teams
   console.log("PLAYERS WITH TEAMS:", game.players.map(p => 
-    `${p.name} at position ${game.players.indexOf(p)} on team ${p.team}`
+    // @ts-ignore - position property might not be on the type yet
+    `${p.name} at position ${p.position !== undefined ? p.position : game.players.indexOf(p)} on team ${p.team}`
   ));
 
   // FIXED ROTATION: Always put current player at bottom (South)
@@ -275,20 +282,32 @@ export default function GameTable({
     // If we can't find the current player, don't rotate
     if (currentPlayerPosition === -1) {
       console.log("No rotation - current player not found");
-      return Array(4).fill(null).map((_, index) => {
-        return game.players.find((p, i) => i === index) || null;
+      // Create a placeholder array for 4 positions
+      const positions = Array(4).fill(null);
+      
+      // Place each player at their explicit position
+      game.players.forEach(p => {
+        // @ts-ignore - position property might not be on the type yet
+        const pos = p.position !== undefined ? p.position : game.players.indexOf(p);
+        positions[pos] = p;
       });
+      
+      return positions;
     }
 
     // Create a rotated array where current player is at position 0 (South)
     console.log(`Rotating view: player at position ${currentPlayerPosition} should appear at South (bottom)`);
 
-    // Create a new array with 4 slots to maintain proper positions
+    // Create a new array with 4 positions
     const rotated = Array(4).fill(null);
     
-    // Place each player at their correct rotated position
-    game.players.forEach((player, originalPos) => {
+    // Place each player at their rotated position based on their explicit position
+    game.players.forEach(player => {
       if (!player || !player.id) return;
+      
+      // Get the player's explicit position, or fall back to array index
+      // @ts-ignore - position property might not be on the type yet
+      const originalPos = player.position !== undefined ? player.position : game.players.indexOf(player);
       
       // Calculate new position relative to current player
       // Formula: (4 + originalPos - currentPlayerPosition) % 4
