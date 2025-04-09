@@ -48,6 +48,7 @@ interface Player {
   browserSessionId?: string;
   isDealer?: boolean;
   image?: string;
+  position: number;
 }
 
 interface Game {
@@ -118,12 +119,14 @@ function shuffleArray<T>(array: T[]): T[] {
 function dealCards(players: Player[]): Player[] {
   const deck = shuffleArray(createDeck());
   
-  // Deal 13 cards to each player
+  // Deal 13 cards to each player, preserving position
   return players.map((player, index) => ({
     ...player,
     hand: deck.slice(index * 13, (index + 1) * 13),
     bid: undefined,
     tricks: 0,
+    // Preserve the player's explicit position
+    position: player.position
   }));
 }
 
@@ -235,7 +238,8 @@ io.on('connection', (socket) => {
         tricks: 0,
         team: 1,
         bid: undefined,
-        image: user.image
+        image: user.image,
+        position: 0 // Game creator always starts at position 0 (South)
       };
       
       // Create new game with the player
@@ -325,7 +329,8 @@ io.on('connection', (socket) => {
           tricks: 0,
           team: team,
           browserSessionId: testPlayer.browserSessionId || socket.id,
-          image: testPlayer.image || undefined
+          image: testPlayer.image || undefined,
+          position: position || 0
         };
         
         console.log(`Created test player ${testPlayer.name} with team ${team} for position ${position}`);
@@ -343,7 +348,8 @@ io.on('connection', (socket) => {
           hand: [],
           tricks: 0,
           team: team,
-          browserSessionId: socket.id
+          browserSessionId: socket.id,
+          position: position || 0
         };
         
         console.log(`Created regular player with team ${team} for position ${position}`);
@@ -360,40 +366,35 @@ io.on('connection', (socket) => {
           return;
         }
         
-        // Check if position is already taken
-        if (game.players.some((p) => game.players.indexOf(p) === position)) {
-          console.log(`Position ${position} already has a player!`);
+        // Check if position is already taken by checking the position property
+        if (game.players.some(p => p.position === position)) {
+          console.log(`Position ${position} already taken by another player!`);
           socket.emit('error', { message: `Position ${position} is already taken` });
           return;
         }
         
-        // DIRECT PLACEMENT: Create a full array with empty slots
-        let fullPlayerArray = Array(4).fill(null);
+        // Set the position explicitly on the player object
+        player.position = position;
         
-        // Copy existing players to their original positions
-        game.players.forEach(p => {
-          const idx = game.players.indexOf(p);
-          console.log(`Preserving existing player ${p.name} at position ${idx}`);
-          fullPlayerArray[idx] = p;
-        });
-        
-        // Place new player at exactly the requested position
-        console.log(`Placing ${player.name} at EXACT position ${position}`);
-        fullPlayerArray[position] = player;
-        
-        // Filter out null slots
-        game.players = fullPlayerArray.filter(p => p !== null) as Player[];
+        // No more array index manipulation - just add the player with correct position
+        game.players.push(player);
         
         // Debug log each player's position and team
         console.log(`FINAL PLAYER ARRAY AFTER POSITIONING:`);
-        game.players.forEach((p, idx) => {
-          console.log(`Position ${idx}: ${p.name} (Team ${p.team})`);
+        game.players.forEach(p => {
+          console.log(`Player ${p.name} at explicit position ${p.position} (Team ${p.team})`);
         });
         console.log(`================================================`);
       } else {
-        // No position specified, add to the end
+        // No position specified, determine next available position
+        const usedPositions = new Set(game.players.map(p => p.position));
+        let nextPosition = 0;
+        while (usedPositions.has(nextPosition)) {
+          nextPosition++;
+        }
+        player.position = nextPosition;
         game.players.push(player);
-        console.log(`Player ${player.name} joined at the end (no position specified)`);
+        console.log(`Player ${player.name} assigned to next available position ${nextPosition}`);
       }
       
       socket.join(gameId);
@@ -441,8 +442,11 @@ io.on('connection', (socket) => {
       isDealer: i === firstDealerIndex
     }));
     
-    // First player is to the left of the dealer
-    game.currentPlayer = game.players[(firstDealerIndex + 1) % 4].id;
+    // First player is to the left of the dealer - find by position
+    const dealerPosition = game.players.find(p => p.isDealer)?.position || 0;
+    const nextPosition = (dealerPosition + 1) % 4;
+    const nextPlayer = game.players.find(p => p.position === nextPosition);
+    game.currentPlayer = nextPlayer?.id || game.players[0].id;
     
     // Update game state in memory
     games.set(gameId, game);
