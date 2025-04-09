@@ -93,7 +93,7 @@ export function useSocket(clientId: string = '') {
     socketRef.current?.emit("create_game", { user });
   };
 
-  const joinGame = (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2 }) => {
+  const joinGame = (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2; browserSessionId?: string; position?: number }) => {
     socketRef.current?.emit("join_game", { gameId, userId, testPlayer });
   };
 

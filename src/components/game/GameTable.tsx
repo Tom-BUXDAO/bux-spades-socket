@@ -262,34 +262,9 @@ export default function GameTable({
   const currentPlayer = game.players.find(p => p.id === currentPlayerId);
   const currentTeam = currentPlayer?.team;
 
-  // Order players so current player is at bottom (position 0) with teammates/opponents in correct positions
-  const orderedPlayers = Array(4).fill(null);
-  if (currentPlayer && game.players.length > 0) {
-    // Place the current player at the bottom (position 0)
-    orderedPlayers[0] = currentPlayer;
-    
-    // Find the current player's index
-    const currentPlayerIndex = game.players.findIndex(p => p.id === currentPlayerId);
-    
-    // Place the other players in clockwise order
-    if (currentPlayerIndex !== -1) {
-      for (let i = 1; i < 4 && i < game.players.length; i++) {
-        // Get players in clockwise order
-        const playerIndex = (currentPlayerIndex + i) % game.players.length;
-        const position = i;
-        orderedPlayers[position] = game.players[playerIndex];
-      }
-    } else {
-      // Fallback if current player not found in game players
-      let placedCount = 1;
-      for (const player of game.players) {
-        if (player.id !== currentPlayerId && placedCount < 4) {
-          orderedPlayers[placedCount] = player;
-          placedCount++;
-        }
-      }
-    }
-  }
+  // For seating arrangement, we need to respect the positions players chose
+  // The positions should already be maintained in the game.players array
+  const orderedPlayers = game.players;
 
   // Helper to determine team color based on player's team
   const getTeamColor = (player: typeof orderedPlayers[number]) => {

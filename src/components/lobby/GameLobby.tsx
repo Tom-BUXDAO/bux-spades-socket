@@ -14,7 +14,7 @@ interface GameLobbyProps {
   };
   socket: typeof Socket | null;
   createGame: (user: { id: string; name?: string | null }) => void;
-  joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2; browserSessionId?: string }) => void;
+  joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2; browserSessionId?: string; position?: number }) => void;
   onGamesUpdate: (callback: (games: GameState[]) => void) => () => void;
 }
 
