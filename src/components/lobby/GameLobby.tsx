@@ -48,13 +48,20 @@ export default function GameLobby({
 
     // Ensure the socket is connected and emit 'get_games'
     if (socket) {
-      socket.emit("get_games");
+      // Only request games list once on connection
+      let hasRequestedGamesList = false;
 
-      // Handle multiple connections
       socket.on("connect", () => {
         console.log("Connected with socket ID:", socket.id);
         // Emit a custom event to close previous connections
-        socket.emit("close_previous_connections", { userId: user.id, browserSessionId });
+        socket.emit("close_previous_connections", { userId: user.id });
+        
+        // Only request games list once
+        if (!hasRequestedGamesList) {
+          console.log("Requesting initial games list");
+          socket.emit("get_games");
+          hasRequestedGamesList = true;
+        }
       });
     }
 
@@ -94,8 +101,8 @@ export default function GameLobby({
           setCurrentPlayerId(user.id);
           onGameSelect(existingGame);
         } else {
-          console.log("Could not find existing game, requesting games update");
-          // Request an update of the games list
+          console.log("Could not find existing game, requesting games update once");
+          // Request an update of the games list, but only once
           socket?.emit("get_games");
         }
       }
