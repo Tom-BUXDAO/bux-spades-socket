@@ -15,7 +15,7 @@ interface GameTableProps {
   game: GameState;
   socket: typeof Socket | null;
   createGame: (user: { id: string; name?: string | null }) => void;
-  joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2 }) => void;
+  joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2; position?: number }) => void;
   onGamesUpdate: (callback: (games: GameState[]) => void) => () => void;
   onLeaveTable: () => void;
   startGame: (gameId: string) => void;
@@ -23,10 +23,13 @@ interface GameTableProps {
     id: string;
     name?: string | null;
     isGuest?: boolean;
+    image?: string | null;
   };
 }
 
-const PLAYER_AVATARS = [
+// Fallback avatar for guest players
+const GUEST_AVATAR = "/guest-avatar.png";
+const BOT_AVATARS = [
   "https://arweave.net/Z9Vo8NXy39QMIm3xRUdTZN7-i5G-F-DnhyED7bQHe3k?ext=png",
   "https://arweave.net/-9byM2loikEAmOLK_mAy07srsKNCz4OTXndjSXU9PI4",
   "https://nftstorage.link/ipfs/bafybeicbxjjab62vgw2yitoj3ba36d44fvk4dihwzgpbxzrjxjqv6k6bqe/50.png",
@@ -360,6 +363,29 @@ export default function GameTable({
       }
     };
 
+    // Determine player team color - North/South should be same team, East/West should be same team
+    const getTeamColor = (p: any): 1 | 2 => {
+      // Positions 0 and 2 (North/South) should be team 1
+      // Positions 1 and 3 (East/West) should be team 2
+      return position % 2 === 0 ? 1 : 2;
+    };
+
+    // Determine player avatar based on their ID
+    const getPlayerAvatar = (p: any): string => {
+      // If player is a user with profile image, use it
+      if (p.id === currentPlayerId && propUser?.image) {
+        return propUser.image;
+      }
+      
+      // If player id starts with "guest_", use the guest avatar
+      if (p.id.startsWith('guest_')) {
+        return GUEST_AVATAR;
+      }
+      
+      // If player is a bot/test player, use the bot avatar based on position
+      return BOT_AVATARS[position];
+    };
+
     const isHorizontal = position === 0 || position === 2;
 
     return (
@@ -369,7 +395,7 @@ export default function GameTable({
             isActive ? 'ring-yellow-400 animate-pulse' : getTeamColor(player) === 1 ? 'ring-red-500' : 'ring-blue-500'
           }`}>
             <Image
-              src={PLAYER_AVATARS[position]}
+              src={getPlayerAvatar(player)}
               alt="Player avatar"
               width={64}
               height={64}

@@ -274,6 +274,11 @@ export default function GameLobby({
     return user.id === playerId || browserSessionId === browserSessionId;
   };
 
+  // Determine team based on position - North/South (0,2) are Team 1, East/West (1,3) are Team 2
+  const getTeamForPosition = (position: number): 1 | 2 => {
+    return position % 2 === 0 ? 1 : 2;
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-6">
       {/* Header with user info and logout */}
@@ -387,7 +392,9 @@ export default function GameLobby({
               {/* North position */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20">
                 {game.players[2] ? (
-                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[2].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
+                    getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
+                  } flex items-center justify-center bg-white`}>
                     {game.players[2].name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players[2].name}
@@ -396,20 +403,26 @@ export default function GameLobby({
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, 1, 2)}
-                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-blue-500"
+                      onClick={() => handleJoinGame(game.id, getTeamForPosition(2), 2)}
+                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                        getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
+                      }`}
                     >
                       North<br/>Join
                     </button>
                   )
                 )}
-                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">N</div>
+                <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white ${
+                  getTeamForPosition(2) === 1 ? 'bg-red-500' : 'bg-blue-500'
+                } px-2 py-0.5 rounded-full`}>N</div>
               </div>
               
               {/* East position */}
-              <div className="absolute top-1/2 right-0 -translate-y-1/2 w-20 h-20">
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-20">
                 {game.players[3] ? (
-                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[3].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
+                    getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
+                  } flex items-center justify-center bg-white`}>
                     {game.players[3].name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players[3].name}
@@ -418,20 +431,26 @@ export default function GameLobby({
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, 2, 3)}
-                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-red-500"
+                      onClick={() => handleJoinGame(game.id, getTeamForPosition(3), 3)}
+                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                        getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
+                      }`}
                     >
                       East<br/>Join
                     </button>
                   )
                 )}
-                <div className="absolute -left-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">E</div>
+                <div className={`absolute -left-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white ${
+                  getTeamForPosition(3) === 1 ? 'bg-red-500' : 'bg-blue-500'
+                } px-2 py-0.5 rounded-full`}>E</div>
               </div>
               
               {/* South position */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-20">
                 {game.players[0] ? (
-                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[0].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
+                    getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
+                  } flex items-center justify-center bg-white`}>
                     {game.players[0].name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players[0].name}
@@ -440,20 +459,26 @@ export default function GameLobby({
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, 1, 0)}
-                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-blue-500"
+                      onClick={() => handleJoinGame(game.id, getTeamForPosition(0), 0)}
+                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                        getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
+                      }`}
                     >
                       South<br/>Join
                     </button>
                   )
                 )}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">S</div>
+                <div className={`absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white ${
+                  getTeamForPosition(0) === 1 ? 'bg-red-500' : 'bg-blue-500'
+                } px-2 py-0.5 rounded-full`}>S</div>
               </div>
               
               {/* West position */}
-              <div className="absolute top-1/2 left-0 -translate-y-1/2 w-20 h-20">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-20">
                 {game.players[1] ? (
-                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[1].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
+                    getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
+                  } flex items-center justify-center bg-white`}>
                     {game.players[1].name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players[1].name}
@@ -462,14 +487,18 @@ export default function GameLobby({
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, 2, 1)}
-                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-red-500"
+                      onClick={() => handleJoinGame(game.id, getTeamForPosition(1), 1)}
+                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                        getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
+                      }`}
                     >
                       West<br/>Join
                     </button>
                   )
                 )}
-                <div className="absolute -right-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">W</div>
+                <div className={`absolute -right-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white ${
+                  getTeamForPosition(1) === 1 ? 'bg-red-500' : 'bg-blue-500'
+                } px-2 py-0.5 rounded-full`}>W</div>
               </div>
             </div>
 
