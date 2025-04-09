@@ -514,6 +514,7 @@ io.on('connection', (socket) => {
   socket.on('make_bid', ({ gameId, userId, bid }) => {
     console.log('\n=== MAKE BID EVENT ===');
     console.log(`Received make_bid event for game: ${gameId}, user: ${userId}, bid: ${bid}`);
+    console.log(`Socket ID: ${socket.id}, Connected: ${socket.connected}`);
     
     // Validate inputs
     if (!gameId || !userId || bid === undefined || bid === null) {
@@ -923,6 +924,28 @@ io.on('connection', (socket) => {
     if (game) {
       socket.emit('game_update', game);
     } else {
+      socket.emit('error', { message: 'Game not found' });
+    }
+  });
+
+  // Add handler for get_game event
+  socket.on('get_game', ({ gameId }, callback) => {
+    console.log(`Socket ${socket.id} requesting game data for ${gameId}`);
+    
+    if (!gameId) {
+      socket.emit('error', { message: 'Game ID is required' });
+      if (callback) callback(null);
+      return;
+    }
+    
+    const game = games.get(gameId);
+    if (game) {
+      console.log(`Found game ${gameId}, status: ${game.status}, players: ${game.players.length}`);
+      if (callback) callback(game);
+      socket.emit('game_update', game);
+    } else {
+      console.log(`Game ${gameId} not found`);
+      if (callback) callback(null);
       socket.emit('error', { message: 'Game not found' });
     }
   });
