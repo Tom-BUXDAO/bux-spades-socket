@@ -294,25 +294,20 @@ export default function GameLobby({
     return position % 2 === 0 ? 1 : 2;
   };
 
-  // Helper function to match the one in GameTable.tsx
-  const getPlayerAvatar = (p: any): string => {
-    // If player has their own image property, use that first
-    if (p.image) {
-      return p.image;
+  // Get a player's avatar
+  const getPlayerAvatar = (playerId: string): string => {
+    // Discord user ID (numeric string)
+    if (playerId && /^\d+$/.test(playerId)) {
+      // For Discord users without an avatar hash or with invalid avatar, use the default Discord avatar
+      return `https://cdn.discordapp.com/embed/avatars/${parseInt(playerId) % 5}.png`;
     }
     
-    // If Discord user ID format (numeric string), try to use Discord CDN
-    if (/^\d+$/.test(p.id)) {
-      // Use the player ID to fetch from Discord's CDN if it's a Discord ID
-      return `https://cdn.discordapp.com/avatars/${p.id}/${p.image || 'avatar.png'}`;
-    }
-    
-    // If player id starts with "guest_", use the guest avatar
-    if (p.id && p.id.startsWith('guest_')) {
+    // Guest user
+    if (playerId && playerId.startsWith('guest_')) {
       return GUEST_AVATAR;
     }
     
-    // Fallback to generic bot/test avatar
+    // Fallback to bot avatar
     return BOT_AVATAR;
   };
 
@@ -418,7 +413,7 @@ export default function GameLobby({
                     getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
                     <Image 
-                      src={getPlayerAvatar(game.players.find(p => p.position === 2))} 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 2)?.id || "")} 
                       alt="Player avatar" 
                       className="w-full h-full object-cover"
                       width={64}
@@ -453,7 +448,7 @@ export default function GameLobby({
                     getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
                     <Image 
-                      src={getPlayerAvatar(game.players.find(p => p.position === 3))} 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 3)?.id || "")} 
                       alt="Player avatar" 
                       className="w-full h-full object-cover"
                       width={64}
@@ -488,7 +483,7 @@ export default function GameLobby({
                     getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
                     <Image 
-                      src={getPlayerAvatar(game.players.find(p => p.position === 0))} 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 0)?.id || "")} 
                       alt="Player avatar" 
                       className="w-full h-full object-cover"
                       width={64}
@@ -523,7 +518,7 @@ export default function GameLobby({
                     getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
                     <Image 
-                      src={getPlayerAvatar(game.players.find(p => p.position === 1))} 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 1)?.id || "")} 
                       alt="Player avatar" 
                       className="w-full h-full object-cover"
                       width={64}

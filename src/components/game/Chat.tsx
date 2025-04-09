@@ -141,23 +141,21 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
     };
   }, [activeSocket, gameId, userId]);
 
-  // Get player avatar
+  // Get a player's avatar
   const getPlayerAvatar = (playerId: string): string => {
-    const player = players.find(p => p.id === playerId);
-    
-    // For Discord user ID format (numeric string), try to use Discord CDN
+    // Discord user ID (numeric string)
     if (playerId && /^\d+$/.test(playerId)) {
-      // Use the player ID to fetch from Discord's CDN if it's a Discord ID
-      return `https://cdn.discordapp.com/avatars/${playerId}/avatar.png`;
+      // For Discord users without an avatar hash or with invalid avatar, use the default Discord avatar
+      return `https://cdn.discordapp.com/embed/avatars/${parseInt(playerId) % 5}.png`;
     }
     
-    // If player id starts with "guest_", use the guest avatar
+    // Guest user
     if (playerId && playerId.startsWith('guest_')) {
-      return GUEST_AVATAR;
+      return 'https://api.dicebear.com/7.x/bottts/svg?seed=' + playerId;
     }
     
-    // Fallback to generic bot/test avatar
-    return BOT_AVATAR;
+    // Fallback to default avatar
+    return 'https://api.dicebear.com/7.x/bottts/svg?seed=default';
   };
 
   useEffect(() => {
