@@ -260,16 +260,18 @@ export default function GameTable({
   const currentPlayer = game.players.find(p => p.id === currentPlayerId);
   const currentTeam = currentPlayer?.team;
 
-  // FIXED POSITIONING LOGIC: Respect exact positions in the game state
+  // FIXED POSITIONING LOGIC: Use absolute positions, not relative to current player
   // Create a proper array with nulls for empty positions
   console.log("RAW PLAYERS ARRAY:", game.players.map((p, i) => `${i}: ${p.name}`));
 
+  // Don't reorganize players based on current player perspective - use absolute positions
+  // Position 0 is always South, 1 is West, 2 is North, 3 is East - regardless of who's viewing
   const orderedPlayers = Array(4).fill(null).map((_, index) => {
     // Find a player at this exact position
     return game.players.find((p, i) => i === index) || null;
   });
 
-  console.log("PLAYER POSITIONS:", 
+  console.log("ABSOLUTE POSITIONS:", 
     orderedPlayers.map((p, i) => p ? `Position ${i}: ${p.name}` : `Position ${i}: empty`)
   );
 
@@ -365,6 +367,8 @@ export default function GameTable({
 
     const isActive = game.currentPlayer === player.id;
     
+    // Get absolute position classes - these never change regardless of player perspective
+    // South is always bottom, North is always top, etc.
     const getPositionClasses = (pos: number): string => {
       switch (pos) {
         case 0: return 'bottom-2 left-1/2 -translate-x-1/2 flex-row';  // South (bottom)
@@ -577,7 +581,21 @@ export default function GameTable({
             borderRadius: '64px',
             border: '2px solid #855f31'
           }}>
-            {/* Players around the table */}
+            {/* Players around the table - in absolute positions */}
+            <div className="absolute bottom-2 w-full text-center text-yellow-300 font-bold">
+              South (0)
+            </div>
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 text-yellow-300 font-bold">
+              West (1)
+            </div>
+            <div className="absolute top-2 w-full text-center text-yellow-300 font-bold">
+              North (2)
+            </div>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-300 font-bold">
+              East (3)
+            </div>
+            
+            {/* Display the players in their fixed positions */}
             {[0, 1, 2, 3].map((position) => (
               <div key={`player-position-${position}`}>
                 {renderPlayerPosition(position)}
