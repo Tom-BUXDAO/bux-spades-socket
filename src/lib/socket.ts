@@ -124,6 +124,14 @@ export function useSocket(clientId: string = '') {
     socketRef.current?.emit("start_game", gameId);
   };
 
+  const leaveGame = (gameId: string, userId: string) => {
+    socketRef.current?.emit("leave_game", { gameId, userId });
+  };
+
+  const closeAllPreviousConnections = (userId: string) => {
+    socketRef.current?.emit("close_previous_connections", { userId });
+  };
+
   return {
     socket: socketRef.current,
     createGame,
@@ -133,5 +141,7 @@ export function useSocket(clientId: string = '') {
     onGamesUpdate,
     onGameUpdate,
     startGame,
+    leaveGame,
+    closeAllPreviousConnections,
   };
 } 

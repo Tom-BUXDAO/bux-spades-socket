@@ -327,6 +327,9 @@ export default function GameTable({
   };
 
   const handleLeaveTable = () => {
+    if (currentPlayerId && socket) {
+      socket.emit("leave_game", { gameId: game.id, userId: currentPlayerId });
+    }
     onLeaveTable();
   };
 

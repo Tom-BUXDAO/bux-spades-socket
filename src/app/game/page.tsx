@@ -12,7 +12,7 @@ export default function GamePage() {
   const { data: session, status } = useSession();
   const [currentGame, setCurrentGame] = useState<GameState | null>(null);
   const [guestUser, setGuestUser] = useState<any>(null);
-  const { socket, createGame, joinGame, onGamesUpdate, startGame } = useSocket("");
+  const { socket, createGame, joinGame, onGamesUpdate, startGame, closeAllPreviousConnections } = useSocket("");
 
   useEffect(() => {
     // Check for guest user in localStorage
@@ -21,6 +21,17 @@ export default function GamePage() {
       setGuestUser(JSON.parse(storedGuest));
     }
   }, []);
+
+  // Clean up any lingering game connections when component mounts
+  useEffect(() => {
+    if (session?.user?.id) {
+      console.log("Cleaning up previous connections for user:", session.user.id);
+      closeAllPreviousConnections(session.user.id);
+    } else if (guestUser?.id) {
+      console.log("Cleaning up previous connections for guest:", guestUser.id);
+      closeAllPreviousConnections(guestUser.id);
+    }
+  }, [session?.user?.id, guestUser?.id, closeAllPreviousConnections]);
 
   useEffect(() => {
     // Listen for game updates
