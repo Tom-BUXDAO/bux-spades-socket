@@ -403,7 +403,7 @@ export default function GameLobby({
             </div>
 
             {/* Table visualization */}
-            <div className="relative aspect-square mb-4 max-w-[300px] mx-auto">
+            <div className="relative aspect-square mb-4 max-w-[400px] mx-auto">
               {/* Table background */}
               <div className="absolute inset-[15%] rounded-full bg-[#316785] border-4 border-[#855f31]"></div>
               
@@ -548,14 +548,26 @@ export default function GameLobby({
               </div>
             </div>
 
-            {game.status !== "WAITING" && game.players.some(p => isControlledByThisBrowser(p.id, p.browserSessionId)) && (
+            {/* Game actions buttons */}
+            <div className="flex gap-2 mt-4">
+              {/* Show Join Game button if the player has already joined the game */}
+              {game.status !== "WAITING" && game.players.some(p => isControlledByThisBrowser(p.id, p.browserSessionId)) && (
+                <button
+                  onClick={() => onGameSelect(game)}
+                  className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                >
+                  Join Game
+                </button>
+              )}
+              
+              {/* Watch button for spectators */}
               <button
                 onClick={() => onGameSelect(game)}
-                className="w-full px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                className="flex-1 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition"
               >
-                Join Game
+                Watch
               </button>
-            )}
+            </div>
           </div>
         ))}
 
