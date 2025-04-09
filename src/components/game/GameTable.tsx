@@ -448,6 +448,7 @@ export default function GameTable({
   const cardHeight = Math.floor(144 * scaleFactor);
   const avatarSize = Math.floor(64 * scaleFactor);
   
+  // Update the renderPlayerPosition function to make player avatars and name containers smaller on mobile
   const renderPlayerPosition = (position: number) => {
     const player = orderedPlayers[position];
     if (!player) {
@@ -456,6 +457,9 @@ export default function GameTable({
     }
 
     const isActive = game.currentPlayer === player.id;
+    
+    // Determine if we're on mobile
+    const isMobile = screenSize.width < 640;
     
     // Adjust positioning for responsive layout
     const getPositionClasses = (pos: number): string => {
@@ -482,31 +486,15 @@ export default function GameTable({
       return basePositions[pos];
     };
 
-    // Determine player avatar based on their ID
-    const getPlayerAvatar = (p: any): string => {
-      // If player has their own image property, use that first
-      if (p.image) {
-        return p.image;
+    // Get player avatar
+    const getPlayerAvatar = (player: any): string => {
+      // Discord user ID (numeric string), try Discord CDN
+      if (player.id && /^\d+$/.test(player.id)) {
+        return `https://cdn.discordapp.com/avatars/${player.id}/avatar.png`;
       }
       
-      // If player matches the current user and we have their image
-      if (p.id === currentPlayerId && propUser?.image) {
-        return propUser.image;
-      }
-      
-      // If Discord user ID format (numeric string), try to use Discord CDN
-      if (/^\d+$/.test(p.id)) {
-        // Use the player ID to fetch from Discord's CDN if it's a Discord ID
-        return `https://cdn.discordapp.com/avatars/${p.id}/${p.image || 'avatar.png'}`;
-      }
-      
-      // If player id starts with "guest_", use the guest avatar
-      if (p.id.startsWith('guest_')) {
-        return GUEST_AVATAR;
-      }
-      
-      // Fallback to generic bot/test avatar
-      return BOT_AVATAR;
+      // Guest user, use default avatar
+      return GUEST_AVATAR;
     };
 
     const isHorizontal = position === 0 || position === 2;
@@ -514,37 +502,58 @@ export default function GameTable({
     // Calculate font sizes based on scale
     const nameSize = Math.max(14, Math.floor(16 * scaleFactor));
     const infoSize = Math.max(12, Math.floor(14 * scaleFactor));
+    
+    // Smaller sizes for mobile
+    const mobileNameSize = isMobile ? 12 : nameSize;
+    const mobileInfoSize = isMobile ? 10 : infoSize;
+    const mobileAvatarSize = isMobile ? Math.floor(avatarSize * 0.75) : avatarSize;
+    const mobileDealerSize = isMobile ? 16 : Math.floor(24 * scaleFactor);
 
     return (
       <div className={`absolute ${getPositionClasses(position)} flex items-center gap-${Math.max(2, Math.floor(4 * scaleFactor))}`}>
         <div className="relative">
           <div className={`rounded-full overflow-hidden ring-4 ${
             isActive ? 'ring-yellow-400 animate-pulse' : player.team === 1 ? 'ring-red-500' : 'ring-blue-500'
-          }`} style={{ width: `${avatarSize}px`, height: `${avatarSize}px` }}>
+          }`} style={{ 
+            width: screenSize.width < 640 ? '48px' : `${avatarSize}px`, 
+            height: screenSize.width < 640 ? '48px' : `${avatarSize}px` 
+          }}>
             <Image
               src={getPlayerAvatar(player)}
               alt="Player avatar"
-              width={avatarSize}
-              height={avatarSize}
+              width={screenSize.width < 640 ? 48 : avatarSize}
+              height={screenSize.width < 640 ? 48 : avatarSize}
               className="w-full h-full object-cover"
             />
           </div>
           {player.isDealer && (
             <div className="absolute -right-6 top-1/2 -translate-y-1/2 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
-                 style={{ width: `${Math.floor(24 * scaleFactor)}px`, height: `${Math.floor(24 * scaleFactor)}px`, fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                 style={{ 
+                   width: screenSize.width < 640 ? '18px' : `${Math.floor(24 * scaleFactor)}px`, 
+                   height: screenSize.width < 640 ? '18px' : `${Math.floor(24 * scaleFactor)}px`, 
+                   fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
+                 }}>
               D
             </div>
           )}
         </div>
-        <div className={`px-3 py-1 rounded-lg ${
+        <div className={`rounded-lg ${
           player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-        } text-white text-center`}>
-          <div className="font-semibold" style={{ fontSize: `${nameSize}px` }}>{player.name}</div>
+        } text-white text-center`} style={{
+          padding: screenSize.width < 640 ? '2px 6px' : '4px 12px'
+        }}>
+          <div className="font-semibold" style={{ 
+            fontSize: screenSize.width < 640 ? '12px' : `${Math.floor(16 * scaleFactor)}px` 
+          }}>{player.name}</div>
           {player.bid !== undefined && (
-            <div className="text-yellow-200" style={{ fontSize: `${infoSize}px` }}>Bid: {player.bid}</div>
+            <div className="text-yellow-200" style={{ 
+              fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
+            }}>Bid: {player.bid}</div>
           )}
           {game.status === "PLAYING" && (
-            <div className="text-yellow-200" style={{ fontSize: `${infoSize}px` }}>Tricks: {player.tricks}</div>
+            <div className="text-yellow-200" style={{ 
+              fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
+            }}>Tricks: {player.tricks}</div>
           )}
         </div>
       </div>
@@ -663,9 +672,13 @@ export default function GameTable({
   return (
     <>
       <LandscapePrompt />
-      <div className="flex flex-col h-screen bg-gray-900 pt-2">
+      <div className="flex flex-col h-screen bg-gray-900">
+        {/* Empty div for padding above header */}
+        <div className="h-8"></div>
+        
         {/* Header */}
-        <div className="bg-gray-800 text-white px-4 py-1 flex justify-between items-center mb-2">
+        <div className="bg-gray-800 text-white px-4 py-2 flex justify-between items-center mb-2"
+             style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}>
           <div className="flex items-center space-x-4">
             <h2 className="font-bold" style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}>Game #{game.id}</h2>
             <div className="flex space-x-2">
@@ -683,12 +696,12 @@ export default function GameTable({
           </button>
         </div>
 
-        {/* Main content area - removed py-4 to eliminate extra padding */}
-        <div className="flex flex-1 min-h-0">
-          {/* Game table area - 70% */}
+        {/* Main content area with added padding */}
+        <div className="flex flex-1 min-h-0 pt-1">
+          {/* Game table area - add padding on top and bottom */}
           <div className="w-[70%] p-2 flex flex-col">
-            {/* Game table */}
-            <div className="relative flex-1 mb-2" style={{ 
+            {/* Game table with more space at the top and bottom */}
+            <div className="relative flex-1 mb-3 mt-2" style={{ 
               background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
               borderRadius: `${Math.floor(64 * scaleFactor)}px`,
               border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
@@ -798,8 +811,8 @@ export default function GameTable({
               )}
             </div>
 
-            {/* Cards area below table */}
-            <div className="bg-gray-800/50 rounded-lg relative" 
+            {/* Cards area with more space */}
+            <div className="bg-gray-800/50 rounded-lg relative mt-2" 
                  style={{ 
                    height: `${Math.floor(120 * scaleFactor)}px`, 
                    clipPath: 'inset(-100% 0 0 0)'
