@@ -225,28 +225,25 @@ export default function GameLobby({
 
     // Get the game to check if the position is already taken
     const game = games.find(g => g.id === gameId);
-    if (game && position !== undefined && game.players[position]) {
-      console.log("Position already taken, cannot join this seat");
-      return;
-    }
-
-    // Join as the user with team selection 
-    console.log("Attempting to join game with:", { 
-      gameId, 
-      userId: user.id, 
-      testPlayer: { 
-        name: user.name, 
-        team,
-        browserSessionId,
-        image: user.image || undefined
-      } 
+    
+    // Log everything about this join attempt
+    console.log("JOIN ATTEMPT:", {
+      gameId,
+      userId: user.id,
+      userName: user.name,
+      requestedPosition: position,
+      requestedTeam: team
     });
     
+    // Force position to be respected - server will place player at exactly this position
+    console.log(`Attempting to join game with EXPLICIT position ${position}`);
+    
+    // Join as the user with team selection 
     joinGame(gameId, user.id, { 
       name: user.name, 
       team,
       browserSessionId,
-      position,
+      position, // This is the key part - we're passing the exact position
       image: user.image || undefined
     });
     
@@ -258,6 +255,8 @@ export default function GameLobby({
     if (playerName.trim()) {
       setShowNameInput(false);
       if (selectedGame) {
+        console.log(`Guest player ${playerName} joining with EXPLICIT position ${selectedGame.position}`);
+        
         joinGame(
           selectedGame.gameId, 
           user.id, 
@@ -265,7 +264,7 @@ export default function GameLobby({
             name: playerName, 
             team: selectedGame.team,
             browserSessionId,
-            position: selectedGame.position
+            position: selectedGame.position // Make sure position is passed
           }
         );
       }
@@ -402,19 +401,23 @@ export default function GameLobby({
               
               {/* North position */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20">
-                {game.players[2] ? (
+                {game.players.find(p => game.players.indexOf(p) === 2) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players[2].name.charAt(0).toUpperCase()}
+                    {game.players.find(p => game.players.indexOf(p) === 2)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players[2].name}
+                      {game.players.find(p => game.players.indexOf(p) === 2)?.name}
                     </div>
                   </div>
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, getTeamForPosition(2), 2)}
+                      onClick={() => {
+                        // Explicitly log which position we're joining
+                        console.log("JOINING POSITION 2 (NORTH)");
+                        handleJoinGame(game.id, getTeamForPosition(2), 2);
+                      }}
                       className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
                       }`}
@@ -430,19 +433,23 @@ export default function GameLobby({
               
               {/* East position */}
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-20">
-                {game.players[3] ? (
+                {game.players.find(p => game.players.indexOf(p) === 3) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players[3].name.charAt(0).toUpperCase()}
+                    {game.players.find(p => game.players.indexOf(p) === 3)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players[3].name}
+                      {game.players.find(p => game.players.indexOf(p) === 3)?.name}
                     </div>
                   </div>
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, getTeamForPosition(3), 3)}
+                      onClick={() => {
+                        // Explicitly log which position we're joining
+                        console.log("JOINING POSITION 3 (EAST)");
+                        handleJoinGame(game.id, getTeamForPosition(3), 3);
+                      }}
                       className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
                       }`}
@@ -458,19 +465,23 @@ export default function GameLobby({
               
               {/* South position */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-20">
-                {game.players[0] ? (
+                {game.players.find(p => game.players.indexOf(p) === 0) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players[0].name.charAt(0).toUpperCase()}
+                    {game.players.find(p => game.players.indexOf(p) === 0)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players[0].name}
+                      {game.players.find(p => game.players.indexOf(p) === 0)?.name}
                     </div>
                   </div>
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, getTeamForPosition(0), 0)}
+                      onClick={() => {
+                        // Explicitly log which position we're joining
+                        console.log("JOINING POSITION 0 (SOUTH)");
+                        handleJoinGame(game.id, getTeamForPosition(0), 0);
+                      }}
                       className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
                       }`}
@@ -486,19 +497,23 @@ export default function GameLobby({
               
               {/* West position */}
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-20">
-                {game.players[1] ? (
+                {game.players.find(p => game.players.indexOf(p) === 1) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players[1].name.charAt(0).toUpperCase()}
+                    {game.players.find(p => game.players.indexOf(p) === 1)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players[1].name}
+                      {game.players.find(p => game.players.indexOf(p) === 1)?.name}
                     </div>
                   </div>
                 ) : (
                   game.status === "WAITING" && (
                     <button 
-                      onClick={() => handleJoinGame(game.id, getTeamForPosition(1), 1)}
+                      onClick={() => {
+                        // Explicitly log which position we're joining
+                        console.log("JOINING POSITION 1 (WEST)");
+                        handleJoinGame(game.id, getTeamForPosition(1), 1);
+                      }}
                       className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
                       }`}

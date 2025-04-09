@@ -100,7 +100,8 @@ export function useSocket(clientId: string = '') {
     position?: number;
     image?: string;
   }) => {
-    socketRef.current?.emit("join_game", { gameId, userId, testPlayer });
+    console.log(`SOCKET JOIN: Game=${gameId}, Player=${userId}, Position=${testPlayer?.position}, Team=${testPlayer?.team}`);
+    socketRef.current?.emit("join_game", { gameId, userId, testPlayer, position: testPlayer?.position });
   };
 
   const playCard = (gameId: string, userId: string, card: Card) => {
