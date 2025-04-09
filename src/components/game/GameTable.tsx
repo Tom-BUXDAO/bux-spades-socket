@@ -259,17 +259,37 @@ export default function GameTable({
   // Find the current player's position and team
   const currentPlayer = game.players.find(p => p.id === currentPlayerId);
   const currentTeam = currentPlayer?.team;
+  const currentPlayerPosition = game.players.findIndex(p => p.id === currentPlayerId);
 
-  // FIXED POSITIONING LOGIC: Respect exact positions in the game state
-  // Create a proper array with nulls for empty positions
+  console.log("CURRENT PLAYER:", currentPlayer?.name);
+  console.log("CURRENT PLAYER POSITION:", currentPlayerPosition);
   console.log("RAW PLAYERS ARRAY:", game.players.map((p, i) => `${i}: ${p.name}`));
 
-  const orderedPlayers = Array(4).fill(null).map((_, index) => {
-    // Find a player at this exact position
-    return game.players.find((p, i) => i === index) || null;
-  });
+  // FIXED ROTATION: Always put current player at bottom (South)
+  const rotatePlayersForCurrentView = () => {
+    // If we can't find the current player, don't rotate
+    if (currentPlayerPosition === -1) {
+      console.log("No rotation - current player not found");
+      return Array(4).fill(null).map((_, index) => {
+        return game.players.find((p, i) => i === index) || null;
+      });
+    }
 
-  console.log("PLAYER POSITIONS:", 
+    // Create a rotated array where current player is at position 0 (South)
+    // For example, if current player is at position 2 (North),
+    // we rotate so position 0 shows position 2, position 1 shows position 3, etc.
+    console.log(`Rotating view: player at position ${currentPlayerPosition} should appear at South (bottom)`);
+
+    return Array(4).fill(null).map((_, index) => {
+      // Calculate the original position in the game.players array
+      const originalPosition = (currentPlayerPosition + index) % 4;
+      return game.players.find((p, i) => i === originalPosition) || null;
+    });
+  };
+
+  const orderedPlayers = rotatePlayersForCurrentView();
+
+  console.log("ROTATED PLAYER POSITIONS:", 
     orderedPlayers.map((p, i) => p ? `Position ${i}: ${p.name}` : `Position ${i}: empty`)
   );
 
@@ -330,29 +350,15 @@ export default function GameTable({
 
   // Replace the getCardDisplayPosition function
   const getCardDisplayPosition = (card: Card, trickIndex: number): number => {
-    if (game.currentTrick.length === 0) return 0;
+    // We don't need a complex position calculation - each card display position
+    // should just match the visual location of the players around the table
+    // Since we're rotating the view, we need to adapt each trick position accordingly
+    if (currentPlayerPosition === -1) {
+      return trickIndex; // No player found, just use the trick index
+    }
     
-    // Find the player who played this card
-    // First, we need to determine which player played which card
-    
-    // Find the player who led the trick (played the first card)
-    // This is trickIndex steps back from current player
-    const leadPlayerIndex = game.players.findIndex(p => {
-      // If the trick is complete, current player is the one who won
-      // If trick is incomplete, current player is the next to play
-      const offset = game.currentTrick.length === 4 ? 0 : game.currentTrick.length;
-      return p.id === game.currentPlayer;
-    });
-    
-    if (leadPlayerIndex === -1) return trickIndex;
-    
-    // Calculate who played this card
-    const playerIndex = (leadPlayerIndex - game.currentTrick.length + trickIndex + game.players.length) % game.players.length;
-    const cardPlayer = game.players[playerIndex];
-    
-    // Find this player's position in orderedPlayers (where they appear on screen)
-    const displayPosition = orderedPlayers.findIndex(p => p?.id === cardPlayer.id);
-    return displayPosition === -1 ? trickIndex : displayPosition;
+    // Simple offset calculation to match player positions
+    return (trickIndex + 4 - currentPlayerPosition) % 4;
   };
 
   const renderPlayerPosition = (position: number) => {
