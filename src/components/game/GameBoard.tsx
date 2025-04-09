@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import type { GameState, Card, Player } from "@/types/game";
-import { useSocket } from "@/lib/socket";
+import { useSocket, playCard as playCardFn, makeBid as makeBidFn } from "@/lib/socket";
 
 interface GameBoardProps {
   gameId: string;
@@ -12,30 +12,40 @@ interface GameBoardProps {
 export default function GameBoard({ gameId }: GameBoardProps) {
   const { data: session } = useSession();
   const [game, setGame] = useState<GameState | null>(null);
-  const { onGameUpdate, playCard, makeBid } = useSocket("");
+  const { socket } = useSocket("");
 
   useEffect(() => {
-    const unsubscribe = onGameUpdate((updatedGame) => {
+    if (!socket) return;
+    
+    const handleGameUpdate = (updatedGame: GameState) => {
       if (updatedGame.id === gameId) {
         setGame(updatedGame);
       }
-    });
-
-    return () => unsubscribe();
-  }, [gameId, onGameUpdate]);
+    };
+    
+    // Set up the event listener
+    socket.on("game_update", handleGameUpdate);
+    
+    // Initial request for game data
+    socket.emit("get_game", { gameId });
+    
+    return () => {
+      socket.off("game_update", handleGameUpdate);
+    };
+  }, [gameId, socket]);
 
   const currentPlayer = game?.players.find(
     (p) => p.id === session?.user?.id
   );
 
   const handlePlayCard = (card: Card) => {
-    if (!session?.user?.id || !game) return;
-    playCard(game.id, session.user.id, card);
+    if (!session?.user?.id || !game || !socket) return;
+    playCardFn(socket, game.id, session.user.id, card);
   };
 
   const handleMakeBid = (bid: number) => {
-    if (!session?.user?.id || !game) return;
-    makeBid(game.id, session.user.id, bid);
+    if (!session?.user?.id || !game || !socket) return;
+    makeBidFn(socket, game.id, session.user.id, bid);
   };
 
   if (!game) {
