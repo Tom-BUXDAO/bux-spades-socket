@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { Player } from '@/types/game';
 
 interface ChatProps {
-  socket: Socket | null;
+  socket: typeof Socket | null;
   gameId: string;
   userId: string;
   userName: string;
@@ -17,9 +17,12 @@ interface ChatProps {
 }
 
 interface ChatMessage {
+  id?: string;
   userId: string;
   userName: string;
   message: string;
+  text?: string; // For compatibility with existing code
+  user?: string; // For compatibility with existing code
   timestamp: number;
   isGameMessage?: boolean;
 }
@@ -137,12 +140,7 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   const getPlayerAvatar = (playerId: string): string => {
     const player = players.find(p => p.id === playerId);
     
-    // If player has their own image property, use that first
-    if (player?.image) {
-      return player.image;
-    }
-    
-    // If Discord user ID format (numeric string), try to use Discord CDN
+    // For Discord user ID format (numeric string), try to use Discord CDN
     if (playerId && /^\d+$/.test(playerId)) {
       // Use the player ID to fetch from Discord's CDN if it's a Discord ID
       return `https://cdn.discordapp.com/avatars/${playerId}/avatar.png`;
@@ -163,8 +161,8 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
     const handleMessage = (message: ChatMessage) => {
       console.log('Received chat message:', message);
       setMessages(prev => {
-        // Deduplicate messages by id
-        if (prev.some(m => m.id === message.id)) {
+        // Deduplicate messages by id if id exists
+        if (message.id && prev.some(m => m.id === message.id)) {
           return prev;
         }
         return [...prev, message];
@@ -191,49 +189,45 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
       // Generate a unique ID for this message
       const messageId = `${Date.now()}-${userId}-${Math.random().toString(36).substr(2, 9)}`;
   
-      const message = {
+      const chatMessage: ChatMessage = {
         id: messageId,
-        user: userName,
+        userName,
         userId: userId,
-        text: inputValue.trim(),
+        message: inputValue.trim(),
+        text: inputValue.trim(), // For compatibility
+        user: userName, // For compatibility
         timestamp: Date.now()
       };
   
-      console.log('Sending chat message:', message);
-  
-      activeSocket.emit('chat_message', { gameId, message }, (ack: any) => {
-        if (ack && ack.error) {
-          console.error('Error sending message:', ack.error);
-          setError(`Failed to send: ${ack.error}`);
-        } else {
-          setError(null);
-        }
+      // Send the message to the server
+      activeSocket.emit('chat_message', {
+        gameId,
+        ...chatMessage
       });
-      
-      // Add the message locally for immediate feedback
-      setMessages(prev => [...prev, message]);
-      
+  
+      // Add the message to our local state immediately (optimistic UI)
+      setMessages(prev => [...prev, chatMessage]);
+  
+      // Clear the input field
       setInputValue('');
       setShowEmojiPicker(false);
-    } catch (error) {
-      console.error('Error sending chat message:', error);
-      setError('Failed to send message');
+    } catch (err) {
+      console.error('Failed to send chat message:', err);
+      setError('Failed to send message. Please try again.');
     }
   };
 
   const onEmojiSelect = (emoji: any) => {
     setInputValue(prev => prev + emoji.native);
   };
-  
+
   const formatTime = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const handleRetry = () => {
-    // Try to reconnect the socket manually
-    if (activeSocket) {
-      activeSocket.connect();
+    if (regularSocket?.socket) {
+      regularSocket.socket.connect();
     }
     setError(null);
   };
@@ -258,11 +252,11 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
       </div>
       
       {/* Game status notifications */}
-      {userId === gameId || (
-        <div className="bg-red-900 text-white p-2 text-center" style={{ fontSize: `${fontSize}px` }}>
-          {game?.currentPlayer === userId ? "Your turn to play" : "Not your turn to play"}
-        </div>
-      )}
+      <div className="bg-red-900 text-white p-2 text-center" style={{ fontSize: `${fontSize}px` }}>
+        {socket?.connected ? 
+          (userId ? "Connected to game chat" : "Connected to game chat") : 
+          "Connecting to game..."}
+      </div>
 
       {/* Messages container */}
       <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: `calc(100% - ${Math.floor(90 * scaleFactor)}px)` }}>
@@ -273,7 +267,7 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
         ) : (
           messages.map((msg, index) => (
             <div
-              key={index}
+              key={msg.id || index}
               className={`my-1 p-2 rounded-lg max-w-[85%] ${
                 msg.userId === userId ? 'ml-auto' : 'mr-auto'
               } ${getMessageClass(msg)}`}
@@ -281,10 +275,10 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
             >
               {msg.userId !== userId && (
                 <div className={`font-bold ${playerColors[msg.userId] || 'text-gray-300'}`}>
-                  {msg.userName}
+                  {msg.userName || msg.user}
                 </div>
               )}
-              <div>{msg.message}</div>
+              <div>{msg.message || msg.text}</div>
             </div>
           ))
         )}
