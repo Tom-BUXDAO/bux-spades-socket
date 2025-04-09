@@ -578,6 +578,16 @@ export default function GameTable({
         </button>
       </div>
 
+      {/* Diagnostic Overlay */}
+      <div className="absolute top-0 right-0 bg-black/50 p-2 text-xs text-white z-50 max-w-[400px] overflow-auto">
+        <div className="font-bold">PLAYER POSITIONS:</div>
+        {game.players.map((p, idx) => (
+          <div key={idx} className={`text-${p.team === 1 ? 'red' : 'blue'}-300`}>
+            Position {idx}: {p.name} (Team {p.team})
+          </div>
+        ))}
+      </div>
+
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
         {/* Game table area - 70% */}
