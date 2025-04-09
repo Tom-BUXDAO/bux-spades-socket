@@ -166,6 +166,41 @@ io.on('connection', (socket) => {
     console.log(`User ${userId} authenticated with socket ${socket.id}`);
   });
   
+  // Handle chat messages
+  socket.on('chat_message', ({ gameId, message }) => {
+    if (!gameId || !message) {
+      socket.emit('error', { message: 'Invalid chat message data' });
+      return;
+    }
+    
+    // Rate limit chat messages to prevent spam - one message per 500ms
+    if (message.userId && isRateLimited(message.userId, 'chat_message', 500)) {
+      console.log(`Rate limiting chat for user: ${message.userId}`);
+      return;
+    }
+    
+    // Find the game
+    const game = games.get(gameId);
+    if (!game) {
+      socket.emit('error', { message: 'Game not found' });
+      return;
+    }
+    
+    // Ensure user is in the game or is a spectator
+    const isPlayer = game.players.some(p => p.id === message.userId);
+    const isSpectator = !isPlayer && message.userId.startsWith('guest_');
+    
+    if (!isPlayer && !isSpectator) {
+      console.log(`Non-player attempting to chat: ${message.userId} in game ${gameId}`);
+      // We'll still let them chat, but we log it
+    }
+    
+    console.log(`Chat message in game ${gameId} from ${message.user}: ${message.text}`);
+    
+    // Broadcast the message to everyone in the game
+    io.to(gameId).emit('chat_message', message);
+  });
+  
   // Clean up handler for users having issues with old games
   socket.on('close_previous_connections', ({ userId }) => {
     if (!userId) return;
@@ -281,131 +316,16 @@ io.on('connection', (socket) => {
         return;
       }
       
+      // Always join the socket room for this game
+      socket.join(gameId);
+      console.log(`Socket ${socket.id} joined room ${gameId}`);
+      
       // Associate this userId with the current socket
       currentUserId = userId;
       if (!userConnections.has(userId)) {
         userConnections.set(userId, new Set());
       }
       userConnections.get(userId)!.add(socket.id);
-      
-      const game = games.get(gameId);
-      if (!game) {
-        socket.emit('error', { message: 'Game not found' });
-        return;
-      }
-      
-      if (game.status !== 'WAITING') {
-        socket.emit('error', { message: 'Game has already started' });
-        return;
-      }
-
-      // Check if player is already in the game
-      if (game.players.some(p => p.id === userId)) {
-        console.log(`Player ${userId} is already in the game`);
-        socket.join(gameId);
-        socket.emit('game_update', game);
-        return;
-      }
-      
-      if (game.players.length >= 4 && position === undefined) {
-        socket.emit('error', { message: 'Game is full' });
-        return;
-      }
-
-      // Create player object
-      let player: Player;
-      if (testPlayer) {
-        // Explicitly set team based on position
-        // Team 1: positions 0 (South) and 2 (North)
-        // Team 2: positions 1 (West) and 3 (East)
-        const team = position !== undefined 
-          ? (position % 2 === 0 ? 1 : 2) 
-          : testPlayer.team;
-        
-        player = {
-          id: userId,
-          name: testPlayer.name,
-          hand: [],
-          tricks: 0,
-          team: team,
-          browserSessionId: testPlayer.browserSessionId || socket.id,
-          image: testPlayer.image || undefined,
-          position: position || 0
-        };
-        
-        console.log(`Created test player ${testPlayer.name} with team ${team} for position ${position}`);
-      } else {
-        // Explicitly set team based on position
-        // Team 1: positions 0 (South) and 2 (North) 
-        // Team 2: positions 1 (West) and 3 (East)
-        const team = position !== undefined 
-          ? (position % 2 === 0 ? 1 : 2) 
-          : (game.players.length % 2) + 1 as 1 | 2;
-        
-        player = {
-          id: userId,
-          name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
-          hand: [],
-          tricks: 0,
-          team: team,
-          browserSessionId: socket.id,
-          position: position || 0
-        };
-        
-        console.log(`Created regular player with team ${team} for position ${position}`);
-      }
-
-      // HANDLE POSITION PLACEMENT
-      if (position !== undefined) {
-        console.log(`============EXPLICIT POSITION JOIN REQUEST============`);
-        console.log(`Player ${player.name} requesting EXACT position ${position}`);
-        
-        // Validate position
-        if (position < 0 || position > 3) {
-          socket.emit('error', { message: 'Invalid position (must be 0-3)' });
-          return;
-        }
-        
-        // Check if position is already taken by checking the position property
-        if (game.players.some(p => p.position === position)) {
-          console.log(`Position ${position} already taken by another player!`);
-          socket.emit('error', { message: `Position ${position} is already taken` });
-          return;
-        }
-        
-        // Set the position explicitly on the player object
-        player.position = position;
-        
-        // No more array index manipulation - just add the player with correct position
-        game.players.push(player);
-        
-        // Debug log each player's position and team
-        console.log(`FINAL PLAYER ARRAY AFTER POSITIONING:`);
-        game.players.forEach(p => {
-          console.log(`Player ${p.name} at explicit position ${p.position} (Team ${p.team})`);
-        });
-        console.log(`================================================`);
-      } else {
-        // No position specified, determine next available position
-        const usedPositions = new Set(game.players.map(p => p.position));
-        let nextPosition = 0;
-        while (usedPositions.has(nextPosition)) {
-          nextPosition++;
-        }
-        player.position = nextPosition;
-        game.players.push(player);
-        console.log(`Player ${player.name} assigned to next available position ${nextPosition}`);
-      }
-      
-      socket.join(gameId);
-      
-      // Update the game
-      games.set(gameId, game);
-      io.emit('games_update', Array.from(games.values()));
-      io.to(gameId).emit('game_update', game);
-      
-      // Send a targeted update to this client
-      socket.emit('game_update', game);
     } catch (error) {
       console.error('Error joining game:', error);
       socket.emit('error', { message: 'Failed to join game' });
