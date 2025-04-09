@@ -69,9 +69,11 @@ io.on('connection', (socket) => {
 
   // Handle closing previous connections
   socket.on('close_previous_connections', ({ userId }) => {
+    console.log('Handling close_previous_connections for user:', userId);
     const connections = userConnections.get(userId) || new Set();
     connections.forEach((connId) => {
       if (connId !== socket.id) {
+        console.log('Disconnecting previous connection:', connId);
         io.sockets.sockets.get(connId)?.disconnect();
       }
     });
