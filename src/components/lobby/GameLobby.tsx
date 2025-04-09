@@ -62,8 +62,18 @@ export default function GameLobby({
     socket?.on("game_created", ({ gameId, game }: { gameId: string; game: GameState }) => {
       console.log("Game created:", gameId);
       setCurrentPlayerId(user.id);
-      // Automatically join the game after creation
-      joinGame(gameId, user.id, { name: user.name || "Unknown Player", team: 1 });
+      
+      // Check if the user is already in the game
+      const isAlreadyInGame = game.players.some(player => player.id === user.id);
+      
+      if (!isAlreadyInGame) {
+        // Only join if not already in the game
+        console.log("Automatically joining game after creation:", gameId);
+        joinGame(gameId, user.id, { name: user.name || "Unknown Player", team: 1 });
+      } else {
+        console.log("User already in game, skipping join step");
+      }
+      
       onGameSelect(game);
     });
 
