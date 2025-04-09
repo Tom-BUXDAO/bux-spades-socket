@@ -105,7 +105,10 @@ export default function TestGamePage() {
             socket={socket || null}
             createGame={createGame}
             joinGame={joinGame}
-            onGamesUpdate={setGames}
+            onGamesUpdate={((callback: (games: GameState[]) => void) => {
+              const unsubscribe = onGamesUpdate(callback);
+              return unsubscribe;
+            }) as unknown as React.Dispatch<React.SetStateAction<GameState[]>>}
             onLeaveTable={() => {}} // Disable leaving table in test mode
             user={mockUser} // Pass the mock user directly to bypass authentication
             startGame={startGame} // Add startGame function
