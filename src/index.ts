@@ -384,7 +384,7 @@ io.on('connection', (socket) => {
         
         console.log(`POSITION ASSIGNMENT COMPLETED: Player ${player.name} placed at position ${position}`);
         console.log(`Team for this position: ${player.team}`);
-        console.log(`Current players array:`, game.players.map((p, idx) => 
+        console.log(`Current players array:`, game.players.map((p) => 
           `Position ${game.players.indexOf(p)}: ${p.name} (Team ${p.team})`
         ));
         console.log(`=============================================`);
