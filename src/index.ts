@@ -68,7 +68,7 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
   // Handle closing previous connections
-  socket.on('close_previous_connections', ({ userId, browserSessionId }) => {
+  socket.on('close_previous_connections', ({ userId }) => {
     const connections = userConnections.get(userId) || new Set();
     connections.forEach((connId) => {
       if (connId !== socket.id) {
