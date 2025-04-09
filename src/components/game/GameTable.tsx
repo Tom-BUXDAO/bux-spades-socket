@@ -310,8 +310,14 @@ export default function GameTable({
   const isCurrentPlayersTurn = game.currentPlayer === currentPlayerId;
 
   const handleBid = (bid: number) => {
-    if (!currentPlayerId) return;
+    if (!currentPlayerId) {
+      console.error('Cannot bid: No current player ID');
+      return;
+    }
+    console.log(`Submitting bid: ${bid} for player ${currentPlayerId} in game ${game.id}`);
     socket?.emit("make_bid", { gameId: game.id, userId: currentPlayerId, bid });
+    console.log('Game status:', game.status, 'Current player:', game.currentPlayer);
+    console.log('Socket connected:', socket?.connected);
   };
 
   const handlePlayCard = (card: Card) => {
