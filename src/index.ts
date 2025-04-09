@@ -90,6 +90,21 @@ io.on('connection', (socket) => {
       
       const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
 
+      // Check if the user already has a game
+      let userAlreadyInGame = false;
+      games.forEach((existingGame) => {
+        if (existingGame.players.some(player => player.id === user.id)) {
+          userAlreadyInGame = true;
+        }
+      });
+
+      // If the user is already in a game, don't create a new one
+      if (userAlreadyInGame) {
+        console.log(`User ${user.name} (${user.id}) already has a game`);
+        socket.emit('error', { message: 'You already have a game' });
+        return;
+      }
+
       const game: Game = {
         id: gameId,
         status: "WAITING",
