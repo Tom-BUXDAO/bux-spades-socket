@@ -315,7 +315,6 @@ export default function GameTable({
   const isCurrentPlayersTurn = game.currentPlayer === currentPlayerId;
 
   const handleBid = (bid: number) => {
-    console.log('Making bid:', bid);
     if (!currentPlayerId) return;
     socket?.emit("make_bid", { gameId: game.id, userId: currentPlayerId, bid });
   };
@@ -330,7 +329,6 @@ export default function GameTable({
     const isLeadingTrick = game.currentTrick.length === 0;
     const playableCards = getPlayableCards(game, currentPlayer.hand, isLeadingTrick);
     if (!playableCards.some(c => c.suit === card.suit && c.rank === card.rank)) {
-      console.log('Invalid card play');
       return;
     }
 
@@ -344,9 +342,6 @@ export default function GameTable({
   const handleLeaveTable = () => {
     if (currentPlayerId && socket) {
       socket.emit("leave_game", { gameId: game.id, userId: currentPlayerId });
-      console.log(`User ${currentPlayerId} leaving game ${game.id}`);
-    } else {
-      console.log("No current player or socket to leave game with");
     }
     // Always call onLeaveTable even if we couldn't emit the event
     onLeaveTable();
@@ -354,10 +349,9 @@ export default function GameTable({
 
   const handleStartGame = async () => {
     try {
-      console.log('Starting game...');
       await startGame(game.id);
     } catch (error) {
-      console.error('Error starting game:', error);
+      // Silently handle errors
     }
   };
 
