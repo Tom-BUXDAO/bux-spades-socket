@@ -103,30 +103,38 @@ io.on('connection', (socket) => {
 
       // Check if the user already has a game
       let userAlreadyInGame = false;
-      games.forEach((existingGame) => {
-        if (existingGame.players.some(player => player.id === user.id)) {
+      let existingGame: Game | null = null;
+      
+      games.forEach((game) => {
+        if (game.players.some(player => player.id === user.id)) {
           userAlreadyInGame = true;
+          existingGame = game;
         }
       });
 
       // If the user is already in a game, don't create a new one
-      if (userAlreadyInGame) {
-        console.log(`User ${user.name} (${user.id}) already has a game`);
-        socket.emit('error', { message: 'You already have a game' });
+      if (userAlreadyInGame && existingGame) {
+        console.log(`User ${user.name} (${user.id}) already has a game: ${existingGame.id}`);
+        socket.join(existingGame.id);
+        socket.emit('game_created', { gameId: existingGame.id, game: existingGame });
         return;
       }
 
+      // Create a new player object with complete information
+      const player: Player = {
+        id: user.id,
+        name: user.name || "Unknown Player",
+        hand: [],
+        tricks: 0,
+        team: 1,
+        bid: undefined
+      };
+      
+      // Create new game with the player
       const game: Game = {
         id: gameId,
         status: "WAITING",
-        players: [{
-          id: user.id,
-          name: user.name || "Unknown Player",
-          hand: [],
-          tricks: 0,
-          team: 1,
-          bid: undefined,
-        }],
+        players: [player],
         currentPlayer: user.id,
         currentTrick: [],
         team1Score: 0,
@@ -140,7 +148,10 @@ io.on('connection', (socket) => {
       games.set(gameId, game);
       socket.join(gameId);
       
+      // Notify the client about the created game
       socket.emit('game_created', { gameId, game });
+      
+      // Update all clients with the new game list
       io.emit('games_update', Array.from(games.values()));
       
       console.log(`Game ${gameId} created by user ${user.name} (${user.id})`);
