@@ -1,28 +1,27 @@
+"use client";
+
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '@/lib/socket';
 import type { Socket } from 'socket.io-client';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import Image from 'next/image';
+import { Player } from '@/types/game';
 
 interface ChatProps {
-  socket: typeof Socket | null;
+  socket: Socket | null;
   gameId: string;
   userId: string;
   userName: string;
-  players: Array<{
-    id: string;
-    name: string;
-    image?: string;
-  }>;
+  players: Player[];
 }
 
 interface ChatMessage {
-  id: string;
-  user: string;
   userId: string;
-  text: string;
+  userName: string;
+  message: string;
   timestamp: number;
+  isGameMessage?: boolean;
 }
 
 // Fallback avatars 
@@ -30,6 +29,7 @@ const GUEST_AVATAR = "/guest-avatar.png";
 const BOT_AVATAR = "/guest-avatar.png";
 
 export default function Chat({ socket, gameId, userId, userName, players }: ChatProps) {
+  const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -37,6 +37,43 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Add responsive sizing state
+  const [screenSize, setScreenSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800
+  });
+
+  // Listen for screen size changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handleResize = () => {
+      setScreenSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Calculate scale factor for responsive sizing
+  const getScaleFactor = () => {
+    // Base scale on the screen width compared to a reference size
+    const referenceWidth = 1200; // Reference width for desktop
+    let scale = Math.min(1, screenSize.width / referenceWidth);
+    
+    // Minimum scale to ensure things aren't too small
+    return Math.max(0.65, scale);
+  };
+  
+  const scaleFactor = getScaleFactor();
+  
+  // Font sizes based on scale
+  const fontSize = Math.max(12, Math.floor(14 * scaleFactor));
+  const headerFontSize = Math.max(14, Math.floor(18 * scaleFactor));
+
   // Only use regular socket if not in test mode
   const regularSocket = !socket ? useSocket(gameId) : null;
 
@@ -201,119 +238,76 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
     setError(null);
   };
 
+  const getMessageClass = (msg: ChatMessage) => {
+    if (msg.isGameMessage) {
+      return 'bg-gray-700 text-gray-300';
+    }
+    return msg.userId === userId ? 'bg-blue-700 text-white' : 'bg-gray-700 text-white';
+  };
+
+  const playerColors: Record<string, string> = {};
+  players.forEach(player => {
+    playerColors[player.id] = player.team === 1 ? 'text-red-400' : 'text-blue-400';
+  });
+
   return (
-    <div className="flex flex-col h-full bg-gray-800 rounded-lg">
-      <div className="p-4 bg-gray-700 flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-white">
-          Game Chat {!isConnected && <span className="text-red-400 text-sm ml-2">(Disconnected)</span>}
-        </h3>
-        
-        {!isConnected && (
-          <button 
-            onClick={handleRetry}
-            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
-          >
-            Reconnect
-          </button>
-        )}
+    <div className="flex flex-col h-full bg-gray-800 rounded-lg overflow-hidden">
+      {/* Chat header */}
+      <div className="bg-gray-900 p-2">
+        <h3 className="text-white font-bold" style={{ fontSize: `${headerFontSize}px` }}>Game Chat</h3>
       </div>
       
-      {error && (
-        <div className="bg-red-800 text-white px-4 py-2 text-sm">
-          {error}
+      {/* Game status notifications */}
+      {userId === gameId || (
+        <div className="bg-red-900 text-white p-2 text-center" style={{ fontSize: `${fontSize}px` }}>
+          {game?.currentPlayer === userId ? "Your turn to play" : "Not your turn to play"}
         </div>
       )}
-      
-      <div className="flex-1 p-4 overflow-y-auto">
+
+      {/* Messages container */}
+      <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: `calc(100% - ${Math.floor(90 * scaleFactor)}px)` }}>
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">
+          <div className="text-gray-400 text-center" style={{ fontSize: `${fontSize}px` }}>
             No messages yet. Start the conversation!
           </div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className={`mb-3 flex items-start ${msg.userId === userId ? 'justify-end' : ''}`}>
+          messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`my-1 p-2 rounded-lg max-w-[85%] ${
+                msg.userId === userId ? 'ml-auto' : 'mr-auto'
+              } ${getMessageClass(msg)}`}
+              style={{ fontSize: `${fontSize}px` }}
+            >
               {msg.userId !== userId && (
-                <div className="w-8 h-8 mr-2 rounded-full overflow-hidden flex-shrink-0">
-                  <Image 
-                    src={getPlayerAvatar(msg.userId)} 
-                    alt={msg.user} 
-                    width={32} 
-                    height={32}
-                    className="w-full h-full object-cover"
-                  />
+                <div className={`font-bold ${playerColors[msg.userId] || 'text-gray-300'}`}>
+                  {msg.userName}
                 </div>
               )}
-              
-              <div className={`max-w-[80%] ${msg.userId === userId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} rounded-lg px-3 py-2`}>
-                <div className="flex justify-between items-center mb-1">
-                  {msg.userId !== userId && (
-                    <span className="font-medium text-xs opacity-80">{msg.user}</span>
-                  )}
-                  <span className="text-xs opacity-75 ml-auto">{formatTime(msg.timestamp)}</span>
-                </div>
-                <p>{msg.text}</p>
-              </div>
-              
-              {msg.userId === userId && (
-                <div className="w-8 h-8 ml-2 rounded-full overflow-hidden flex-shrink-0">
-                  <Image 
-                    src={getPlayerAvatar(msg.userId)} 
-                    alt={msg.user} 
-                    width={32} 
-                    height={32}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+              <div>{msg.message}</div>
             </div>
           ))
         )}
         <div ref={messagesEndRef} />
       </div>
-      
-      <form onSubmit={handleSubmit} className="p-4 bg-gray-700">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={isConnected ? "Type a message..." : "Reconnecting..."}
-              className="w-full px-3 py-2 rounded bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!isConnected}
-            />
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xl hover:text-gray-300"
-              disabled={!isConnected}
-            >
-              😊
-            </button>
-            {showEmojiPicker && (
-              <div className="absolute bottom-full right-0 mb-2 max-h-[320px] z-50 overflow-auto">
-                <Picker 
-                  data={data} 
-                  onEmojiSelect={onEmojiSelect}
-                  theme="dark"
-                  previewPosition="none"
-                  skinTonePosition="none"
-                />
-              </div>
-            )}
-          </div>
-          <button
-            type="submit"
-            className={`px-4 py-2 rounded transition ${
-              isConnected 
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-            }`}
-            disabled={!isConnected}
-          >
-            Send
-          </button>
-        </div>
+
+      {/* Message input */}
+      <form onSubmit={handleSubmit} className="p-2 bg-gray-900 flex">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Type a message..."
+          className="bg-gray-700 text-white rounded-l px-3 py-1 flex-1 outline-none"
+          style={{ fontSize: `${fontSize}px` }}
+        />
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 rounded-r hover:bg-blue-700"
+          style={{ fontSize: `${fontSize}px` }}
+        >
+          Send
+        </button>
       </form>
     </div>
   );
