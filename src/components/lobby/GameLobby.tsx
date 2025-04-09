@@ -49,6 +49,13 @@ export default function GameLobby({
     // Ensure the socket is connected and emit 'get_games'
     if (socket) {
       socket.emit("get_games");
+
+      // Handle multiple connections
+      socket.on("connect", () => {
+        console.log("Connected with socket ID:", socket.id);
+        // Emit a custom event to close previous connections
+        socket.emit("close_previous_connections", { userId: user.id, browserSessionId });
+      });
     }
 
     // Listen for game creation response
