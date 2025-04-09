@@ -113,7 +113,7 @@ io.on('connection', (socket) => {
       });
 
       // If the user is already in a game, don't create a new one
-      if (userAlreadyInGame && existingGame) {
+      if (userAlreadyInGame && existingGame !== null) {
         console.log(`User ${user.name} (${user.id}) already has a game: ${existingGame.id}`);
         socket.join(existingGame.id);
         socket.emit('game_created', { gameId: existingGame.id, game: existingGame });
