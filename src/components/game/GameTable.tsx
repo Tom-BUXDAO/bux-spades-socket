@@ -262,41 +262,39 @@ export default function GameTable({
   const currentPlayer = game.players.find(p => p.id === currentPlayerId);
   const currentTeam = currentPlayer?.team;
 
-  // Define the fixed order of players (clockwise from top)
-  // Team 1: Tom and Alice (opposite each other)
-  // Team 2: Bob and Dani (opposite each other)
-  const FIXED_ORDER = ['Bob', 'Tom', 'Dani', 'Alice'] as const;
-  
-  // Order players so current player is at bottom but maintain clockwise order
+  // Order players so current player is at bottom (position 0) with teammates/opponents in correct positions
   const orderedPlayers = Array(4).fill(null);
-  if (currentPlayer) {
-    // Find the current player's position in the fixed order
-    const fixedIndex = FIXED_ORDER.findIndex(name => name === currentPlayer.name);
-    if (fixedIndex !== -1) {
-      // Rotate the fixed order so current player is at bottom (position 0)
-      for (let i = 0; i < 4; i++) {
-        const fixedOrderIndex = (fixedIndex + i) % 4;
-        const playerName = FIXED_ORDER[fixedOrderIndex];
-        const player = game.players.find(p => p.name === playerName);
-        // Map the rotated position to the table position:
-        // 0 -> bottom (South)
-        // 1 -> left (West)
-        // 2 -> top (North)
-        // 3 -> right (East)
-        const tablePosition = i;
-        if (player) {
-          orderedPlayers[tablePosition] = player;
+  if (currentPlayer && game.players.length > 0) {
+    // Place the current player at the bottom (position 0)
+    orderedPlayers[0] = currentPlayer;
+    
+    // Find the current player's index
+    const currentPlayerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+    
+    // Place the other players in clockwise order
+    if (currentPlayerIndex !== -1) {
+      for (let i = 1; i < 4 && i < game.players.length; i++) {
+        // Get players in clockwise order
+        const playerIndex = (currentPlayerIndex + i) % game.players.length;
+        const position = i;
+        orderedPlayers[position] = game.players[playerIndex];
+      }
+    } else {
+      // Fallback if current player not found in game players
+      let placedCount = 1;
+      for (const player of game.players) {
+        if (player.id !== currentPlayerId && placedCount < 4) {
+          orderedPlayers[placedCount] = player;
+          placedCount++;
         }
       }
     }
   }
 
-  // Helper to determine team color based on player's actual team
+  // Helper to determine team color based on player's team
   const getTeamColor = (player: typeof orderedPlayers[number]) => {
     if (!player) return 1;
-    // Team 1: Tom and Alice
-    // Team 2: Bob and Dani
-    return player.name === 'Tom' || player.name === 'Alice' ? 1 : 2;
+    return player.team || 1;
   };
 
   const isCurrentPlayersTurn = game.currentPlayer === currentPlayerId;
@@ -341,27 +339,30 @@ export default function GameTable({
     }
   };
 
-  // Find the current player's position in the fixed order
-  const currentPlayerFixedIndex = FIXED_ORDER.findIndex(name => currentPlayer?.name === name);
-
-  // Function to get the display position for a card based on who played it
+  // Replace the getCardDisplayPosition function
   const getCardDisplayPosition = (card: Card, trickIndex: number): number => {
-    // Find who played this card by looking at the currentTrick array
-    // The first card in currentTrick was played by the player before the current player
-    const currentPlayerIndex = FIXED_ORDER.findIndex(name => name === game.players.find(p => p.id === game.currentPlayer)?.name);
-    if (currentPlayerIndex === -1) return trickIndex;
-
-    // The first card was played by the player 3 positions before the current player
-    const firstPlayerIndex = (currentPlayerIndex - game.currentTrick.length + 4) % 4;
+    if (game.currentTrick.length === 0) return 0;
     
-    // This card was played by the player trickIndex positions after the first player
-    const cardPlayerIndex = (firstPlayerIndex + trickIndex) % 4;
-    const cardPlayerName = FIXED_ORDER[cardPlayerIndex];
-    const cardPlayer = game.players.find(p => p.name === cardPlayerName);
-    if (!cardPlayer) return trickIndex;
-
-    // Find where this player appears in the orderedPlayers array
-    const displayPosition = orderedPlayers.findIndex(p => p?.name === cardPlayer.name);
+    // Find the player who played this card
+    // First, we need to determine which player played which card
+    
+    // Find the player who led the trick (played the first card)
+    // This is trickIndex steps back from current player
+    const leadPlayerIndex = game.players.findIndex(p => {
+      // If the trick is complete, current player is the one who won
+      // If trick is incomplete, current player is the next to play
+      const offset = game.currentTrick.length === 4 ? 0 : game.currentTrick.length;
+      return p.id === game.currentPlayer;
+    });
+    
+    if (leadPlayerIndex === -1) return trickIndex;
+    
+    // Calculate who played this card
+    const playerIndex = (leadPlayerIndex - game.currentTrick.length + trickIndex + game.players.length) % game.players.length;
+    const cardPlayer = game.players[playerIndex];
+    
+    // Find this player's position in orderedPlayers (where they appear on screen)
+    const displayPosition = orderedPlayers.findIndex(p => p?.id === cardPlayer.id);
     return displayPosition === -1 ? trickIndex : displayPosition;
   };
 
