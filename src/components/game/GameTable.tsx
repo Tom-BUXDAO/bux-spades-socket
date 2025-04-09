@@ -302,7 +302,11 @@ export default function GameTable({
   const handleLeaveTable = () => {
     if (currentPlayerId && socket) {
       socket.emit("leave_game", { gameId: game.id, userId: currentPlayerId });
+      console.log(`User ${currentPlayerId} leaving game ${game.id}`);
+    } else {
+      console.log("No current player or socket to leave game with");
     }
+    // Always call onLeaveTable even if we couldn't emit the event
     onLeaveTable();
   };
 

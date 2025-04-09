@@ -81,6 +81,8 @@ export default function GamePage() {
   };
 
   const handleLeaveTable = () => {
+    console.log("Leaving table, resetting current game");
+    // Reset the current game to return to the lobby
     setCurrentGame(null);
   };
 
