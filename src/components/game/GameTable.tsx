@@ -335,53 +335,57 @@ export default function GameTable({
       return trickIndex; // Fallback
     }
     
-    // For each trick, we need to determine who played each card
-    // The server tracks cards in the order they were played
+    // Let's take a simpler approach: since we know trickIndex is the position in the trick array (0-3),
+    // we can just map this directly to visual positions relative to current player
     
-    // First, identify the player who is currently leading the trick
-    const currentTrickLength = game.currentTrick.length;
+    // First, find who started the trick (will be needed for proper rotation)
+    let trickStarterIndex = -1;
     
-    // Find the current player's position in the turn order
-    const playerPositions = game.players.map(p => p.position !== undefined ? p.position : 0);
-    
-    // Calculate which player would have played each card based on turn order
-    // The first player of the trick would be the player before the current player in turn order
-    // minus the number of cards already played
-    let leadingPlayerPosition = -1;
-    
+    // If we're in the middle of a trick, we need to calculate who started it
     if (game.currentTrick.length > 0) {
-      // If we have cards in the trick, backtrack from the current player to find who played first
-      const currentPlayerIdx = game.players.findIndex(p => p.id === game.currentPlayer);
-      if (currentPlayerIdx !== -1) {
-        const currentPos = game.players[currentPlayerIdx].position || 0;
-        // The player who starts a trick is (currentPos - currentTrick.length) % 4
-        leadingPlayerPosition = (4 + currentPos - currentTrickLength) % 4;
+      // Since cards are played in order, we can determine who played first by looking
+      // at who will play next (currentPlayer) and how many cards have been played
+      // The first player is (currentPlayerIndex - currentTrick.length) % 4 in turn order
+      const currentPlayerIndex = game.players.findIndex(p => p.id === game.currentPlayer);
+      if (currentPlayerIndex >= 0) {
+        trickStarterIndex = (currentPlayerIndex - game.currentTrick.length + 4) % 4;
       }
     }
     
-    if (leadingPlayerPosition === -1) {
-      console.error('Could not determine leading player position for trick');
+    if (trickStarterIndex < 0) {
+      // If we can't determine the trick starter, just use a basic mapping
+      console.warn('Could not determine trick starter, using fallback visual positioning');
       return trickIndex;
     }
     
-    // The player at position (leadingPlayerPosition + trickIndex) % 4 played this card
-    const cardPlayerPosition = (leadingPlayerPosition + trickIndex) % 4;
+    // Determine which player played this card in the trick sequence
+    const playerIndex = (trickStarterIndex + trickIndex) % 4;
     
-    // Find the player who has this position
-    const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-    
-    if (!cardPlayer) {
-      console.error(`No player found at position ${cardPlayerPosition}`);
+    // Now convert to visual position based on the current player's view
+    // Find the position of the current player
+    const myPlayerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+    if (myPlayerIndex < 0) {
+      console.error('Current player not found in game.players');
       return trickIndex;
     }
     
-    // Convert the player's position to visual position from current player's perspective
-    const visualPosition = (4 + cardPlayerPosition - currentPlayerPosition) % 4;
+    // Calculate visual position relative to current player
+    const visualPosition = (playerIndex - myPlayerIndex + 4) % 4;
     
-    console.log(`Card at trick idx ${trickIndex} played by ${cardPlayer.name} at position ${cardPlayer.position}, displayed at visual position ${visualPosition}`);
+    console.log(`Card at idx ${trickIndex} played by player at idx ${playerIndex}, showing at visual position ${visualPosition}`);
     
     return visualPosition;
   };
+  
+  // Add some debugging info for cards
+  useEffect(() => {
+    if (game.currentTrick && game.currentTrick.length > 0) {
+      console.log('Current trick:', game.currentTrick);
+      console.log('Current trick length:', game.currentTrick.length);
+      console.log('Current player:', game.currentPlayer);
+      console.log('Players array:', game.players.map(p => `${p.name}(${p.id}) at position ${p.position}`));
+    }
+  }, [game.currentTrick, game.currentPlayer, game.players]);
 
   // Add a side effect to force game state sync
   useEffect(() => {
