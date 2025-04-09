@@ -588,8 +588,23 @@ io.on('connection', (socket) => {
     // Update game state in memory
     games.set(gameId, game);
     
-    // Broadcast the game update to all sockets in the game room
+    // First, emit to the current room as before
     io.to(gameId).emit('game_update', game);
+    
+    // Then broadcast to all connected clients about the games list update
+    // This ensures all clients get the updated game state even if not in the room
+    io.emit('games_update', Array.from(games.values()));
+    
+    // Emit direct updates to each player in the game to ensure they get it
+    game.players.forEach(player => {
+      if (player.browserSessionId) {
+        const playerSocket = io.sockets.sockets.get(player.browserSessionId);
+        if (playerSocket) {
+          console.log(`Sending direct game_update to player ${player.name} (${player.id})`);
+          playerSocket.emit('game_update', game);
+        }
+      }
+    });
     
     console.log(`Updated game state after bid. Game status: ${game.status}, Current player: ${game.currentPlayer}`);
   });
