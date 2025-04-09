@@ -21,6 +21,7 @@ export default function TestGamePage() {
   const params = useParams();
   const testPlayer = params.testPlayer as keyof typeof TEST_PLAYERS;
   const [currentGame, setCurrentGame] = useState<GameState | null>(null);
+  const [games, setGames] = useState<GameState[]>([]);
   
   // Create a unique socket connection for each test player
   const { socket, createGame, joinGame, startGame, onGamesUpdate, onGameUpdate } = useTestSocket(`test_${testPlayer}`);
@@ -41,6 +42,9 @@ export default function TestGamePage() {
 
   // Handle games list updates
   const handleGamesUpdate = useCallback((games: GameState[]) => {
+    // Update the games state
+    setGames(games);
+    
     const testGame = games.find(g => g.id === "TEST_GAME");
     
     if (!testGame) {
@@ -101,7 +105,7 @@ export default function TestGamePage() {
             socket={socket || null}
             createGame={createGame}
             joinGame={joinGame}
-            onGamesUpdate={onGamesUpdate}
+            onGamesUpdate={setGames}
             onLeaveTable={() => {}} // Disable leaving table in test mode
             user={mockUser} // Pass the mock user directly to bypass authentication
             startGame={startGame} // Add startGame function
