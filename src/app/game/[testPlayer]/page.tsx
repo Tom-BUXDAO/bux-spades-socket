@@ -46,7 +46,7 @@ export default function TestGamePage() {
     if (!testGame) {
       // If no test game exists and we're Tom (first player), create it
       if (testPlayer === "Tom") {
-        createGame(mockUser.id);
+        createGame(mockUser);
       }
       return;
     }
