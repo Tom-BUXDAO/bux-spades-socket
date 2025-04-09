@@ -168,37 +168,51 @@ io.on('connection', (socket) => {
   
   // Handle chat messages
   socket.on('chat_message', ({ gameId, message }) => {
-    if (!gameId || !message) {
-      socket.emit('error', { message: 'Invalid chat message data' });
-      return;
+    try {
+      console.log(`Chat message received: gameId=${gameId}, from=${message.user}, text=${message.text}`);
+      
+      if (!gameId || !message) {
+        socket.emit('error', { message: 'Invalid chat message data' });
+        return;
+      }
+      
+      // Rate limit chat messages to prevent spam - one message per 500ms
+      if (message.userId && isRateLimited(message.userId, 'chat_message', 500)) {
+        console.log(`Rate limiting chat for user: ${message.userId}`);
+        return;
+      }
+      
+      // Find the game
+      const game = games.get(gameId);
+      if (!game) {
+        socket.emit('error', { message: 'Game not found' });
+        return;
+      }
+      
+      // Make sure socket is in the right room
+      if (!socket.rooms.has(gameId)) {
+        console.log(`Socket ${socket.id} not in room ${gameId}, joining now`);
+        socket.join(gameId);
+      }
+      
+      // Ensure user is in the game or is a spectator
+      const isPlayer = game.players.some(p => p.id === message.userId);
+      const isSpectator = !isPlayer && message.userId.startsWith('guest_');
+      
+      if (!isPlayer && !isSpectator) {
+        console.log(`Non-player attempting to chat: ${message.userId} in game ${gameId}`);
+        // We'll still let them chat, but we log it
+      }
+      
+      console.log(`Broadcasting chat message in game ${gameId} from ${message.user}: ${message.text}`);
+      
+      // Broadcast the message to everyone in the game
+      io.to(gameId).emit('chat_message', message);
+      
+    } catch (error) {
+      console.error('Error handling chat message:', error);
+      socket.emit('error', { message: 'Failed to send chat message' });
     }
-    
-    // Rate limit chat messages to prevent spam - one message per 500ms
-    if (message.userId && isRateLimited(message.userId, 'chat_message', 500)) {
-      console.log(`Rate limiting chat for user: ${message.userId}`);
-      return;
-    }
-    
-    // Find the game
-    const game = games.get(gameId);
-    if (!game) {
-      socket.emit('error', { message: 'Game not found' });
-      return;
-    }
-    
-    // Ensure user is in the game or is a spectator
-    const isPlayer = game.players.some(p => p.id === message.userId);
-    const isSpectator = !isPlayer && message.userId.startsWith('guest_');
-    
-    if (!isPlayer && !isSpectator) {
-      console.log(`Non-player attempting to chat: ${message.userId} in game ${gameId}`);
-      // We'll still let them chat, but we log it
-    }
-    
-    console.log(`Chat message in game ${gameId} from ${message.user}: ${message.text}`);
-    
-    // Broadcast the message to everyone in the game
-    io.to(gameId).emit('chat_message', message);
   });
   
   // Clean up handler for users having issues with old games
@@ -551,6 +565,25 @@ io.on('connection', (socket) => {
     
     console.log('Client requested games list, socket:', socket.id);
     socket.emit('games_update', Array.from(games.values()));
+  });
+
+  // Add explicit join_room event for chat and spectators
+  socket.on('join_room', ({ gameId }) => {
+    if (!gameId) {
+      socket.emit('error', { message: 'Game ID is required' });
+      return;
+    }
+    
+    console.log(`Socket ${socket.id} explicitly joining room ${gameId}`);
+    socket.join(gameId);
+    
+    // Send the current game state to the socket that just joined
+    const game = games.get(gameId);
+    if (game) {
+      socket.emit('game_update', game);
+    } else {
+      socket.emit('error', { message: 'Game not found' });
+    }
   });
 });
 
