@@ -403,7 +403,11 @@ export default function GameLobby({
             </div>
 
             {/* Table visualization */}
-            <div className="relative aspect-square mb-4 max-w-[400px] mx-auto">
+            <div className="relative mb-4 mx-auto" style={{ 
+              width: "500px", 
+              height: "300px",
+              maxWidth: "100%" 
+            }}>
               {/* Table background */}
               <div className="absolute inset-[15%] rounded-full bg-[#316785] border-4 border-[#855f31]"></div>
               
@@ -443,7 +447,7 @@ export default function GameLobby({
               </div>
               
               {/* East position */}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-20">
+              <div className="absolute right-5 top-1/2 -translate-y-1/2 w-20 h-20">
                 {game.players.find(p => p.position === 3) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
@@ -513,7 +517,7 @@ export default function GameLobby({
               </div>
               
               {/* West position */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-20">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 w-20 h-20">
                 {game.players.find(p => p.position === 1) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
