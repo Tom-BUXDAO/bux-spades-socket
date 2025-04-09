@@ -94,9 +94,9 @@ export function useTestSocket(clientId: string) {
 
   return {
     socket: socketRef.current,
-    createGame: useCallback(async (userId: string) => {
+    createGame: useCallback(async (user: { id: string; name?: string | null }) => {
       if (await ensureConnection()) {
-        socketRef.current?.emit("create_game", { userId });
+        socketRef.current?.emit("create_game", { user });
       }
     }, [ensureConnection]),
     joinGame: useCallback(async (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2 }) => {
