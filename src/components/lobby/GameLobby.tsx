@@ -70,6 +70,18 @@ export default function GameLobby({
     // Listen for errors
     socket?.on("error", ({ message }: { message: string }) => {
       console.error("Game error:", message);
+      
+      // If the error is that the user already has a game, find and join it
+      if (message === 'You already have a game') {
+        const existingGame = games.find(game => 
+          game.players.some(player => player.id === user.id)
+        );
+        
+        if (existingGame) {
+          console.log("Found existing game, selecting it:", existingGame.id);
+          onGameSelect(existingGame);
+        }
+      }
     });
 
     // Listen for game update
@@ -84,8 +96,9 @@ export default function GameLobby({
       unsubscribe();
       socket?.off("game_created");
       socket?.off("error");
+      socket?.off("game_update");
     };
-  }, [onGamesUpdate, socket, user.id, onGameSelect, joinGame]);
+  }, [onGamesUpdate, socket, user.id, onGameSelect, joinGame, games, browserSessionId]);
 
   const handleCreateGame = async () => {
     console.log("Creating game with user:", user);
