@@ -55,6 +55,8 @@ export default function GameLobby({
     socket?.on("game_created", ({ gameId, game }: { gameId: string; game: GameState }) => {
       console.log("Game created:", gameId);
       setCurrentPlayerId(user.id);
+      // Automatically join the game after creation
+      joinGame(gameId, user.id, { name: user.name || "Unknown Player", team: 1 });
       onGameSelect(game);
     });
 
@@ -74,7 +76,7 @@ export default function GameLobby({
       socket?.off("game_created");
       socket?.off("error");
     };
-  }, [onGamesUpdate, socket, user.id, onGameSelect]);
+  }, [onGamesUpdate, socket, user.id, onGameSelect, joinGame]);
 
   const handleCreateGame = async () => {
     console.log("Creating game with user:", user);
