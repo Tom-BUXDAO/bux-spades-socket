@@ -60,9 +60,24 @@ interface Game {
 // Store active games
 const games = new Map<string, Game>();
 
+// Store active connections per user
+const userConnections = new Map<string, Set<string>>();
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+
+  // Handle closing previous connections
+  socket.on('close_previous_connections', ({ userId, browserSessionId }) => {
+    const connections = userConnections.get(userId) || new Set();
+    connections.forEach((connId) => {
+      if (connId !== socket.id) {
+        io.sockets.sockets.get(connId)?.disconnect();
+      }
+    });
+    connections.add(socket.id);
+    userConnections.set(userId, connections);
+  });
 
   socket.on('create_game', ({ user }) => {
     try {
@@ -150,6 +165,13 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
+    // Remove the socket from user connections
+    userConnections.forEach((connections, userId) => {
+      connections.delete(socket.id);
+      if (connections.size === 0) {
+        userConnections.delete(userId);
+      }
+    });
   });
 });
 
