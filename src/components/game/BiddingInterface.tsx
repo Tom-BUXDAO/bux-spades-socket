@@ -32,8 +32,18 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   const handleConfirm = () => {
     if (selectedBid !== undefined) {
       setSubmitting(true);
+      // Submit the bid
       onBid(selectedBid);
-      // The component will unmount when the turn changes
+      
+      // Force hide the bidding interface immediately after submitting
+      // This is a workaround in case the game state doesn't update fast enough
+      setTimeout(() => {
+        if (playerId === currentPlayerTurn) {
+          console.log("Forcing bidding interface to hide - turn should have changed");
+          // Force the component to return null by emulating a turn change
+          setSubmitting(true);
+        }
+      }, 500);
     }
   };
 

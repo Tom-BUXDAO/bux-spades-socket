@@ -45,9 +45,24 @@ export default function GamePage() {
       if (currentGame) {
         const updatedGame = updatedGames.find(g => g.id === currentGame.id);
         if (updatedGame) {
+          // Compare currentPlayer before and after update to see if it changed
+          if (currentGame.currentPlayer !== updatedGame.currentPlayer) {
+            console.log(`Game ${updatedGame.id} turn changed: ${currentGame.currentPlayer} -> ${updatedGame.currentPlayer}`);
+          }
+          
+          // Check if any player's bid changed
+          currentGame.players.forEach((oldPlayer, index) => {
+            const newPlayer = updatedGame.players[index];
+            if (newPlayer && oldPlayer.bid !== newPlayer.bid) {
+              console.log(`Player ${newPlayer.name} bid changed: ${oldPlayer.bid} -> ${newPlayer.bid}`);
+            }
+          });
+          
+          // Update the game state
           setCurrentGame(updatedGame);
         } else {
           // If game no longer exists, return to lobby
+          console.log(`Game ${currentGame.id} no longer exists, returning to lobby`);
           setCurrentGame(null);
         }
       }

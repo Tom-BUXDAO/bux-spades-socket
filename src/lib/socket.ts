@@ -142,20 +142,35 @@ export function joinGameRoom(socket: typeof Socket | null, gameId: string) {
 export function getGames(socket: typeof Socket | null, callback: (games: GameState[]) => void) {
   if (!socket) return () => {};
   
+  // Create a wrapped callback with extra logging
+  const wrappedCallback = (games: GameState[]) => {
+    console.log(`Received games_update with ${games.length} games`);
+    callback(games);
+  };
+
   // Listen for games update from server
-  socket.on('games_update', callback);
+  socket.on('games_update', wrappedCallback);
+  
+  // Listen for individual game updates and request full game list to ensure consistency
+  socket.on('game_update', (updatedGame: GameState) => {
+    console.log(`Received game_update for game: ${updatedGame.id}, status: ${updatedGame.status}, currentPlayer: ${updatedGame.currentPlayer}`);
+    // Request full game list to ensure everything is in sync
+    socket.emit('get_games');
+  });
   
   // Initial request
   socket.emit('get_games');
   
   // Request games again when reconnecting
   socket.on('connect', () => {
+    console.log('Socket reconnected, requesting games list');
     socket.emit('get_games');
   });
   
   // Return cleanup function
   return () => {
-    socket.off('games_update', callback);
+    socket.off('games_update', wrappedCallback);
+    socket.off('game_update');
     socket.off('connect', () => {
       socket.emit('get_games');
     });
