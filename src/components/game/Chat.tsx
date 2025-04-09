@@ -287,48 +287,20 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
 
       {/* Message input */}
       <form onSubmit={handleSubmit} className="p-2 bg-gray-900 flex">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Type a message..."
-            className="bg-gray-700 text-white rounded-l w-full px-3 py-1 outline-none"
-            style={{ fontSize: `${fontSize}px` }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-300 hover:text-yellow-200"
-            style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}
-          >
-            😊
-          </button>
-          {showEmojiPicker && (
-            <div className="absolute bottom-full right-0 mb-2 z-10" 
-                 style={{ 
-                   maxHeight: `${Math.min(300, Math.floor(320 * scaleFactor))}px`,
-                   width: `${Math.min(screenSize.width - 20, 320)}px` 
-                 }}>
-              <Picker 
-                data={data} 
-                onEmojiSelect={onEmojiSelect}
-                theme="dark"
-                previewPosition="none"
-                skinTonePosition="none"
-              />
-            </div>
-          )}
-        </div>
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Type a message..."
+          className="bg-gray-700 text-white rounded-l px-3 py-1 flex-1 outline-none"
+          style={{ fontSize: `${fontSize}px` }}
+        />
         <button
           type="submit"
-          className="bg-blue-600 text-white px-3 rounded-r hover:bg-blue-700 flex items-center justify-center"
-          style={{ fontSize: `${fontSize}px`, minWidth: `${Math.floor(60 * scaleFactor)}px` }}
+          className="bg-blue-600 text-white px-4 rounded-r hover:bg-blue-700"
+          style={{ fontSize: `${fontSize}px` }}
         >
-          <span className="hidden sm:inline">Send</span>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:hidden" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          Send
         </button>
       </form>
     </div>
