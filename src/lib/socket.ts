@@ -205,21 +205,45 @@ export function leaveGame(socket: typeof Socket | null, gameId: string, userId: 
 export function startGame(socket: typeof Socket | null, gameId: string, userId?: string) {
   if (!socket) return Promise.reject('No socket connection');
   
+  console.log(`Attempting to start game: ${gameId} with user: ${userId || 'unknown'}`);
+  
   return new Promise<void>((resolve, reject) => {
     if (!socket) {
       reject('No socket connection');
       return;
     }
     
+    // Log the current game state if possible
+    socket.emit('get_game', { gameId }, (game: GameState | null) => {
+      if (game) {
+        console.log(`Current game state before starting:`, {
+          id: game.id,
+          status: game.status,
+          playerCount: game.players.length,
+          creatorId: game.players[0]?.id,
+          requestingUserId: userId
+        });
+      } else {
+        console.log(`Could not get game state for ${gameId}`);
+      }
+    });
+    
     const handleUpdate = (updatedGame: GameState) => {
-      if (updatedGame.id === gameId && updatedGame.status === 'BIDDING') {
-        socket.off('game_update', handleUpdate);
-        resolve();
+      if (updatedGame.id === gameId) {
+        console.log(`Game ${gameId} updated, status: ${updatedGame.status}`);
+        if (updatedGame.status === 'BIDDING') {
+          socket.off('game_update', handleUpdate);
+          resolve();
+        }
       }
     };
     
     const handleError = (error: any) => {
       console.error("Start game error:", error);
+      // Check if the error contains detailed information
+      if (typeof error === 'object') {
+        console.error("Error details:", JSON.stringify(error));
+      }
       socket.off('error', handleError);
       socket.off('game_update', handleUpdate);
       reject(error);
@@ -229,7 +253,7 @@ export function startGame(socket: typeof Socket | null, gameId: string, userId?:
     socket.on('error', handleError);
     
     console.log(`Sending start_game command for game ${gameId}${userId ? ` with user ${userId}` : ''}`);
-    socket.emit('start_game', userId ? { gameId, userId } : { gameId });
+    socket.emit('start_game', { gameId, userId });
     
     // Timeout after 5 seconds
     setTimeout(() => {

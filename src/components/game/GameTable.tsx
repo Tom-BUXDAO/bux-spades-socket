@@ -345,7 +345,26 @@ export default function GameTable({
   const handleStartGame = async () => {
     if (!currentPlayerId) return;
     
+    // Make sure the game is in the WAITING state
+    if (game.status !== "WAITING") {
+      console.error(`Cannot start game: game is in ${game.status} state, not WAITING`);
+      return;
+    }
+    
+    // Make sure the game has enough players
+    if (game.players.length < 4) {
+      console.error(`Cannot start game: only ${game.players.length}/4 players joined`);
+      return;
+    }
+    
+    // Make sure current user is the creator (first player)
+    if (game.players[0]?.id !== currentPlayerId) {
+      console.error(`Cannot start game: current user ${currentPlayerId} is not the creator ${game.players[0]?.id}`);
+      return;
+    }
+    
     try {
+      console.log(`Starting game ${game.id} as user ${currentPlayerId}, creator: ${game.players[0]?.id}`);
       await startGame(game.id, currentPlayerId);
     } catch (error) {
       console.error("Failed to start game:", error);
@@ -588,13 +607,23 @@ export default function GameTable({
 
             {/* Center content */}
             <div className="absolute inset-0 flex items-center justify-center">
-              {game.status === "WAITING" && game.players.length === 4 && game.players[0].id === currentPlayerId ? (
+              {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
                 <button
                   onClick={handleStartGame}
                   className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
                 >
                   Start Game
                 </button>
+              ) : game.status === "WAITING" && game.players.length < 4 ? (
+                <div className="px-6 py-3 bg-gray-700 text-gray-300 rounded-lg text-center">
+                  <div className="font-bold">Waiting for Players</div>
+                  <div className="text-sm mt-1">{game.players.length}/4 joined</div>
+                </div>
+              ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
+                <div className="px-6 py-3 bg-gray-700 text-gray-300 rounded-lg text-center">
+                  <div className="font-bold">Waiting for Host</div>
+                  <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
+                </div>
               ) : game.currentTrick && game.currentTrick.length > 0 ? (
                 <div className="relative w-48 h-48">
                   {/* Actual cards */}
