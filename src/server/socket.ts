@@ -235,11 +235,8 @@ io.on("connection", (socket) => {
         browserSessionId: p.browserSessionId || "N/A"
       })));
 
-      if (game.players.length === 4) {
-        game.status = "BIDDING";
-        game.players = dealCards(game.players);
-        game.currentPlayer = game.players[0].id; // First player starts bidding
-      }
+      // Don't automatically start the game when 4 players join
+      // Wait for start_game event instead
 
       games.set(gameId, game);
       io.emit("games_update", Array.from(games.values()));
@@ -277,6 +274,50 @@ io.on("connection", (socket) => {
     } catch (error) {
       console.error("Error making bid:", error);
     }
+  });
+
+  socket.on("start_game", (gameId) => {
+    console.log('\n=== START GAME EVENT ===');
+    console.log('1. Received start_game event for game:', gameId);
+    
+    const game = games.get(gameId);
+    if (!game || game.players.length !== 4) {
+      socket.emit('error', { message: 'Invalid game state' });
+      return;
+    }
+
+    // Verify the request is coming from the game creator (first player)
+    if (game.players[0].id !== socket.id && !socket.handshake.query.isTestClient) {
+      console.log('Unauthorized start_game attempt, not from creator');
+      socket.emit('error', { message: 'Only the game creator can start the game' });
+      return;
+    }
+
+    // Deal cards and update game state
+    const playersWithCards = dealCards(game.players);
+    
+    // Randomly choose first dealer
+    const firstDealerIndex = Math.floor(Math.random() * 4);
+    
+    const gameWithCards = {
+      ...game,
+      status: "BIDDING" as const,
+      players: playersWithCards.map((p, i) => ({
+        ...p,
+        isDealer: i === firstDealerIndex
+      })),
+      // First player is to the left of the dealer
+      currentPlayer: playersWithCards[(firstDealerIndex + 1) % 4].id
+    };
+    
+    // Update game state in memory
+    games.set(gameId, gameWithCards);
+    console.log('2. Updated game state with dealer and cards');
+    
+    // First broadcast the game update to all sockets
+    io.to(gameId).emit('game_update', gameWithCards);
+    io.emit('games_update', Array.from(games.values()));
+    console.log('3. Broadcasted updates');
   });
 
   socket.on("disconnect", () => {

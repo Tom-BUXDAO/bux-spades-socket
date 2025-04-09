@@ -559,7 +559,7 @@ export default function GameTable({
 
             {/* Center content */}
             <div className="absolute inset-0 flex items-center justify-center">
-              {game.status === "WAITING" && game.players.length === 4 ? (
+              {game.status === "WAITING" && game.players.length === 4 && game.players[0].id === currentPlayerId ? (
                 <button
                   onClick={handleStartGame}
                   className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
