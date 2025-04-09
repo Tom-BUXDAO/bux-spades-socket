@@ -126,6 +126,13 @@ function dealCards(players: Player[]): Player[] {
   }));
 }
 
+// Helper function to determine team based on position
+function getTeamForPosition(position: number): 1 | 2 {
+  // North/South (positions 0,2) are team 1
+  // East/West (positions 1,3) are team 2
+  return position % 2 === 0 ? 1 : 2;
+}
+
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
@@ -311,23 +318,23 @@ io.on('connection', (socket) => {
       let player: Player;
       
       if (testPlayer) {
-        // For test players, use provided data
+        // For test players, use provided data but ensure team matches position
         player = {
           id: userId,
           name: testPlayer.name,
           hand: [],
           tricks: 0,
-          team: testPlayer.team,
+          team: position !== undefined ? getTeamForPosition(position) : testPlayer.team,
           browserSessionId: testPlayer.browserSessionId || socket.id
         };
       } else {
-        // For real players, construct from provided userId
+        // For real players, construct from provided userId and set team based on position
         player = {
           id: userId,
           name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
           hand: [],
           tricks: 0,
-          team: (game.players.length % 2) + 1 as 1 | 2,
+          team: position !== undefined ? getTeamForPosition(position) : (game.players.length % 2) + 1 as 1 | 2,
           browserSessionId: socket.id
         };
       }
