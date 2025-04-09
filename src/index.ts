@@ -350,43 +350,35 @@ io.on('connection', (socket) => {
           return;
         }
         
-        // Check if the requested position is available
-        if (game.players[position] && game.players[position].id) {
-          socket.emit('error', { message: 'Position already taken' });
-          return;
+        // Create a full array of players with empty slots
+        let fullPlayers: Player[] = [];
+        for (let i = 0; i < 4; i++) {
+          if (i === position) {
+            // Put the new player at the exact requested position
+            fullPlayers[i] = player;
+          } else if (game.players[i] && game.players[i].id) {
+            // Keep existing players in their positions
+            fullPlayers[i] = game.players[i];
+          } else {
+            // Empty slot
+            fullPlayers[i] = {} as Player;
+          }
         }
         
-        // Create a full array of 4 positions with empty objects as placeholders if needed
-        const fullPlayers = Array(4).fill(null).map((_, i) => {
-          // If this is our target position, use our player
-          if (i === position) return player;
-          
-          // If this position already has a real player (id is defined), keep it
-          if (game.players[i] && game.players[i].id) return game.players[i];
-          
-          // Otherwise return empty placeholder
-          return {} as Player;
-        });
-        
-        // Filter out any empty placeholder objects
+        // Remove empty slots before saving
         game.players = fullPlayers.filter(p => p.id !== undefined);
         
-        console.log(`Player ${player.name} (${userId}) joined at position ${position}`);
-        console.log('Players after position-based join:', game.players.map(p => ({ 
-          name: p.name, 
+        console.log(`Player ${player.name} (${userId}) FIXED positioning at exact position ${position}`);
+        console.log('New player list:', game.players.map(p => ({
+          name: p.name,
           id: p.id,
           team: p.team,
-          position: game.players.indexOf(p)
+          position: fullPlayers.findIndex(fp => fp.id === p.id)
         })));
       } else {
         // No position specified, add to the end as before
         game.players.push(player);
         console.log(`Player ${player.name} (${userId}) joined at the end`);
-      }
-      
-      // Clean up any placeholder positions
-      if (game.players.length < 4) {
-        game.players = game.players.filter(p => p.id !== undefined);
       }
       
       socket.join(gameId);
