@@ -127,13 +127,6 @@ function dealCards(players: Player[]): Player[] {
   }));
 }
 
-// Helper function to determine team based on position
-function getTeamForPosition(position: number): 1 | 2 {
-  // North/South (positions 0,2) are team 1
-  // East/West (positions 1,3) are team 2
-  return position % 2 === 0 ? 1 : 2;
-}
-
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
