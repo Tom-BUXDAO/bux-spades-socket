@@ -13,15 +13,48 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   const [submitting, setSubmitting] = useState(false);
   const isMyTurn = playerId === currentPlayerTurn;
 
-  // Reset selected bid when it becomes this player's turn again
+  // Add debugging for turn changes
   useEffect(() => {
+    console.log(`BiddingInterface: Turn check - My ID: ${playerId}, Current Turn: ${currentPlayerTurn}, Is My Turn: ${isMyTurn}`);
     if (isMyTurn) {
+      console.log(`BiddingInterface: It's my turn to bid`);
       setSubmitting(false);
+    } else {
+      console.log(`BiddingInterface: Not my turn to bid, hiding interface`);
     }
-  }, [isMyTurn]);
+  }, [isMyTurn, playerId, currentPlayerTurn]);
 
-  // Safeguard against showing the interface when it's not the player's turn
-  if (!isMyTurn) {
+  // Listen for global game state change events to force UI refresh
+  useEffect(() => {
+    const handleGameStateChange = () => {
+      console.log(`BiddingInterface: Game state changed event detected`);
+      // Force check if it's still my turn
+      const stillMyTurn = playerId === currentPlayerTurn;
+      if (!stillMyTurn && isMyTurn) {
+        console.log(`BiddingInterface: Turn changed, forcing hide`);
+        // Force a re-render by updating state
+        setSubmitting(true);
+      }
+    };
+    
+    // Add global event listener
+    if (typeof window !== 'undefined') {
+      window.addEventListener('gameStateChanged', handleGameStateChange);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('gameStateChanged', handleGameStateChange);
+      }
+    };
+  }, [playerId, currentPlayerTurn, isMyTurn]);
+
+  // Force check each render in case the effect isn't triggered
+  const currentlyMyTurn = playerId === currentPlayerTurn;
+  
+  // Extra safeguard - hide if not my turn or if we're submitting
+  if (!currentlyMyTurn || submitting) {
+    console.log(`BiddingInterface: Hiding - currentlyMyTurn: ${currentlyMyTurn}, submitting: ${submitting}`);
     return null;
   }
 

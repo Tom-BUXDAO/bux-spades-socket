@@ -165,11 +165,21 @@ export default function GameTable({
   const currentPlayer = game.players.find(p => p.id === currentPlayerId);
   const currentTeam = currentPlayer?.team;
 
-  // Add this useEffect to force bidding UI to update when currentPlayer changes
+  // Add state to force component updates when the current player changes
+  const [lastCurrentPlayer, setLastCurrentPlayer] = useState<string>(game.currentPlayer);
+  
+  // Track all game state changes that would affect the UI
   useEffect(() => {
-    console.log(`Current player changed to: ${game.currentPlayer} (my ID: ${currentPlayerId})`);
-    // This forces the bidding interface to re-evaluate whether it should be shown
-  }, [game.currentPlayer, currentPlayerId]);
+    if (lastCurrentPlayer !== game.currentPlayer) {
+      console.log(`Current player changed: ${lastCurrentPlayer} -> ${game.currentPlayer} (my ID: ${currentPlayerId})`);
+      setLastCurrentPlayer(game.currentPlayer);
+      
+      // Force a component state update to trigger re-renders of children
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('gameStateChanged'));
+      }
+    }
+  }, [game.currentPlayer, lastCurrentPlayer, currentPlayerId]);
 
   // Use the explicit position property if available, otherwise fall back to array index
   // @ts-ignore - position property might not be on the type yet
