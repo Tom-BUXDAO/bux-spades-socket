@@ -64,8 +64,15 @@ const games = new Map<string, Game>();
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  socket.on('create_game', ({ gameId, user }) => {
+  socket.on('create_game', ({ user }) => {
     try {
+      if (!user || !user.id) {
+        socket.emit('error', { message: 'Invalid user data provided' });
+        return;
+      }
+      
+      const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+
       const game: Game = {
         id: gameId,
         status: "WAITING",
