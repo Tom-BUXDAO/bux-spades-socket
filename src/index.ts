@@ -511,6 +511,345 @@ io.on('connection', (socket) => {
     console.log('3. Broadcasted updates');
   });
 
+  socket.on('make_bid', ({ gameId, userId, bid }) => {
+    console.log('\n=== MAKE BID EVENT ===');
+    console.log(`Received make_bid event for game: ${gameId}, user: ${userId}, bid: ${bid}`);
+    
+    // Validate inputs
+    if (!gameId || !userId || bid === undefined || bid === null) {
+      console.log('Invalid bid data received');
+      socket.emit('error', { message: 'Invalid bid data' });
+      return;
+    }
+
+    const game = games.get(gameId);
+    if (!game) {
+      console.log(`Game ${gameId} not found`);
+      socket.emit('error', { message: 'Game not found' });
+      return;
+    }
+
+    // Make sure game is in bidding state
+    if (game.status !== 'BIDDING') {
+      console.log(`Game ${gameId} is not in bidding state, current state: ${game.status}`);
+      socket.emit('error', { message: 'Game is not in bidding state' });
+      return;
+    }
+
+    // Make sure it's this player's turn
+    if (game.currentPlayer !== userId) {
+      console.log(`Not this player's turn. Current player: ${game.currentPlayer}, Bidder: ${userId}`);
+      socket.emit('error', { message: 'Not your turn to bid' });
+      return;
+    }
+
+    // Find the player
+    const playerIndex = game.players.findIndex(p => p.id === userId);
+    if (playerIndex === -1) {
+      console.log(`Player ${userId} not found in game`);
+      socket.emit('error', { message: 'Player not found in game' });
+      return;
+    }
+
+    // Update the player's bid
+    game.players[playerIndex].bid = bid;
+    console.log(`Player ${game.players[playerIndex].name} bid ${bid}`);
+
+    // Determine the next player's turn - go to the next position
+    const currentPosition = game.players[playerIndex].position;
+    const nextPosition = (currentPosition + 1) % 4;
+    const nextPlayer = game.players.find(p => p.position === nextPosition);
+    
+    if (!nextPlayer) {
+      console.log(`Could not find next player at position ${nextPosition}`);
+      socket.emit('error', { message: 'Error finding next player' });
+      return;
+    }
+
+    game.currentPlayer = nextPlayer.id;
+    console.log(`Next player is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPosition}`);
+
+    // Check if all players have bid
+    const allPlayersBid = game.players.every(p => p.bid !== undefined);
+    if (allPlayersBid) {
+      console.log('All players have bid, transitioning to PLAYING state');
+      game.status = 'PLAYING';
+      
+      // The player after the dealer leads the first trick
+      const dealerPosition = game.players.find(p => p.isDealer)?.position || 0;
+      const firstPosition = (dealerPosition + 1) % 4;
+      const firstPlayer = game.players.find(p => p.position === firstPosition);
+      game.currentPlayer = firstPlayer?.id || game.players[0].id;
+      
+      console.log(`First player to lead is ${firstPlayer?.name} (${game.currentPlayer}) at position ${firstPosition}`);
+    }
+
+    // Update game state in memory
+    games.set(gameId, game);
+    
+    // Broadcast the game update to all sockets in the game room
+    io.to(gameId).emit('game_update', game);
+    
+    console.log(`Updated game state after bid. Game status: ${game.status}, Current player: ${game.currentPlayer}`);
+  });
+
+  socket.on('play_card', ({ gameId, userId, card }) => {
+    console.log('\n=== PLAY CARD EVENT ===');
+    console.log(`Received play_card event for game: ${gameId}, user: ${userId}, card:`, card);
+    
+    // Validate inputs
+    if (!gameId || !userId || !card || !card.suit || !card.rank) {
+      console.log('Invalid card data received');
+      socket.emit('error', { message: 'Invalid card data' });
+      return;
+    }
+
+    const game = games.get(gameId);
+    if (!game) {
+      console.log(`Game ${gameId} not found`);
+      socket.emit('error', { message: 'Game not found' });
+      return;
+    }
+
+    // Make sure game is in playing state
+    if (game.status !== 'PLAYING') {
+      console.log(`Game ${gameId} is not in playing state, current state: ${game.status}`);
+      socket.emit('error', { message: 'Game is not in playing state' });
+      return;
+    }
+
+    // Make sure it's this player's turn
+    if (game.currentPlayer !== userId) {
+      console.log(`Not this player's turn. Current player: ${game.currentPlayer}, Player: ${userId}`);
+      socket.emit('error', { message: 'Not your turn to play' });
+      return;
+    }
+
+    // Find the player
+    const playerIndex = game.players.findIndex(p => p.id === userId);
+    if (playerIndex === -1) {
+      console.log(`Player ${userId} not found in game`);
+      socket.emit('error', { message: 'Player not found in game' });
+      return;
+    }
+    
+    const player = game.players[playerIndex];
+    
+    // Check if player has the card
+    const cardIndex = player.hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+    if (cardIndex === -1) {
+      console.log(`Player ${userId} does not have the card:`, card);
+      socket.emit('error', { message: 'You do not have this card' });
+      return;
+    }
+    
+    // Check if card is valid to play
+    const isLeadingTrick = game.currentTrick.length === 0;
+    if (!isLeadingTrick) {
+      const leadSuit = game.currentTrick[0].suit;
+      const hasLeadSuit = player.hand.some(c => c.suit === leadSuit);
+      
+      // If player has the lead suit but played a different suit, that's not allowed
+      if (hasLeadSuit && card.suit !== leadSuit) {
+        console.log(`Player ${userId} must follow suit (${leadSuit})`);
+        socket.emit('error', { message: 'You must follow suit' });
+        return;
+      }
+    }
+    
+    // Remove the card from player's hand
+    player.hand.splice(cardIndex, 1);
+    
+    // Add card to current trick
+    game.currentTrick.push(card);
+    
+    console.log(`Player ${player.name} played ${card.rank} of ${card.suit}`);
+    
+    // Determine if the trick is complete
+    if (game.currentTrick.length === 4) {
+      // Determine the winner of the trick
+      const leadSuit = game.currentTrick[0].suit;
+      let winningCard = game.currentTrick[0];
+      let winningPosition = game.players.find(p => p.id === game.currentPlayer)?.position || 0;
+      
+      // Find the highest card of the leading suit, or highest spade if spades were played
+      let highestSpade: Card | null = null;
+      
+      game.currentTrick.forEach((playedCard, index) => {
+        const cardPosition = (winningPosition + index) % 4;
+        const cardPlayer = game.players.find(p => p.position === cardPosition);
+        
+        // Check if it's a spade (trumps all non-spades)
+        if (playedCard.suit === 'S') {
+          if (!highestSpade || playedCard.rank > highestSpade.rank) {
+            highestSpade = playedCard;
+            winningPosition = cardPosition;
+          }
+        } 
+        // If no spades yet and card follows lead suit
+        else if (!highestSpade && playedCard.suit === leadSuit) {
+          if (playedCard.rank > winningCard.rank) {
+            winningCard = playedCard;
+            winningPosition = cardPosition;
+          }
+        }
+      });
+      
+      // Use the highest spade if found, otherwise use the highest card of lead suit
+      winningCard = highestSpade || winningCard;
+      
+      // Find the player at the winning position
+      const winningPlayer = game.players.find(p => p.position === winningPosition);
+      
+      if (winningPlayer) {
+        console.log(`Trick won by ${winningPlayer.name} with ${winningCard.rank} of ${winningCard.suit}`);
+        
+        // Increment tricks taken by the winning player
+        winningPlayer.tricks += 1;
+        
+        // Store completed trick
+        game.completedTricks.push([...game.currentTrick]);
+        
+        // Clear current trick
+        game.currentTrick = [];
+        
+        // Set the winning player as the next to play
+        game.currentPlayer = winningPlayer.id;
+        
+        // Check if hand is complete (each player has played all 13 cards)
+        const handComplete = game.players.every(p => p.hand.length === 0);
+        
+        if (handComplete) {
+          console.log('Hand complete, transitioning to SCORING state');
+          
+          // Calculate scores
+          game.status = 'SCORING';
+          
+          // Calculate team scores based on bids and tricks
+          let team1Made = true;
+          let team2Made = true;
+          let team1Tricks = 0;
+          let team2Tricks = 0;
+          let team1Bid = 0;
+          let team2Bid = 0;
+          
+          game.players.forEach(p => {
+            if (p.team === 1) {
+              team1Tricks += p.tricks;
+              team1Bid += p.bid || 0;
+            } else {
+              team2Tricks += p.tricks;
+              team2Bid += p.bid || 0;
+            }
+          });
+          
+          // Check if teams made their bids
+          team1Made = team1Tricks >= team1Bid;
+          team2Made = team2Tricks >= team2Bid;
+          
+          // Award points
+          if (team1Made) {
+            const basePoints = team1Bid * 10;
+            const bagPoints = team1Tricks - team1Bid;
+            game.team1Score += basePoints;
+            game.team1Bags += bagPoints;
+          } else {
+            game.team1Score -= team1Bid * 10;
+          }
+          
+          if (team2Made) {
+            const basePoints = team2Bid * 10;
+            const bagPoints = team2Tricks - team2Bid;
+            game.team2Score += basePoints;
+            game.team2Bags += bagPoints;
+          } else {
+            game.team2Score -= team2Bid * 10;
+          }
+          
+          console.log(`Team 1: Bid ${team1Bid}, Tricks ${team1Tricks}, Made: ${team1Made}, Score ${game.team1Score}`);
+          console.log(`Team 2: Bid ${team2Bid}, Tricks ${team2Tricks}, Made: ${team2Made}, Score ${game.team2Score}`);
+          
+          // Check for set penalties (10 bags = -100 points)
+          if (game.team1Bags >= 10) {
+            game.team1Score -= 100;
+            game.team1Bags -= 10;
+            console.log('Team 1 penalized 100 points for 10 bags');
+          }
+          
+          if (game.team2Bags >= 10) {
+            game.team2Score -= 100;
+            game.team2Bags -= 10;
+            console.log('Team 2 penalized 100 points for 10 bags');
+          }
+          
+          // Check for game end (first to 500 points)
+          if (game.team1Score >= 500 || game.team2Score >= 500) {
+            game.status = 'GAME_OVER';
+            console.log(`Game over! Team ${game.team1Score >= 500 ? 1 : 2} wins!`);
+          } else {
+            // Reset for next hand
+            setTimeout(() => {
+              if (games.has(gameId)) {
+                const currentGame = games.get(gameId)!;
+                
+                // Rotate dealer position for next hand
+                const currentDealerIndex = currentGame.players.findIndex(p => p.isDealer);
+                const nextDealerIndex = (currentDealerIndex + 1) % 4;
+                
+                // Deal new cards
+                const playersWithCards = dealCards(currentGame.players);
+                
+                // Update game state for next hand
+                currentGame.status = 'BIDDING';
+                currentGame.players = playersWithCards.map((p, i) => ({
+                  ...p,
+                  isDealer: i === nextDealerIndex,
+                  bid: undefined,
+                  tricks: 0
+                }));
+                
+                // Set first bidder (player after dealer)
+                const dealerPosition = currentGame.players.find(p => p.isDealer)?.position || 0;
+                const nextPosition = (dealerPosition + 1) % 4;
+                const nextPlayer = currentGame.players.find(p => p.position === nextPosition);
+                currentGame.currentPlayer = nextPlayer?.id || currentGame.players[0].id;
+                
+                // Update game state in memory
+                games.set(gameId, currentGame);
+                
+                // Broadcast the game update
+                io.to(gameId).emit('game_update', currentGame);
+                io.emit('games_update', Array.from(games.values()));
+                
+                console.log(`Starting new hand for game ${gameId}`);
+              }
+            }, 10000); // 10 second delay before starting new hand
+          }
+        }
+      } else {
+        console.log('Could not determine trick winner!');
+      }
+    } else {
+      // Trick continues, next player's turn
+      const currentPosition = player.position;
+      const nextPosition = (currentPosition + 1) % 4;
+      const nextPlayer = game.players.find(p => p.position === nextPosition);
+      
+      if (nextPlayer) {
+        game.currentPlayer = nextPlayer.id;
+        console.log(`Next player is ${nextPlayer.name} at position ${nextPosition}`);
+      } else {
+        console.log(`Could not find next player at position ${nextPosition}`);
+      }
+    }
+    
+    // Update game state in memory
+    games.set(gameId, game);
+    
+    // Broadcast the game update to all sockets in the game room
+    io.to(gameId).emit('game_update', game);
+  });
+
   socket.on('leave_game', ({ gameId, userId }) => {
     console.log("Player leaving game:", userId, "from game:", gameId);
     
