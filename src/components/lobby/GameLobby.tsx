@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
+import Image from "next/image";
 import type { GameState } from "@/types/game";
 import type { Socket } from "socket.io-client";
 
@@ -24,6 +25,10 @@ interface GameLobbyProps {
   }) => void;
   onGamesUpdate: (callback: (games: GameState[]) => void) => () => void;
 }
+
+// Add avatar constants at the top of the file
+const GUEST_AVATAR = "/guest-avatar.png";
+const BOT_AVATAR = "/guest-avatar.png";
 
 export default function GameLobby({ 
   onGameSelect, 
@@ -289,6 +294,28 @@ export default function GameLobby({
     return position % 2 === 0 ? 1 : 2;
   };
 
+  // Helper function to match the one in GameTable.tsx
+  const getPlayerAvatar = (p: any): string => {
+    // If player has their own image property, use that first
+    if (p.image) {
+      return p.image;
+    }
+    
+    // If Discord user ID format (numeric string), try to use Discord CDN
+    if (/^\d+$/.test(p.id)) {
+      // Use the player ID to fetch from Discord's CDN if it's a Discord ID
+      return `https://cdn.discordapp.com/avatars/${p.id}/${p.image || 'avatar.png'}`;
+    }
+    
+    // If player id starts with "guest_", use the guest avatar
+    if (p.id && p.id.startsWith('guest_')) {
+      return GUEST_AVATAR;
+    }
+    
+    // Fallback to generic bot/test avatar
+    return BOT_AVATAR;
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-6">
       {/* Header with user info and logout */}
@@ -405,7 +432,13 @@ export default function GameLobby({
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => p.position === 2)?.name.charAt(0).toUpperCase()}
+                    <Image 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 2))} 
+                      alt="Player avatar" 
+                      className="w-full h-full object-cover"
+                      width={80}
+                      height={80}
+                    />
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players.find(p => p.position === 2)?.name}
                     </div>
@@ -437,7 +470,13 @@ export default function GameLobby({
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => p.position === 3)?.name.charAt(0).toUpperCase()}
+                    <Image 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 3))} 
+                      alt="Player avatar" 
+                      className="w-full h-full object-cover"
+                      width={80}
+                      height={80}
+                    />
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players.find(p => p.position === 3)?.name}
                     </div>
@@ -469,7 +508,13 @@ export default function GameLobby({
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => p.position === 0)?.name.charAt(0).toUpperCase()}
+                    <Image 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 0))} 
+                      alt="Player avatar" 
+                      className="w-full h-full object-cover"
+                      width={80}
+                      height={80}
+                    />
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players.find(p => p.position === 0)?.name}
                     </div>
@@ -501,7 +546,13 @@ export default function GameLobby({
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => p.position === 1)?.name.charAt(0).toUpperCase()}
+                    <Image 
+                      src={getPlayerAvatar(game.players.find(p => p.position === 1))} 
+                      alt="Player avatar" 
+                      className="w-full h-full object-cover"
+                      width={80}
+                      height={80}
+                    />
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
                       {game.players.find(p => p.position === 1)?.name}
                     </div>
