@@ -142,9 +142,9 @@ io.on('connection', (socket) => {
   let currentUserId: string | null = null;
   console.log('Client connected:', socket.id);
 
-  // Track socket connection times to handle reconnections
-  const connectionTime = Date.now();
-  
+  // Send initial games list to newly connected client
+  socket.emit('games_update', Array.from(games.values()));
+
   socket.on('authenticate', ({ userId }) => {
     if (!userId) return;
     
@@ -162,9 +162,6 @@ io.on('connection', (socket) => {
     console.log(`User ${userId} authenticated with socket ${socket.id}`);
   });
   
-  // Send initial games list to newly connected client
-  socket.emit('games_update', Array.from(games.values()));
-
   // Clean up handler for users having issues with old games
   socket.on('close_previous_connections', ({ userId }) => {
     if (!userId) return;
