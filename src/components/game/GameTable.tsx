@@ -260,9 +260,18 @@ export default function GameTable({
   const currentPlayer = game.players.find(p => p.id === currentPlayerId);
   const currentTeam = currentPlayer?.team;
 
-  // For seating arrangement, we need to respect the positions players chose
-  // The positions should already be maintained in the game.players array
-  const orderedPlayers = game.players;
+  // FIXED POSITIONING LOGIC: Respect exact positions in the game state
+  // Create a proper array with nulls for empty positions
+  console.log("RAW PLAYERS ARRAY:", game.players.map((p, i) => `${i}: ${p.name}`));
+
+  const orderedPlayers = Array(4).fill(null).map((_, index) => {
+    // Find a player at this exact position
+    return game.players.find((p, i) => i === index) || null;
+  });
+
+  console.log("PLAYER POSITIONS:", 
+    orderedPlayers.map((p, i) => p ? `Position ${i}: ${p.name}` : `Position ${i}: empty`)
+  );
 
   // Helper to determine team color based on player's team
   const getTeamColor = (player: typeof orderedPlayers[number]) => {
@@ -348,7 +357,11 @@ export default function GameTable({
 
   const renderPlayerPosition = (position: number) => {
     const player = orderedPlayers[position];
-    if (!player) return null;
+    if (!player) {
+      // Empty seat
+      console.log(`Empty seat at position ${position}`);
+      return null;
+    }
 
     const isActive = game.currentPlayer === player.id;
     
