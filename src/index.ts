@@ -47,6 +47,7 @@ interface Player {
   bid?: number;
   browserSessionId?: string;
   isDealer?: boolean;
+  image?: string;
 }
 
 interface Game {
@@ -240,7 +241,8 @@ io.on('connection', (socket) => {
         hand: [],
         tricks: 0,
         team: 1,
-        bid: undefined
+        bid: undefined,
+        image: user.image
       };
       
       // Create new game with the player
@@ -325,7 +327,8 @@ io.on('connection', (socket) => {
           hand: [],
           tricks: 0,
           team: position !== undefined ? getTeamForPosition(position) : testPlayer.team,
-          browserSessionId: testPlayer.browserSessionId || socket.id
+          browserSessionId: testPlayer.browserSessionId || socket.id,
+          image: testPlayer.image || undefined
         };
       } else {
         // For real players, construct from provided userId and set team based on position
