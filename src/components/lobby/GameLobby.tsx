@@ -401,13 +401,13 @@ export default function GameLobby({
               
               {/* North position */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20">
-                {game.players.find(p => game.players.indexOf(p) === 2) ? (
+                {game.players.find(p => p.position === 2) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => game.players.indexOf(p) === 2)?.name.charAt(0).toUpperCase()}
+                    {game.players.find(p => p.position === 2)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players.find(p => game.players.indexOf(p) === 2)?.name}
+                      {game.players.find(p => p.position === 2)?.name}
                     </div>
                   </div>
                 ) : (
@@ -433,13 +433,13 @@ export default function GameLobby({
               
               {/* East position */}
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-20">
-                {game.players.find(p => game.players.indexOf(p) === 3) ? (
+                {game.players.find(p => p.position === 3) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => game.players.indexOf(p) === 3)?.name.charAt(0).toUpperCase()}
+                    {game.players.find(p => p.position === 3)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players.find(p => game.players.indexOf(p) === 3)?.name}
+                      {game.players.find(p => p.position === 3)?.name}
                     </div>
                   </div>
                 ) : (
@@ -465,13 +465,13 @@ export default function GameLobby({
               
               {/* South position */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-20">
-                {game.players.find(p => game.players.indexOf(p) === 0) ? (
+                {game.players.find(p => p.position === 0) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => game.players.indexOf(p) === 0)?.name.charAt(0).toUpperCase()}
+                    {game.players.find(p => p.position === 0)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players.find(p => game.players.indexOf(p) === 0)?.name}
+                      {game.players.find(p => p.position === 0)?.name}
                     </div>
                   </div>
                 ) : (
@@ -497,13 +497,13 @@ export default function GameLobby({
               
               {/* West position */}
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-20">
-                {game.players.find(p => game.players.indexOf(p) === 1) ? (
+                {game.players.find(p => p.position === 1) ? (
                   <div className={`w-full h-full rounded-full overflow-hidden border-4 ${
                     getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
                   } flex items-center justify-center bg-white`}>
-                    {game.players.find(p => game.players.indexOf(p) === 1)?.name.charAt(0).toUpperCase()}
+                    {game.players.find(p => p.position === 1)?.name.charAt(0).toUpperCase()}
                     <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
-                      {game.players.find(p => game.players.indexOf(p) === 1)?.name}
+                      {game.players.find(p => p.position === 1)?.name}
                     </div>
                   </div>
                 ) : (

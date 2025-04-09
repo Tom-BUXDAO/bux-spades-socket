@@ -602,7 +602,7 @@ export default function GameTable({
         <div className="font-bold">PLAYER POSITIONS:</div>
         {game.players.map((p, idx) => (
           <div key={idx} className={`text-${p.team === 1 ? 'red' : 'blue'}-300`}>
-            Position {idx}: {p.name} (Team {p.team})
+            Position {p.position !== undefined ? p.position : idx}: {p.name} (Team {p.team})
           </div>
         ))}
       </div>
