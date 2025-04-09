@@ -33,10 +33,68 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Only use regular socket if not in test mode
-  const regularSocket = !socket ? useSocket("") : null;
+  const regularSocket = !socket ? useSocket(gameId) : null;
+
+  // Get the actual socket to use
+  const activeSocket = socket || regularSocket?.socket;
+  
+  // Track connection status
+  useEffect(() => {
+    if (!activeSocket) return;
+    
+    const onConnect = () => {
+      console.log('Chat socket connected to game:', gameId);
+      setIsConnected(true);
+      setError(null);
+      
+      // Explicitly join the game room when connected
+      activeSocket.emit('join_game', {
+        gameId,
+        userId,
+        // We're just joining to listen, not as a player
+        watchOnly: true
+      });
+    };
+    
+    const onDisconnect = () => {
+      console.log('Chat socket disconnected from game:', gameId);
+      setIsConnected(false);
+    };
+    
+    const onError = (err: any) => {
+      console.error('Chat socket error:', err);
+      setError(err.message || 'Connection error');
+    };
+    
+    activeSocket.on('connect', onConnect);
+    activeSocket.on('disconnect', onDisconnect);
+    activeSocket.on('connect_error', onError);
+    activeSocket.on('error', onError);
+    
+    // Set initial connection state
+    setIsConnected(activeSocket.connected);
+    
+    if (activeSocket.connected) {
+      // Explicitly join the game room if already connected
+      activeSocket.emit('join_game', {
+        gameId,
+        userId,
+        watchOnly: true
+      });
+    }
+
+    return () => {
+      activeSocket.off('connect', onConnect);
+      activeSocket.off('disconnect', onDisconnect);
+      activeSocket.off('connect_error', onError);
+      activeSocket.off('error', onError);
+    };
+  }, [activeSocket, gameId, userId]);
 
   // Get player avatar
   const getPlayerAvatar = (playerId: string): string => {
@@ -63,24 +121,25 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   };
 
   useEffect(() => {
+    if (!activeSocket) return;
+    
     const handleMessage = (message: ChatMessage) => {
-      setMessages(prev => [...prev, message]);
+      console.log('Received chat message:', message);
+      setMessages(prev => {
+        // Deduplicate messages by id
+        if (prev.some(m => m.id === message.id)) {
+          return prev;
+        }
+        return [...prev, message];
+      });
     };
 
-    if (socket) {
-      socket.on('chat_message', handleMessage);
-    } else if (regularSocket?.socket) {
-      regularSocket.socket.on('chat_message', handleMessage);
-    }
+    activeSocket.on('chat_message', handleMessage);
 
     return () => {
-      if (socket) {
-        socket.off('chat_message', handleMessage);
-      } else if (regularSocket?.socket) {
-        regularSocket.socket.off('chat_message', handleMessage);
-      }
+      activeSocket.off('chat_message', handleMessage);
     };
-  }, [socket, regularSocket]);
+  }, [activeSocket]);
 
   useEffect(() => {
     // Scroll to bottom whenever messages change
@@ -89,27 +148,40 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !activeSocket || !isConnected) return;
 
-    const message = {
-      id: `${Date.now()}-${userId}`,
-      user: userName,
-      userId: userId,
-      text: inputValue.trim(),
-      timestamp: Date.now()
-    };
-
-    if (socket) {
-      socket.emit('chat_message', { gameId, message });
-    } else if (regularSocket?.socket) {
-      regularSocket.socket.emit('chat_message', { gameId, message });
+    try {
+      // Generate a unique ID for this message
+      const messageId = `${Date.now()}-${userId}-${Math.random().toString(36).substr(2, 9)}`;
+  
+      const message = {
+        id: messageId,
+        user: userName,
+        userId: userId,
+        text: inputValue.trim(),
+        timestamp: Date.now()
+      };
+  
+      console.log('Sending chat message:', message);
+  
+      activeSocket.emit('chat_message', { gameId, message }, (ack: any) => {
+        if (ack && ack.error) {
+          console.error('Error sending message:', ack.error);
+          setError(`Failed to send: ${ack.error}`);
+        } else {
+          setError(null);
+        }
+      });
+      
+      // Add the message locally for immediate feedback
+      setMessages(prev => [...prev, message]);
+      
+      setInputValue('');
+      setShowEmojiPicker(false);
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+      setError('Failed to send message');
     }
-
-    // Add the message locally for immediate feedback
-    setMessages(prev => [...prev, message]);
-    
-    setInputValue('');
-    setShowEmojiPicker(false);
   };
 
   const onEmojiSelect = (emoji: any) => {
@@ -121,11 +193,36 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleRetry = () => {
+    // Try to reconnect the socket manually
+    if (activeSocket) {
+      activeSocket.connect();
+    }
+    setError(null);
+  };
+
   return (
     <div className="flex flex-col h-full bg-gray-800 rounded-lg">
-      <div className="p-4 bg-gray-700">
-        <h3 className="text-lg font-semibold text-white">Game Chat</h3>
+      <div className="p-4 bg-gray-700 flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-white">
+          Game Chat {!isConnected && <span className="text-red-400 text-sm ml-2">(Disconnected)</span>}
+        </h3>
+        
+        {!isConnected && (
+          <button 
+            onClick={handleRetry}
+            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+          >
+            Reconnect
+          </button>
+        )}
       </div>
+      
+      {error && (
+        <div className="bg-red-800 text-white px-4 py-2 text-sm">
+          {error}
+        </div>
+      )}
       
       <div className="flex-1 p-4 overflow-y-auto">
         {messages.length === 0 ? (
@@ -179,13 +276,15 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type a message..."
+              placeholder={isConnected ? "Type a message..." : "Reconnecting..."}
               className="w-full px-3 py-2 rounded bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!isConnected}
             />
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-xl hover:text-gray-300"
+              disabled={!isConnected}
             >
               😊
             </button>
@@ -203,7 +302,12 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            className={`px-4 py-2 rounded transition ${
+              isConnected 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-gray-500 text-gray-300 cursor-not-allowed'
+            }`}
+            disabled={!isConnected}
           >
             Send
           </button>
