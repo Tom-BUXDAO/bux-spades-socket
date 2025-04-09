@@ -265,6 +265,11 @@ export default function GameTable({
   console.log("CURRENT PLAYER POSITION:", currentPlayerPosition);
   console.log("RAW PLAYERS ARRAY:", game.players.map((p, i) => `${i}: ${p.name}`));
 
+  // Log player details including teams
+  console.log("PLAYERS WITH TEAMS:", game.players.map(p => 
+    `${p.name} at position ${game.players.indexOf(p)} on team ${p.team}`
+  ));
+
   // FIXED ROTATION: Always put current player at bottom (South)
   const rotatePlayersForCurrentView = () => {
     // If we can't find the current player, don't rotate
@@ -276,25 +281,32 @@ export default function GameTable({
     }
 
     // Create a rotated array where current player is at position 0 (South)
-    // For example, if current player is at position 2 (North),
-    // we rotate so position 0 shows position 2, position 1 shows position 3, etc.
     console.log(`Rotating view: player at position ${currentPlayerPosition} should appear at South (bottom)`);
 
-    return Array(4).fill(null).map((_, index) => {
-      // Calculate the original position in the game.players array
-      const originalPosition = (currentPlayerPosition + index) % 4;
-      return game.players.find((p, i) => i === originalPosition) || null;
+    // Create a new array with 4 slots to maintain proper positions
+    const rotated = Array(4).fill(null);
+    
+    // Place each player at their correct rotated position
+    game.players.forEach((player, originalPos) => {
+      if (!player || !player.id) return;
+      
+      // Calculate new position relative to current player
+      // Formula: (4 + originalPos - currentPlayerPosition) % 4
+      // This ensures current player is at position 0
+      const newPos = (4 + originalPos - currentPlayerPosition) % 4;
+      rotated[newPos] = player;
+      
+      console.log(`Player ${player.name} from position ${originalPos} moved to ${newPos}`);
     });
+    
+    return rotated;
   };
 
+  // Preserve original positions in the array so the server knows where everyone sits
   const orderedPlayers = rotatePlayersForCurrentView();
 
-  console.log("ROTATED PLAYER POSITIONS:", 
-    orderedPlayers.map((p, i) => p ? `Position ${i}: ${p.name}` : `Position ${i}: empty`)
-  );
-
-  // Helper to determine team color based on player's team
-  const getTeamColor = (player: typeof orderedPlayers[number]) => {
+  // Determine player team color based on their ACTUAL team, not position
+  const getTeamColor = (player: typeof orderedPlayers[number]): 1 | 2 => {
     if (!player) return 1;
     return player.team || 1;
   };
@@ -381,13 +393,6 @@ export default function GameTable({
       }
     };
 
-    // Determine player team color - North/South should be same team, East/West should be same team
-    const getTeamColor = (p: any): 1 | 2 => {
-      // Positions 0 and 2 (North/South) should be team 1
-      // Positions 1 and 3 (East/West) should be team 2
-      return position % 2 === 0 ? 1 : 2;
-    };
-
     // Determine player avatar based on their ID
     const getPlayerAvatar = (p: any): string => {
       // If player has their own image property, use that first
@@ -421,7 +426,7 @@ export default function GameTable({
       <div className={`absolute ${getPositionClasses(position)} flex items-center gap-4`}>
         <div className="relative">
           <div className={`w-16 h-16 rounded-full overflow-hidden ring-4 ${
-            isActive ? 'ring-yellow-400 animate-pulse' : getTeamColor(player) === 1 ? 'ring-red-500' : 'ring-blue-500'
+            isActive ? 'ring-yellow-400 animate-pulse' : player.team === 1 ? 'ring-red-500' : 'ring-blue-500'
           }`}>
             <Image
               src={getPlayerAvatar(player)}
@@ -438,7 +443,7 @@ export default function GameTable({
           )}
         </div>
         <div className={`px-4 py-2 rounded-lg ${
-          getTeamColor(player) === 1 ? 'bg-red-500' : 'bg-blue-500'
+          player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
         } text-white text-center`}>
           <div className="font-semibold">{player.name}</div>
           {player.bid !== undefined && (
