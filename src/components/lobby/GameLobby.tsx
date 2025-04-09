@@ -63,6 +63,12 @@ export default function GameLobby({
       console.error("Game error:", message);
     });
 
+    // Listen for game update
+    socket?.on("game_update", (game: GameState) => {
+      console.log("Received game_update:", game);
+      onGameSelect(game);
+    });
+
     return () => {
       unsubscribe();
       socket?.off("game_created");
@@ -107,6 +113,7 @@ export default function GameLobby({
       joinGame(gameId, testPlayerId, testPlayer);
     } else {
       // Join as current user with team selection
+      console.log("Emitting join_game with:", { gameId, userId: user.id, testPlayer: { name: user.name, team } });
       joinGame(gameId, user.id, { name: user.name, team });
     }
     setTestPlayerName("");
