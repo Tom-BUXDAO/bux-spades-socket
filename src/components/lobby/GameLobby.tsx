@@ -11,10 +11,17 @@ interface GameLobbyProps {
     id: string;
     name?: string | null;
     isGuest?: boolean;
+    image?: string | null;
   };
   socket: typeof Socket | null;
-  createGame: (user: { id: string; name?: string | null }) => void;
-  joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2; browserSessionId?: string; position?: number }) => void;
+  createGame: (user: { id: string; name?: string | null; image?: string | null }) => void;
+  joinGame: (gameId: string, userId: string, testPlayer?: { 
+    name: string; 
+    team: 1 | 2; 
+    browserSessionId?: string; 
+    position?: number; 
+    image?: string;
+  }) => void;
   onGamesUpdate: (callback: (games: GameState[]) => void) => () => void;
 }
 
@@ -230,14 +237,17 @@ export default function GameLobby({
       testPlayer: { 
         name: user.name, 
         team,
-        browserSessionId
+        browserSessionId,
+        image: user.image || undefined
       } 
     });
     
     joinGame(gameId, user.id, { 
       name: user.name, 
       team,
-      browserSessionId
+      browserSessionId,
+      position,
+      image: user.image || undefined
     });
     
     setTestPlayerName("");
@@ -254,7 +264,8 @@ export default function GameLobby({
           { 
             name: playerName, 
             team: selectedGame.team,
-            browserSessionId
+            browserSessionId,
+            position: selectedGame.position
           }
         );
       }

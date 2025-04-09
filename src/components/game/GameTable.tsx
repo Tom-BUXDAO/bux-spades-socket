@@ -372,9 +372,20 @@ export default function GameTable({
 
     // Determine player avatar based on their ID
     const getPlayerAvatar = (p: any): string => {
-      // If player is a user with profile image, use it
+      // If player has their own image property, use that first
+      if (p.image) {
+        return p.image;
+      }
+      
+      // If player matches the current user and we have their image
       if (p.id === currentPlayerId && propUser?.image) {
         return propUser.image;
+      }
+      
+      // If Discord user ID format (numeric string), try to use Discord CDN
+      if (/^\d+$/.test(p.id)) {
+        // Use the player ID to fetch from Discord's CDN if it's a Discord ID
+        return `https://cdn.discordapp.com/avatars/${p.id}/${p.image || 'avatar.png'}`;
       }
       
       // If player id starts with "guest_", use the guest avatar
@@ -382,8 +393,8 @@ export default function GameTable({
         return GUEST_AVATAR;
       }
       
-      // If player is a bot/test player, use the bot avatar based on position
-      return BOT_AVATARS[position];
+      // Fallback to generic bot/test avatar
+      return BOT_AVATARS[position % BOT_AVATARS.length];
     };
 
     const isHorizontal = position === 0 || position === 2;
