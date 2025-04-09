@@ -30,7 +30,7 @@ export default function GameLobby({
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
   const [showNameInput, setShowNameInput] = useState(false);
   const [playerName, setPlayerName] = useState("");
-  const [selectedGame, setSelectedGame] = useState<{ gameId: string; team: 1 | 2 } | null>(null);
+  const [selectedGame, setSelectedGame] = useState<{ gameId: string; team: 1 | 2; position?: number } | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [testPlayerName, setTestPlayerName] = useState("");
   const [browserSessionId] = useState(() => {
@@ -207,29 +207,39 @@ export default function GameLobby({
     createGame(user);
   };
 
-  const handleJoinGame = async (gameId: string, team: 1 | 2) => {
+  const handleJoinGame = async (gameId: string, team: 1 | 2, position?: number) => {
     if (!user?.id) return;
 
     if (!user.name) {
       setShowNameInput(true);
-      setSelectedGame({ gameId, team });
+      setSelectedGame({ gameId, team, position });
       return;
     }
 
-    if (testPlayerName) {
-      // Join as test player with browser session tracking
-      const testPlayer = {
-        name: testPlayerName,
+    // Get the game to check if the position is already taken
+    const game = games.find(g => g.id === gameId);
+    if (game && position !== undefined && game.players[position]) {
+      console.log("Position already taken, cannot join this seat");
+      return;
+    }
+
+    // Join as the user with team selection 
+    console.log("Attempting to join game with:", { 
+      gameId, 
+      userId: user.id, 
+      testPlayer: { 
+        name: user.name, 
         team,
         browserSessionId
-      };
-      const testPlayerId = `test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      joinGame(gameId, testPlayerId, testPlayer);
-    } else {
-      // Join as current user with team selection
-      console.log("Attempting to join game with:", { gameId, userId: user.id, testPlayer: { name: user.name, team } });
-      joinGame(gameId, user.id, { name: user.name, team });
-    }
+      } 
+    });
+    
+    joinGame(gameId, user.id, { 
+      name: user.name, 
+      team,
+      browserSessionId
+    });
+    
     setTestPlayerName("");
     setSelectedGame(null);
   };
@@ -238,17 +248,15 @@ export default function GameLobby({
     if (playerName.trim()) {
       setShowNameInput(false);
       if (selectedGame) {
-        if (testPlayerName) {
-          const testPlayer = {
-            name: testPlayerName,
+        joinGame(
+          selectedGame.gameId, 
+          user.id, 
+          { 
+            name: playerName, 
             team: selectedGame.team,
             browserSessionId
-          };
-          const testPlayerId = `test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-          joinGame(selectedGame.gameId, testPlayerId, testPlayer);
-        } else {
-          joinGame(selectedGame.gameId, user.id, { name: playerName, team: selectedGame.team });
-        }
+          }
+        );
       }
       setPlayerName("");
       setSelectedGame(null);
@@ -332,30 +340,13 @@ export default function GameLobby({
         </button>
       </div>
 
-      {/* Test Player Input */}
-      <div className="bg-gray-100 p-4 rounded-lg">
-        <h4 className="text-sm font-medium mb-2">Test Player Options</h4>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={testPlayerName}
-            onChange={(e) => setTestPlayerName(e.target.value)}
-            placeholder="Enter test player name"
-            className="flex-1 px-3 py-2 border rounded"
-          />
-        </div>
-        <p className="text-xs text-gray-600 mt-1">
-          Leave empty to join as yourself, or enter a name to join as a test player. Each browser can only control its own test players.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {games.map((game) => (
           <div
             key={game.id}
-            className="border rounded-lg p-4 bg-gray-50 space-y-3"
+            className="border rounded-lg p-6 bg-gray-50 shadow-md"
           >
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-lg font-medium">Game #{game.id}</h3>
                 <button
@@ -363,7 +354,7 @@ export default function GameLobby({
                     navigator.clipboard.writeText(game.id);
                     alert('Game ID copied to clipboard!');
                   }}
-                  className="text-sm text-blue-600 hover:text-blue-800"
+                  className="text-xs text-blue-600 hover:text-blue-800"
                 >
                   Copy ID
                 </button>
@@ -378,58 +369,114 @@ export default function GameLobby({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">
-                Players: {game.players.length}/4
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {game.players.map((player, index) => (
-                  <div 
-                    key={player.id}
-                    className={`p-2 rounded ${
-                      player.team === 1 ? "bg-blue-100" : "bg-red-100"
-                    } ${isControlledByThisBrowser(player.id, player.browserSessionId) ? "ring-2 ring-yellow-400" : ""}`}
-                  >
-                    <div className="text-sm font-medium">
-                      {player.name}
-                      {isControlledByThisBrowser(player.id, player.browserSessionId) && " (You)"}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      Team {player.team} - Position {index + 1}
+            {/* Table visualization */}
+            <div className="relative aspect-square mb-4 max-w-[300px] mx-auto">
+              {/* Table background */}
+              <div className="absolute inset-[15%] rounded-full bg-[#316785] border-4 border-[#855f31]"></div>
+              
+              {/* Team labels */}
+              <div className="absolute inset-[20%] flex flex-col items-center justify-center">
+                <div className="flex w-full justify-between px-4 pb-1">
+                  <div className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-sm">Team 1</div>
+                  <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-sm">Team 2</div>
+                </div>
+                <div className="text-white text-xs text-center mb-1">N/S: Team 1</div>
+                <div className="text-white text-xs text-center">E/W: Team 2</div>
+              </div>
+              
+              {/* North position */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20">
+                {game.players[2] ? (
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[2].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                    {game.players[2].name.charAt(0).toUpperCase()}
+                    <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
+                      {game.players[2].name}
                     </div>
                   </div>
-                ))}
-                {Array.from({ length: 4 - game.players.length }).map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="p-2 rounded bg-gray-100 flex flex-col space-y-2"
-                  >
-                    <div className="text-sm text-gray-400">Empty Seat</div>
-                    {game.status === "WAITING" && (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleJoinGame(game.id, 1)}
-                          className="flex-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition"
-                        >
-                          Join Team 1
-                        </button>
-                        <button
-                          onClick={() => handleJoinGame(game.id, 2)}
-                          className="flex-1 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition"
-                        >
-                          Join Team 2
-                        </button>
-                      </div>
-                    )}
+                ) : (
+                  game.status === "WAITING" && (
+                    <button 
+                      onClick={() => handleJoinGame(game.id, 1, 2)}
+                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-blue-500"
+                    >
+                      North<br/>Join
+                    </button>
+                  )
+                )}
+                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">N</div>
+              </div>
+              
+              {/* East position */}
+              <div className="absolute top-1/2 right-0 -translate-y-1/2 w-20 h-20">
+                {game.players[3] ? (
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[3].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                    {game.players[3].name.charAt(0).toUpperCase()}
+                    <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
+                      {game.players[3].name}
+                    </div>
                   </div>
-                ))}
+                ) : (
+                  game.status === "WAITING" && (
+                    <button 
+                      onClick={() => handleJoinGame(game.id, 2, 3)}
+                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-red-500"
+                    >
+                      East<br/>Join
+                    </button>
+                  )
+                )}
+                <div className="absolute -left-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">E</div>
+              </div>
+              
+              {/* South position */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-20">
+                {game.players[0] ? (
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[0].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                    {game.players[0].name.charAt(0).toUpperCase()}
+                    <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
+                      {game.players[0].name}
+                    </div>
+                  </div>
+                ) : (
+                  game.status === "WAITING" && (
+                    <button 
+                      onClick={() => handleJoinGame(game.id, 1, 0)}
+                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-blue-500"
+                    >
+                      South<br/>Join
+                    </button>
+                  )
+                )}
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">S</div>
+              </div>
+              
+              {/* West position */}
+              <div className="absolute top-1/2 left-0 -translate-y-1/2 w-20 h-20">
+                {game.players[1] ? (
+                  <div className={`w-full h-full rounded-full overflow-hidden border-4 ${game.players[1].team === 1 ? 'border-blue-500' : 'border-red-500'} flex items-center justify-center bg-white`}>
+                    {game.players[1].name.charAt(0).toUpperCase()}
+                    <div className="absolute bottom-0 w-full bg-black bg-opacity-60 text-white text-xs py-1 text-center truncate">
+                      {game.players[1].name}
+                    </div>
+                  </div>
+                ) : (
+                  game.status === "WAITING" && (
+                    <button 
+                      onClick={() => handleJoinGame(game.id, 2, 1)}
+                      className="w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 border-red-500"
+                    >
+                      West<br/>Join
+                    </button>
+                  )
+                )}
+                <div className="absolute -right-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">W</div>
               </div>
             </div>
 
             {game.status !== "WAITING" && game.players.some(p => isControlledByThisBrowser(p.id, p.browserSessionId)) && (
               <button
                 onClick={() => onGameSelect(game)}
-                className="w-full px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-sm"
+                className="w-full px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
               >
                 Join Game
               </button>
@@ -438,7 +485,7 @@ export default function GameLobby({
         ))}
 
         {games.length === 0 && (
-          <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+          <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg col-span-2">
             No games available. Create one to start playing!
           </div>
         )}
