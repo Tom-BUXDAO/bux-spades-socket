@@ -440,9 +440,6 @@ export default function GameLobby({
                     </button>
                   )
                 )}
-                <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white ${
-                  getTeamForPosition(2) === 1 ? 'bg-red-500' : 'bg-blue-500'
-                } px-2 py-0.5 rounded-full`}>N</div>
               </div>
               
               {/* East position */}
@@ -478,9 +475,6 @@ export default function GameLobby({
                     </button>
                   )
                 )}
-                <div className={`absolute -left-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white ${
-                  getTeamForPosition(3) === 1 ? 'bg-red-500' : 'bg-blue-500'
-                } px-2 py-0.5 rounded-full`}>E</div>
               </div>
               
               {/* South position */}
@@ -516,9 +510,6 @@ export default function GameLobby({
                     </button>
                   )
                 )}
-                <div className={`absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-bold text-white ${
-                  getTeamForPosition(0) === 1 ? 'bg-red-500' : 'bg-blue-500'
-                } px-2 py-0.5 rounded-full`}>S</div>
               </div>
               
               {/* West position */}
@@ -554,9 +545,6 @@ export default function GameLobby({
                     </button>
                   )
                 )}
-                <div className={`absolute -right-5 top-1/2 -translate-y-1/2 text-xs font-bold text-white ${
-                  getTeamForPosition(1) === 1 ? 'bg-red-500' : 'bg-blue-500'
-                } px-2 py-0.5 rounded-full`}>W</div>
               </div>
             </div>
 
