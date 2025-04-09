@@ -2,8 +2,7 @@
 const nextConfig = {
   images: {
     domains: [
-      'arweave.net',
-      'nftstorage.link'
+      'cdn.discordapp.com'
     ],
   },
   // Add any other Next.js config options here

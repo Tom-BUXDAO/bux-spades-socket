@@ -27,14 +27,9 @@ interface GameTableProps {
   };
 }
 
-// Fallback avatar for guest players
+// Fallback avatars 
 const GUEST_AVATAR = "/guest-avatar.png";
-const BOT_AVATARS = [
-  "https://arweave.net/Z9Vo8NXy39QMIm3xRUdTZN7-i5G-F-DnhyED7bQHe3k?ext=png",
-  "https://arweave.net/-9byM2loikEAmOLK_mAy07srsKNCz4OTXndjSXU9PI4",
-  "https://nftstorage.link/ipfs/bafybeicbxjjab62vgw2yitoj3ba36d44fvk4dihwzgpbxzrjxjqv6k6bqe/50.png",
-  "https://arweave.net/ffaCzxNEEAeAJ7hg_MsaogHHUMxrNQ0_AUaG4J7WYEI"
-] as const;
+const BOT_AVATAR = "/guest-avatar.png";
 
 // Helper function to get card image filename
 function getCardImage(card: Card): string {
@@ -394,7 +389,7 @@ export default function GameTable({
       }
       
       // Fallback to generic bot/test avatar
-      return BOT_AVATARS[position % BOT_AVATARS.length];
+      return BOT_AVATAR;
     };
 
     const isHorizontal = position === 0 || position === 2;
