@@ -63,6 +63,17 @@ const games = new Map<string, Game>();
 // Store active connections per user
 const userConnections = new Map<string, Set<string>>();
 
+// Error handling for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Prevent crashes on uncaught exceptions
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Prevent crashes on unhandled promise rejections
+});
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
