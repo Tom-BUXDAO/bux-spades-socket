@@ -66,8 +66,27 @@ interface Game {
 // Store active games
 const games = new Map<string, Game>();
 
-// Store active connections per user
+// Track user connections and rate limits
 const userConnections = new Map<string, Set<string>>();
+const lastUserOperations = new Map<string, Map<string, number>>();  // userId -> { operation -> timestamp }
+
+// Rate limiting helper function
+function isRateLimited(userId: string, operation: string, limitMs: number): boolean {
+  if (!lastUserOperations.has(userId)) {
+    lastUserOperations.set(userId, new Map());
+  }
+  
+  const userOps = lastUserOperations.get(userId)!;
+  const now = Date.now();
+  const lastOpTime = userOps.get(operation) || 0;
+  
+  if (now - lastOpTime < limitMs) {
+    return true;
+  }
+  
+  userOps.set(operation, now);
+  return false;
+}
 
 // Helper function to create a deck of cards
 function createDeck(): Card[] {
@@ -120,42 +139,64 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
+  let currentUserId: string | null = null;
   console.log('Client connected:', socket.id);
 
-  // Handle closing previous connections
-  socket.on('close_previous_connections', ({ userId }) => {
-    console.log('Handling close_previous_connections for user:', userId);
-    const connections = userConnections.get(userId) || new Set();
-    connections.forEach((connId) => {
-      if (connId !== socket.id) {
-        console.log('Disconnecting previous connection:', connId);
-        io.sockets.sockets.get(connId)?.disconnect();
-      }
-    });
-    connections.add(socket.id);
-    userConnections.set(userId, connections);
+  // Track socket connection times to handle reconnections
+  const connectionTime = Date.now();
+  
+  socket.on('authenticate', ({ userId }) => {
+    if (!userId) return;
     
-    // Also remove user from any games they might be in
-    for (const [gameId, game] of games.entries()) {
-      if (game.players.some(p => p.id === userId)) {
-        const playerIndex = game.players.findIndex(p => p.id === userId);
-        
-        // If game creator or last player, remove the game
-        if (playerIndex === 0 || game.players.length === 1) {
-          console.log("Removing game:", gameId);
-          games.delete(gameId);
-          io.to(gameId).emit("game_removed", { gameId });
-        } else {
-          // Otherwise just remove the player
-          game.players.splice(playerIndex, 1);
-          games.set(gameId, game);
-          io.to(gameId).emit("game_update", game);
-        }
-      }
+    // Store the userId for this socket
+    currentUserId = userId;
+    
+    // Create an entry for this user if it doesn't exist
+    if (!userConnections.has(userId)) {
+      userConnections.set(userId, new Set());
     }
     
-    // Broadcast updated games list
-    io.emit('games_update', Array.from(games.values()));
+    // Add this socket to the user's connections
+    userConnections.get(userId)!.add(socket.id);
+    
+    console.log(`User ${userId} authenticated with socket ${socket.id}`);
+  });
+  
+  // Send initial games list to newly connected client
+  socket.emit('games_update', Array.from(games.values()));
+
+  // Clean up handler for users having issues with old games
+  socket.on('close_previous_connections', ({ userId }) => {
+    if (!userId) return;
+    
+    // Rate limit this operation to once per 3 seconds
+    if (isRateLimited(userId, 'close_previous_connections', 3000)) {
+      console.log(`Rate limiting close_previous_connections for user: ${userId}`);
+      return;
+    }
+    
+    console.log(`Handling close_previous_connections for user: ${userId}`);
+    
+    // Store this socket as the most recent one for this user
+    if (!userConnections.has(userId)) {
+      userConnections.set(userId, new Set([socket.id]));
+    } else {
+      // Get all existing socket IDs for this user
+      const connections = userConnections.get(userId)!;
+      
+      // Close all previous connections for this user
+      for (const existingSocketId of connections) {
+        // Don't close the current socket
+        if (existingSocketId !== socket.id && io.sockets.sockets.get(existingSocketId)) {
+          console.log(`Closing previous connection ${existingSocketId} for user ${userId}`);
+          io.sockets.sockets.get(existingSocketId)?.disconnect(true);
+        }
+      }
+      
+      // Reset to just this socket
+      connections.clear();
+      connections.add(socket.id);
+    }
   });
 
   socket.on('create_game', ({ user }) => {
@@ -229,81 +270,104 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join_game', ({ gameId, userId, testPlayer }) => {
+  socket.on('join_game', async ({ gameId, userId, testPlayer, position }) => {
     try {
+      // Validation
+      if (!gameId || !userId) {
+        socket.emit('error', { message: 'Game ID and User ID are required' });
+        return;
+      }
+      
+      // Associate this userId with the current socket
+      currentUserId = userId;
+      if (!userConnections.has(userId)) {
+        userConnections.set(userId, new Set());
+      }
+      userConnections.get(userId)!.add(socket.id);
+      console.log(`Associating user ${userId} with socket ${socket.id} for join_game`);
+      
       const game = games.get(gameId);
       if (!game) {
         socket.emit('error', { message: 'Game not found' });
         return;
       }
+      
+      if (game.status !== 'WAITING') {
+        socket.emit('error', { message: 'Game has already started' });
+        return;
+      }
 
-      if (game.players.length >= 4) {
+      // Check if player is already in the game
+      if (game.players.some(p => p.id === userId)) {
+        console.log(`Player ${userId} is already in the game`);
+        socket.join(gameId);
+        socket.emit('game_update', game);
+        return;
+      }
+      
+      if (game.players.length >= 4 && !position) {
         socket.emit('error', { message: 'Game is full' });
         return;
       }
 
-      // Check if player is already in this game
-      const existingPlayerIndex = game.players.findIndex((player: Player) => player.id === userId);
+      // Test player handling
+      let player: Player;
       
-      if (existingPlayerIndex >= 0) {
-        console.log('Player already in game, updating their info:', userId);
-        
-        // If player is already in this game, update their info
-        game.players[existingPlayerIndex] = {
-          ...game.players[existingPlayerIndex],
-          name: testPlayer?.name || game.players[existingPlayerIndex].name || 'Unknown',
-          team: testPlayer?.team || game.players[existingPlayerIndex].team,
-          browserSessionId: testPlayer?.browserSessionId || game.players[existingPlayerIndex].browserSessionId
-        };
-      } else {
-        // Check if a specific position was requested
-        const position = testPlayer?.position !== undefined ? testPlayer.position : undefined;
-        
-        // Create player object
-        const player: Player = {
+      if (testPlayer) {
+        // For test players, use provided data
+        player = {
           id: userId,
-          name: testPlayer?.name || 'Unknown',
+          name: testPlayer.name,
           hand: [],
           tricks: 0,
-          team: testPlayer?.team || (game.players.length % 2 + 1),
-          bid: undefined,
-          browserSessionId: testPlayer?.browserSessionId
+          team: testPlayer.team,
+          browserSessionId: testPlayer.browserSessionId || socket.id
         };
-
-        // If position is specified and that position is empty, put player there
-        if (position !== undefined) {
-          // Validate position is within range
-          if (position < 0 || position > 3) {
-            socket.emit('error', { message: 'Invalid position' });
-            return;
-          }
-          
-          // Check if the requested position is available
-          if (game.players[position]) {
-            socket.emit('error', { message: 'Position already taken' });
-            return;
-          }
-          
-          // Place player at the requested position
-          // First, ensure the array has enough slots
-          while (game.players.length <= position) {
-            game.players.push({} as Player);
-          }
-          
-          // Set the player at the requested position
-          game.players[position] = player;
-          
-          console.log(`Player ${player.name} (${userId}) joined at position ${position}`);
-        } else {
-          // No position specified, add to the end as before
-          game.players.push(player);
-          console.log(`Player ${player.name} (${userId}) joined at the end`);
+      } else {
+        // For real players, construct from provided userId
+        player = {
+          id: userId,
+          name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
+          hand: [],
+          tricks: 0,
+          team: (game.players.length % 2) + 1 as 1 | 2,
+          browserSessionId: socket.id
+        };
+      }
+      
+      // If position is specified and that position is empty, put player there
+      if (position !== undefined) {
+        // Validate position is within range
+        if (position < 0 || position > 3) {
+          socket.emit('error', { message: 'Invalid position' });
+          return;
         }
         
-        // Clean up any placeholder positions
-        if (game.players.length < 4) {
-          game.players = game.players.filter(p => p.id !== undefined);
+        // Check if the requested position is available
+        if (game.players[position]) {
+          socket.emit('error', { message: 'Position already taken' });
+          return;
         }
+        
+        // Place player at the requested position
+        // First, ensure the array has enough slots
+        while (game.players.length <= position) {
+          game.players.push({} as Player);
+        }
+        
+        // Set the player at the requested position
+        game.players[position] = player;
+        
+        console.log(`Player ${player.name} (${userId}) joined at position ${position}`);
+      } else {
+        // No position specified, add to the end as before
+        game.players.push(player);
+        console.log(`Player ${player.name} (${userId}) joined at the end`);
+      }
+      
+      // Clean up any placeholder positions
+      if (game.players.length < 4) {
+        game.players = game.players.filter(p => p.id !== undefined);
       }
       
       socket.join(gameId);
@@ -397,30 +461,28 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     // Remove the socket from user connections
-    userConnections.forEach((connections, userId) => {
-      connections.delete(socket.id);
-      if (connections.size === 0) {
-        userConnections.delete(userId);
+    if (currentUserId) {
+      const connections = userConnections.get(currentUserId);
+      if (connections) {
+        connections.delete(socket.id);
+        if (connections.size === 0) {
+          userConnections.delete(currentUserId);
+        }
       }
-    });
+    }
   });
 
   // Add handler for get_games event with rate limiting
-  const clientRequestTimes = new Map<string, number>();
   const RATE_LIMIT_MS = 1000; // 1 second between requests
   
   socket.on('get_games', () => {
-    const now = Date.now();
-    const lastRequestTime = clientRequestTimes.get(socket.id) || 0;
+    // Use the user ID for rate limiting if available, otherwise use socket ID
+    const rateLimitKey = currentUserId || socket.id;
     
-    // Check if this request is within the rate limit
-    if (now - lastRequestTime < RATE_LIMIT_MS) {
+    if (isRateLimited(rateLimitKey, 'get_games', RATE_LIMIT_MS)) {
       console.log(`Rate limiting get_games for socket: ${socket.id}`);
       return;
     }
-    
-    // Update the last request time
-    clientRequestTimes.set(socket.id, now);
     
     console.log('Client requested games list, socket:', socket.id);
     socket.emit('games_update', Array.from(games.values()));
