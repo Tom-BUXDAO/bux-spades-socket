@@ -83,13 +83,20 @@ export default function GameLobby({
       
       // If the error is that the user already has a game, find and join it
       if (message === 'You already have a game') {
+        console.log("User already has a game, looking for it in the games list");
+        
         const existingGame = games.find(game => 
           game.players.some(player => player.id === user.id)
         );
         
         if (existingGame) {
           console.log("Found existing game, selecting it:", existingGame.id);
+          setCurrentPlayerId(user.id);
           onGameSelect(existingGame);
+        } else {
+          console.log("Could not find existing game, requesting games update");
+          // Request an update of the games list
+          socket?.emit("get_games");
         }
       }
     });
