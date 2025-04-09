@@ -372,7 +372,7 @@ export default function GameLobby({
 
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium">Available Games</h3>
+          <h3 className="text-lg font-medium text-white">Available Games</h3>
         </div>
         <button
           onClick={handleCreateGame}
@@ -386,26 +386,17 @@ export default function GameLobby({
         {games.map((game) => (
           <div
             key={game.id}
-            className="border rounded-lg p-6 bg-gray-50 shadow-md"
+            className="border border-gray-700 rounded-lg p-6 bg-gray-800 shadow-md"
           >
             <div className="flex justify-between items-center mb-4">
-              <div>
-                <h3 className="text-lg font-medium">Game #{game.id}</h3>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(game.id);
-                    alert('Game ID copied to clipboard!');
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-800"
-                >
-                  Copy ID
-                </button>
+              <div className="text-white">
+                <h3 className="text-lg font-medium">REG · NBN · 500</h3>
               </div>
               <div className={`px-3 py-1 rounded-full ${
-                game.status === "WAITING" ? "bg-yellow-100 text-yellow-800" :
-                game.status === "BIDDING" ? "bg-blue-100 text-blue-800" :
-                game.status === "PLAYING" ? "bg-green-100 text-green-800" :
-                "bg-gray-100 text-gray-800"
+                game.status === "WAITING" ? "bg-yellow-500 text-black" :
+                game.status === "BIDDING" ? "bg-blue-500 text-white" :
+                game.status === "PLAYING" ? "bg-green-500 text-white" :
+                "bg-gray-500 text-white"
               }`}>
                 {game.status}
               </div>
@@ -415,16 +406,6 @@ export default function GameLobby({
             <div className="relative aspect-square mb-4 max-w-[300px] mx-auto">
               {/* Table background */}
               <div className="absolute inset-[15%] rounded-full bg-[#316785] border-4 border-[#855f31]"></div>
-              
-              {/* Team labels */}
-              <div className="absolute inset-[20%] flex flex-col items-center justify-center">
-                <div className="flex w-full justify-between px-4 pb-1">
-                  <div className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-sm">Team 1</div>
-                  <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-sm">Team 2</div>
-                </div>
-                <div className="text-white text-xs text-center mb-1">N/S: Team 1</div>
-                <div className="text-white text-xs text-center">E/W: Team 2</div>
-              </div>
               
               {/* North position */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20">
@@ -451,11 +432,11 @@ export default function GameLobby({
                         console.log("JOINING POSITION 2 (NORTH)");
                         handleJoinGame(game.id, getTeamForPosition(2), 2);
                       }}
-                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                      className={`w-full h-full rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(2) === 1 ? 'border-red-500' : 'border-blue-500'
-                      }`}
+                      } text-white`}
                     >
-                      North<br/>Join
+                      Join
                     </button>
                   )
                 )}
@@ -489,11 +470,11 @@ export default function GameLobby({
                         console.log("JOINING POSITION 3 (EAST)");
                         handleJoinGame(game.id, getTeamForPosition(3), 3);
                       }}
-                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                      className={`w-full h-full rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(3) === 1 ? 'border-red-500' : 'border-blue-500'
-                      }`}
+                      } text-white`}
                     >
-                      East<br/>Join
+                      Join
                     </button>
                   )
                 )}
@@ -527,11 +508,11 @@ export default function GameLobby({
                         console.log("JOINING POSITION 0 (SOUTH)");
                         handleJoinGame(game.id, getTeamForPosition(0), 0);
                       }}
-                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                      className={`w-full h-full rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(0) === 1 ? 'border-red-500' : 'border-blue-500'
-                      }`}
+                      } text-white`}
                     >
-                      South<br/>Join
+                      Join
                     </button>
                   )
                 )}
@@ -565,11 +546,11 @@ export default function GameLobby({
                         console.log("JOINING POSITION 1 (WEST)");
                         handleJoinGame(game.id, getTeamForPosition(1), 1);
                       }}
-                      className={`w-full h-full rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-medium border-4 ${
+                      className={`w-full h-full rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-sm font-medium border-4 ${
                         getTeamForPosition(1) === 1 ? 'border-red-500' : 'border-blue-500'
-                      }`}
+                      } text-white`}
                     >
-                      West<br/>Join
+                      Join
                     </button>
                   )
                 )}
@@ -591,7 +572,7 @@ export default function GameLobby({
         ))}
 
         {games.length === 0 && (
-          <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg col-span-2">
+          <div className="text-center py-8 text-gray-400 bg-gray-800 rounded-lg col-span-2 border border-gray-700">
             No games available. Create one to start playing!
           </div>
         )}
