@@ -14,7 +14,7 @@ import { calculateHandScore } from '@/lib/scoring';
 interface GameTableProps {
   game: GameState;
   socket: typeof Socket | null;
-  createGame: (userId: string) => void;
+  createGame: (user: { id: string; name?: string | null }) => void;
   joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2 }) => void;
   onGamesUpdate: (callback: (games: GameState[]) => void) => () => void;
   onLeaveTable: () => void;
