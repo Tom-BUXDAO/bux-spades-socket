@@ -65,7 +65,7 @@ export default function GameLobby({
 
     // Listen for game update
     socket?.on("game_update", (game: GameState) => {
-      console.log("Received game_update:", game);
+      console.log("Received game_update for game:", game.id, "with players:", game.players);
       onGameSelect(game);
     });
 
@@ -113,7 +113,7 @@ export default function GameLobby({
       joinGame(gameId, testPlayerId, testPlayer);
     } else {
       // Join as current user with team selection
-      console.log("Emitting join_game with:", { gameId, userId: user.id, testPlayer: { name: user.name, team } });
+      console.log("Attempting to join game with:", { gameId, userId: user.id, testPlayer: { name: user.name, team } });
       joinGame(gameId, user.id, { name: user.name, team });
     }
     setTestPlayerName("");
