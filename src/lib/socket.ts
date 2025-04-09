@@ -89,8 +89,8 @@ export function useSocket(clientId: string = '') {
     };
   }, [clientId, isTestConnection]);
 
-  const createGame = (userId: string) => {
-    socketRef.current?.emit("create_game", { userId });
+  const createGame = (user: { id: string; name?: string | null }) => {
+    socketRef.current?.emit("create_game", { user });
   };
 
   const joinGame = (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2 }) => {

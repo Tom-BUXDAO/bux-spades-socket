@@ -13,7 +13,7 @@ interface GameLobbyProps {
     isGuest?: boolean;
   };
   socket: typeof Socket | null;
-  createGame: (userId: string) => void;
+  createGame: (user: { id: string; name?: string | null }) => void;
   joinGame: (gameId: string, userId: string, testPlayer?: { name: string; team: 1 | 2; browserSessionId?: string }) => void;
   onGamesUpdate: (callback: (games: GameState[]) => void) => () => void;
 }
@@ -82,8 +82,8 @@ export default function GameLobby({
       return;
     }
 
-    console.log("Sending user ID:", user.id);
-    createGame(user.id);
+    console.log("Sending user object:", user);
+    createGame(user);
   };
 
   const handleJoinGame = async (gameId: string, team: 1 | 2) => {
