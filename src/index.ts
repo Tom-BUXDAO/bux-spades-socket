@@ -33,14 +33,20 @@ const io = new Server(httpServer, {
   path: '/socket.io/'
 });
 
+interface Card {
+  suit: 'S' | 'H' | 'D' | 'C';
+  rank: number;
+}
+
 interface Player {
   id: string;
   name: string;
-  hand: string[];
+  hand: Card[];
   tricks: number;
   team: number;
   bid?: number;
   browserSessionId?: string;
+  isDealer?: boolean;
 }
 
 interface Game {
@@ -48,12 +54,12 @@ interface Game {
   status: string;
   players: Player[];
   currentPlayer: string;
-  currentTrick: string[];
+  currentTrick: Card[];
   team1Score: number;
   team2Score: number;
   team1Bags: number;
   team2Bags: number;
-  completedTricks: string[][];
+  completedTricks: Card[][];
   createdAt: number;
 }
 
@@ -62,6 +68,44 @@ const games = new Map<string, Game>();
 
 // Store active connections per user
 const userConnections = new Map<string, Set<string>>();
+
+// Helper function to create a deck of cards
+function createDeck(): Card[] {
+  const suits = ['S', 'H', 'D', 'C'] as const;
+  const ranks = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
+  const deck: Card[] = [];
+  
+  for (const suit of suits) {
+    for (const rank of ranks) {
+      deck.push({ suit, rank });
+    }
+  }
+  
+  return deck;
+}
+
+// Helper function to shuffle an array
+function shuffleArray<T>(array: T[]): T[] {
+  const newArray = [...array]; // Create a copy to avoid modifying the original
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
+// Helper function to deal cards
+function dealCards(players: Player[]): Player[] {
+  const deck = shuffleArray(createDeck());
+  
+  // Deal 13 cards to each player
+  return players.map((player, index) => ({
+    ...player,
+    hand: deck.slice(index * 13, (index + 1) * 13),
+    bid: undefined,
+    tricks: 0,
+  }));
+}
 
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
@@ -90,6 +134,28 @@ io.on('connection', (socket) => {
     });
     connections.add(socket.id);
     userConnections.set(userId, connections);
+    
+    // Also remove user from any games they might be in
+    for (const [gameId, game] of games.entries()) {
+      if (game.players.some(p => p.id === userId)) {
+        const playerIndex = game.players.findIndex(p => p.id === userId);
+        
+        // If game creator or last player, remove the game
+        if (playerIndex === 0 || game.players.length === 1) {
+          console.log("Removing game:", gameId);
+          games.delete(gameId);
+          io.to(gameId).emit("game_removed", { gameId });
+        } else {
+          // Otherwise just remove the player
+          game.players.splice(playerIndex, 1);
+          games.set(gameId, game);
+          io.to(gameId).emit("game_update", game);
+        }
+      }
+    }
+    
+    // Broadcast updated games list
+    io.emit('games_update', Array.from(games.values()));
   });
 
   socket.on('create_game', ({ user }) => {
@@ -104,13 +170,13 @@ io.on('connection', (socket) => {
       // Check if the user already has a game
       let userAlreadyInGame = false;
       let existingGameId = "";
-let foundGame: Game | undefined;
+      let foundGame: Game | undefined;
       
       games.forEach((game) => {
         if (game.players.some(player => player.id === user.id)) {
           userAlreadyInGame = true;
           existingGameId = game.id;
-foundGame = game;
+          foundGame = game;
         }
       });
 
@@ -206,11 +272,8 @@ foundGame = game;
       
       socket.join(gameId);
 
-      if (game.players.length === 4) {
-        game.status = "BIDDING";
-        game.currentPlayer = game.players[0].id;
-      }
-
+      // DON'T automatically change to bidding here, let start_game handle it
+      
       games.set(gameId, game);
       io.emit('games_update', Array.from(games.values()));
       io.to(gameId).emit('game_update', game);
@@ -221,6 +284,78 @@ foundGame = game;
       console.error('Error joining game:', error);
       socket.emit('error', { message: 'Failed to join game' });
     }
+  });
+
+  socket.on('start_game', (gameId) => {
+    console.log('\n=== START GAME EVENT ===');
+    console.log('1. Received start_game event for game:', gameId);
+    
+    const game = games.get(gameId);
+    if (!game || game.players.length !== 4) {
+      socket.emit('error', { message: 'Invalid game state' });
+      return;
+    }
+
+    // Verify the request is coming from the game creator (first player)
+    if (game.players[0].id !== socket.id && !socket.handshake.query.isTestClient) {
+      console.log('Unauthorized start_game attempt, not from creator');
+      socket.emit('error', { message: 'Only the game creator can start the game' });
+      return;
+    }
+
+    // Deal cards and update game state
+    const playersWithCards = dealCards(game.players);
+    
+    // Randomly choose first dealer
+    const firstDealerIndex = Math.floor(Math.random() * 4);
+    
+    // Update the game with the new state
+    game.status = "BIDDING";
+    game.players = playersWithCards.map((p, i) => ({
+      ...p,
+      isDealer: i === firstDealerIndex
+    }));
+    
+    // First player is to the left of the dealer
+    game.currentPlayer = game.players[(firstDealerIndex + 1) % 4].id;
+    
+    // Update game state in memory
+    games.set(gameId, game);
+    console.log('2. Updated game state with dealer and cards');
+    
+    // Broadcast the game update to all sockets
+    io.to(gameId).emit('game_update', game);
+    io.emit('games_update', Array.from(games.values()));
+    console.log('3. Broadcasted updates');
+  });
+
+  socket.on('leave_game', ({ gameId, userId }) => {
+    console.log("Player leaving game:", userId, "from game:", gameId);
+    
+    const game = games.get(gameId);
+    if (!game) return;
+
+    // Remove the player from the game
+    const playerIndex = game.players.findIndex(p => p.id === userId);
+    if (playerIndex !== -1) {
+      // If game creator leaves, remove the whole game
+      if (playerIndex === 0 || game.players.length === 1) {
+        console.log("Game creator or last player left, removing game:", gameId);
+        games.delete(gameId);
+        io.to(gameId).emit("game_removed", { gameId });
+        socket.leave(gameId);
+      } else {
+        // Otherwise just remove the player
+        game.players.splice(playerIndex, 1);
+        games.set(gameId, game);
+        io.to(gameId).emit("game_update", game);
+      }
+      
+      // Broadcast updated games list
+      io.emit("games_update", Array.from(games.values()));
+    }
+
+    socket.leave(gameId);
   });
 
   socket.on('disconnect', () => {
