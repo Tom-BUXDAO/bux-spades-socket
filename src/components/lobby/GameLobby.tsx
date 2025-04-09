@@ -46,8 +46,10 @@ export default function GameLobby({
   useEffect(() => {
     const unsubscribe = onGamesUpdate(setGames);
 
-    // Request initial games list
-    socket?.emit("get_games");
+    // Ensure the socket is connected and emit 'get_games'
+    if (socket) {
+      socket.emit("get_games");
+    }
 
     // Listen for game creation response
     socket?.on("game_created", ({ gameId, game }: { gameId: string; game: GameState }) => {
@@ -59,7 +61,6 @@ export default function GameLobby({
     // Listen for errors
     socket?.on("error", ({ message }: { message: string }) => {
       console.error("Game error:", message);
-      // You might want to show this error to the user in the UI
     });
 
     return () => {
