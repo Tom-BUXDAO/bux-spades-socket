@@ -234,8 +234,23 @@ foundGame = game;
     });
   });
 
-  // Add handler for get_games event
+  // Add handler for get_games event with rate limiting
+  const clientRequestTimes = new Map<string, number>();
+  const RATE_LIMIT_MS = 1000; // 1 second between requests
+  
   socket.on('get_games', () => {
+    const now = Date.now();
+    const lastRequestTime = clientRequestTimes.get(socket.id) || 0;
+    
+    // Check if this request is within the rate limit
+    if (now - lastRequestTime < RATE_LIMIT_MS) {
+      console.log(`Rate limiting get_games for socket: ${socket.id}`);
+      return;
+    }
+    
+    // Update the last request time
+    clientRequestTimes.set(socket.id, now);
+    
     console.log('Client requested games list, socket:', socket.id);
     socket.emit('games_update', Array.from(games.values()));
   });
