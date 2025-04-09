@@ -462,22 +462,25 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('start_game', (gameId) => {
+  socket.on('start_game', ({ gameId, userId }) => {
     console.log('\n=== START GAME EVENT ===');
-    console.log('1. Received start_game event for game:', gameId);
+    console.log(`1. Received start_game event for game: ${gameId} from user: ${userId}`);
     
     const game = games.get(gameId);
     if (!game || game.players.length !== 4) {
+      console.log(`Game not found or doesn't have 4 players. Players: ${game?.players.length || 0}`);
       socket.emit('error', { message: 'Invalid game state' });
       return;
     }
 
     // Verify the request is coming from the game creator (first player)
-    if (game.players[0].id !== socket.id && !socket.handshake.query.isTestClient) {
-      console.log('Unauthorized start_game attempt, not from creator');
+    if (game.players[0].id !== userId && !socket.handshake.query.isTestClient) {
+      console.log(`Unauthorized start_game attempt. Creator: ${game.players[0].id}, Requester: ${userId}`);
       socket.emit('error', { message: 'Only the game creator can start the game' });
       return;
     }
+
+    console.log(`Game ${gameId} starting, authorized by creator ${game.players[0].id}`);
 
     // Deal cards and update game state
     const playersWithCards = dealCards(game.players);
