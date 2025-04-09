@@ -202,7 +202,7 @@ export function leaveGame(socket: typeof Socket | null, gameId: string, userId: 
   socket.emit('leave_game', { gameId, userId });
 }
 
-export function startGame(socket: typeof Socket | null, gameId: string) {
+export function startGame(socket: typeof Socket | null, gameId: string, userId?: string) {
   if (!socket) return Promise.reject('No socket connection');
   
   return new Promise<void>((resolve, reject) => {
@@ -219,6 +219,7 @@ export function startGame(socket: typeof Socket | null, gameId: string) {
     };
     
     const handleError = (error: any) => {
+      console.error("Start game error:", error);
       socket.off('error', handleError);
       socket.off('game_update', handleUpdate);
       reject(error);
@@ -227,7 +228,8 @@ export function startGame(socket: typeof Socket | null, gameId: string) {
     socket.on('game_update', handleUpdate);
     socket.on('error', handleError);
     
-    socket.emit('start_game', gameId);
+    console.log(`Sending start_game command for game ${gameId}${userId ? ` with user ${userId}` : ''}`);
+    socket.emit('start_game', userId ? { gameId, userId } : { gameId });
     
     // Timeout after 5 seconds
     setTimeout(() => {

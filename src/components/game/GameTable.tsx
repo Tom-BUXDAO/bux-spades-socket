@@ -18,7 +18,7 @@ interface GameTableProps {
   joinGame: (gameId: string, userId: string, options?: any) => void;
   onGamesUpdate: React.Dispatch<React.SetStateAction<GameState[]>>;
   onLeaveTable: () => void;
-  startGame: (gameId: string) => Promise<void>;
+  startGame: (gameId: string, userId?: string) => Promise<void>;
   user?: any;
 }
 
@@ -343,10 +343,12 @@ export default function GameTable({
   };
 
   const handleStartGame = async () => {
+    if (!currentPlayerId) return;
+    
     try {
-      await startGame(game.id);
+      await startGame(game.id, currentPlayerId);
     } catch (error) {
-      // Silently handle errors
+      console.error("Failed to start game:", error);
     }
   };
 

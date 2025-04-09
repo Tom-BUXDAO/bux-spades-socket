@@ -111,7 +111,9 @@ export default function TestGamePage() {
             }) as unknown as React.Dispatch<React.SetStateAction<GameState[]>>}
             onLeaveTable={() => {}} // Disable leaving table in test mode
             user={mockUser} // Pass the mock user directly to bypass authentication
-            startGame={startGame} // Add startGame function
+            startGame={(gameId: string, userId?: string) => {
+              return startGame(gameId);
+            }} // Wrap startGame function to match new interface
           />
         </main>
       )}

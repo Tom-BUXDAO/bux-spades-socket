@@ -89,9 +89,9 @@ export default function GamePage() {
     if (socket) socketApi.joinGame(socket, gameId, userId, options);
   };
 
-  const startGame = (gameId: string) => {
-    if (socket) return socketApi.startGame(socket, gameId);
-    return Promise.reject("No socket connection");
+  const startGame = (gameId: string, userId?: string) => {
+    if (!socket) return Promise.reject("No socket connection");
+    return socketApi.startGame(socket, gameId, userId || user?.id);
   };
 
   const closeAllPreviousConnections = (userId: string) => {
