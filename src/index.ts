@@ -287,7 +287,7 @@ io.on('connection', (socket) => {
           // Place player at the requested position
           // First, ensure the array has enough slots
           while (game.players.length <= position) {
-            game.players.push(null);
+            game.players.push({} as Player);
           }
           
           // Set the player at the requested position
@@ -300,9 +300,9 @@ io.on('connection', (socket) => {
           console.log(`Player ${player.name} (${userId}) joined at the end`);
         }
         
-        // Clean up any null positions if there are still empty seats
+        // Clean up any placeholder positions
         if (game.players.length < 4) {
-          game.players = game.players.filter(p => p !== null);
+          game.players = game.players.filter(p => p.id !== undefined);
         }
       }
       
