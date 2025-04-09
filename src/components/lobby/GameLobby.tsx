@@ -46,23 +46,47 @@ export default function GameLobby({
   useEffect(() => {
     const unsubscribe = onGamesUpdate(setGames);
 
+    // Keep track of games list requests
+    let hasRequestedGames = false;
+    let requestGamesTimeoutId: NodeJS.Timeout | null = null;
+
     // Ensure the socket is connected and emit 'get_games'
     if (socket) {
-      // Only request games list once on connection
-      let hasRequestedGamesList = false;
+      // Throttled games request function
+      const requestGames = () => {
+        if (requestGamesTimeoutId) {
+          clearTimeout(requestGamesTimeoutId);
+        }
+        
+        console.log("Requesting games list");
+        socket.emit("get_games");
+        
+        // Set a flag to prevent multiple requests
+        hasRequestedGames = true;
+        
+        // Reset the flag after some time to allow future requests
+        requestGamesTimeoutId = setTimeout(() => {
+          hasRequestedGames = false;
+        }, 5000); // 5 second cooldown
+      };
 
       socket.on("connect", () => {
         console.log("Connected with socket ID:", socket.id);
         // Emit a custom event to close previous connections
         socket.emit("close_previous_connections", { userId: user.id });
         
-        // Only request games list once
-        if (!hasRequestedGamesList) {
-          console.log("Requesting initial games list");
-          socket.emit("get_games");
-          hasRequestedGamesList = true;
+        // Request games list once on connection
+        if (!hasRequestedGames) {
+          requestGames();
         }
       });
+      
+      // Clean up function
+      return () => {
+        if (requestGamesTimeoutId) {
+          clearTimeout(requestGamesTimeoutId);
+        }
+      };
     }
 
     // Listen for game creation response
@@ -70,7 +94,7 @@ export default function GameLobby({
       console.log("Game created:", gameId);
       setCurrentPlayerId(user.id);
       
-      // Always explicitly join the game after creation
+      // Explicitly join the game after creation
       console.log("Explicitly joining game after creation:", gameId);
       socket?.emit("join_game", { 
         gameId, 
@@ -103,7 +127,11 @@ export default function GameLobby({
         } else {
           console.log("Could not find existing game, requesting games update once");
           // Request an update of the games list, but only once
-          socket?.emit("get_games");
+          if (!hasRequestedGames) {
+            console.log("Requesting games list after error");
+            socket?.emit("get_games");
+            hasRequestedGames = true;
+          }
         }
       }
     });
@@ -121,6 +149,11 @@ export default function GameLobby({
       socket?.off("game_created");
       socket?.off("error");
       socket?.off("game_update");
+      socket?.off("connect");
+      
+      if (requestGamesTimeoutId) {
+        clearTimeout(requestGamesTimeoutId);
+      }
     };
   }, [onGamesUpdate, socket, user.id, onGameSelect, joinGame, games, browserSessionId]);
 
