@@ -278,7 +278,7 @@ io.on('connection', (socket) => {
 
   socket.on('join_game', async ({ gameId, userId, testPlayer, position }) => {
     try {
-      // Validation
+      // Basic validation
       if (!gameId || !userId) {
         socket.emit('error', { message: 'Game ID and User ID are required' });
         return;
@@ -290,7 +290,6 @@ io.on('connection', (socket) => {
         userConnections.set(userId, new Set());
       }
       userConnections.get(userId)!.add(socket.id);
-      console.log(`Associating user ${userId} with socket ${socket.id} for join_game`);
       
       const game = games.get(gameId);
       if (!game) {
@@ -311,85 +310,89 @@ io.on('connection', (socket) => {
         return;
       }
       
-      if (game.players.length >= 4 && !position) {
+      if (game.players.length >= 4 && position === undefined) {
         socket.emit('error', { message: 'Game is full' });
         return;
       }
 
-      // Test player handling
+      // Create player object
       let player: Player;
-      
       if (testPlayer) {
-        // For test players, use provided data but ensure team matches position
         player = {
           id: userId,
           name: testPlayer.name,
           hand: [],
           tricks: 0,
-          team: position !== undefined ? getTeamForPosition(position) : testPlayer.team,
+          team: position !== undefined ? (position % 2 === 0 ? 1 : 2) : testPlayer.team,
           browserSessionId: testPlayer.browserSessionId || socket.id,
           image: testPlayer.image || undefined
         };
       } else {
-        // For real players, construct from provided userId and set team based on position
         player = {
           id: userId,
           name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
           hand: [],
           tricks: 0,
-          team: position !== undefined ? getTeamForPosition(position) : (game.players.length % 2) + 1 as 1 | 2,
+          team: position !== undefined ? (position % 2 === 0 ? 1 : 2) : (game.players.length % 2) + 1 as 1 | 2,
           browserSessionId: socket.id
         };
       }
+
+      // Make a complete copy of the current players array
+      const currentPlayers = [...game.players];
       
-      // If position is specified and that position is empty, put player there
+      // HANDLE POSITION PLACEMENT
       if (position !== undefined) {
-        // Validate position is within range
+        console.log(`Processing join for ${player.name} at EXPLICIT position ${position}`);
+        
+        // Validate position
         if (position < 0 || position > 3) {
-          socket.emit('error', { message: 'Invalid position' });
+          socket.emit('error', { message: 'Invalid position (must be 0-3)' });
           return;
         }
         
-        // Create a full array of players with empty slots
-        let fullPlayers: Player[] = [];
-        for (let i = 0; i < 4; i++) {
-          if (i === position) {
-            // Put the new player at the exact requested position
-            fullPlayers[i] = player;
-          } else if (game.players[i] && game.players[i].id) {
-            // Keep existing players in their positions
-            fullPlayers[i] = game.players[i];
-          } else {
-            // Empty slot
-            fullPlayers[i] = {} as Player;
-          }
+        // Check if position is already taken
+        const existingPlayerAtPosition = currentPlayers.find((p, idx) => idx === position && p.id);
+        if (existingPlayerAtPosition) {
+          socket.emit('error', { message: `Position ${position} already taken by ${existingPlayerAtPosition.name}` });
+          return;
         }
         
-        // Remove empty slots before saving
-        game.players = fullPlayers.filter(p => p.id !== undefined);
+        // Create a new players array with exactly 4 slots
+        const newPlayers: (Player | null)[] = [null, null, null, null];
         
-        console.log(`Player ${player.name} (${userId}) FIXED positioning at exact position ${position}`);
-        console.log('New player list:', game.players.map(p => ({
-          name: p.name,
-          id: p.id,
-          team: p.team,
-          position: fullPlayers.findIndex(fp => fp.id === p.id)
-        })));
+        // Copy existing players to their exact positions
+        currentPlayers.forEach((p, idx) => {
+          if (p && p.id) {
+            newPlayers[idx] = p;
+          }
+        });
+        
+        // Place new player in their requested position
+        newPlayers[position] = player;
+        
+        // Filter out null values and update game.players
+        game.players = newPlayers.filter(p => p !== null) as Player[];
+        
+        console.log(`Player ${player.name} joined at EXPLICIT position ${position}`);
+        console.log('Players array after positioning:');
+        game.players.forEach((p, idx) => {
+          console.log(`Position ${idx}: ${p.name} (team ${p.team})`);
+        });
       } else {
-        // No position specified, add to the end as before
+        // No position specified, just add to the end
         game.players.push(player);
-        console.log(`Player ${player.name} (${userId}) joined at the end`);
+        console.log(`Player ${player.name} joined at the end (no position specified)`);
       }
       
       socket.join(gameId);
-
-      // DON'T automatically change to bidding here, let start_game handle it
       
+      // Update the game
       games.set(gameId, game);
       io.emit('games_update', Array.from(games.values()));
       io.to(gameId).emit('game_update', game);
       
-      // Also send a targeted update to ensure this client gets it
+      // Send a targeted update to this client
       socket.emit('game_update', game);
     } catch (error) {
       console.error('Error joining game:', error);
