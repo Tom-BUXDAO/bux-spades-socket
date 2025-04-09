@@ -3,16 +3,34 @@ import { useSocket } from '@/lib/socket';
 import type { Socket } from 'socket.io-client';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
+import Image from 'next/image';
 
 interface ChatProps {
   socket: typeof Socket | null;
   gameId: string;
   userId: string;
   userName: string;
+  players: Array<{
+    id: string;
+    name: string;
+    image?: string;
+  }>;
 }
 
-export default function Chat({ socket, gameId, userId, userName }: ChatProps) {
-  const [messages, setMessages] = useState<{ user: string; text: string }[]>([]);
+interface ChatMessage {
+  id: string;
+  user: string;
+  userId: string;
+  text: string;
+  timestamp: number;
+}
+
+// Fallback avatars 
+const GUEST_AVATAR = "/guest-avatar.png";
+const BOT_AVATAR = "/guest-avatar.png";
+
+export default function Chat({ socket, gameId, userId, userName, players }: ChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -20,8 +38,32 @@ export default function Chat({ socket, gameId, userId, userName }: ChatProps) {
   // Only use regular socket if not in test mode
   const regularSocket = !socket ? useSocket("") : null;
 
+  // Get player avatar
+  const getPlayerAvatar = (playerId: string): string => {
+    const player = players.find(p => p.id === playerId);
+    
+    // If player has their own image property, use that first
+    if (player?.image) {
+      return player.image;
+    }
+    
+    // If Discord user ID format (numeric string), try to use Discord CDN
+    if (playerId && /^\d+$/.test(playerId)) {
+      // Use the player ID to fetch from Discord's CDN if it's a Discord ID
+      return `https://cdn.discordapp.com/avatars/${playerId}/avatar.png`;
+    }
+    
+    // If player id starts with "guest_", use the guest avatar
+    if (playerId && playerId.startsWith('guest_')) {
+      return GUEST_AVATAR;
+    }
+    
+    // Fallback to generic bot/test avatar
+    return BOT_AVATAR;
+  };
+
   useEffect(() => {
-    const handleMessage = (message: { user: string; text: string }) => {
+    const handleMessage = (message: ChatMessage) => {
       setMessages(prev => [...prev, message]);
     };
 
@@ -50,8 +92,11 @@ export default function Chat({ socket, gameId, userId, userName }: ChatProps) {
     if (!inputValue.trim()) return;
 
     const message = {
+      id: `${Date.now()}-${userId}`,
       user: userName,
-      text: inputValue.trim()
+      userId: userId,
+      text: inputValue.trim(),
+      timestamp: Date.now()
     };
 
     if (socket) {
@@ -60,12 +105,20 @@ export default function Chat({ socket, gameId, userId, userName }: ChatProps) {
       regularSocket.socket.emit('chat_message', { gameId, message });
     }
 
+    // Add the message locally for immediate feedback
+    setMessages(prev => [...prev, message]);
+    
     setInputValue('');
     setShowEmojiPicker(false);
   };
 
   const onEmojiSelect = (emoji: any) => {
     setInputValue(prev => prev + emoji.native);
+  };
+  
+  const formatTime = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -75,12 +128,47 @@ export default function Chat({ socket, gameId, userId, userName }: ChatProps) {
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto">
-        {messages.map((msg, i) => (
-          <div key={i} className="mb-2">
-            <span className="font-semibold text-yellow-400">{msg.user}: </span>
-            <span className="text-white">{msg.text}</span>
+        {messages.length === 0 ? (
+          <div className="text-center text-gray-500 py-4">
+            No messages yet. Start the conversation!
           </div>
-        ))}
+        ) : (
+          messages.map((msg) => (
+            <div key={msg.id} className={`mb-3 flex items-start ${msg.userId === userId ? 'justify-end' : ''}`}>
+              {msg.userId !== userId && (
+                <div className="w-8 h-8 mr-2 rounded-full overflow-hidden flex-shrink-0">
+                  <Image 
+                    src={getPlayerAvatar(msg.userId)} 
+                    alt={msg.user} 
+                    width={32} 
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              
+              <div className={`max-w-[80%] ${msg.userId === userId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'} rounded-lg px-3 py-2`}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-semibold text-sm">{msg.userId === userId ? 'You' : msg.user}</span>
+                  <span className="text-xs opacity-75 ml-2">{formatTime(msg.timestamp)}</span>
+                </div>
+                <p>{msg.text}</p>
+              </div>
+              
+              {msg.userId === userId && (
+                <div className="w-8 h-8 ml-2 rounded-full overflow-hidden flex-shrink-0">
+                  <Image 
+                    src={getPlayerAvatar(msg.userId)} 
+                    alt={msg.user} 
+                    width={32} 
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+            </div>
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
       
@@ -102,7 +190,7 @@ export default function Chat({ socket, gameId, userId, userName }: ChatProps) {
               😊
             </button>
             {showEmojiPicker && (
-              <div className="absolute bottom-full right-0 mb-2 max-h-[50vh] overflow-auto">
+              <div className="absolute bottom-full right-0 mb-2 max-h-[320px] z-50 overflow-auto">
                 <Picker 
                   data={data} 
                   onEmojiSelect={onEmojiSelect}

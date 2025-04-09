@@ -652,7 +652,8 @@ export default function GameTable({
             socket={socket}
             gameId={game.id}
             userId={currentPlayerId || ''}
-            userName={game.players.find(p => p.id === currentPlayerId)?.name || 'Unknown'}
+            userName={currentPlayer?.name || 'Unknown'}
+            players={game.players}
           />
         </div>
       </div>
