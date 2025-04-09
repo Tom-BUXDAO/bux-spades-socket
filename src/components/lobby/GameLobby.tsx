@@ -46,116 +46,136 @@ export default function GameLobby({
   useEffect(() => {
     const unsubscribe = onGamesUpdate(setGames);
 
-    // Keep track of games list requests
-    let hasRequestedGames = false;
-    let requestGamesTimeoutId: NodeJS.Timeout | null = null;
+    // Keep track of games list requests - use ref to maintain state between renders
+    const requestState = {
+      hasRequested: false,
+      timeoutId: null as NodeJS.Timeout | null
+    };
+
+    // Clean up function to ensure we don't have memory leaks
+    const cleanup = () => {
+      if (requestState.timeoutId) {
+        clearTimeout(requestState.timeoutId);
+        requestState.timeoutId = null;
+      }
+    };
 
     // Ensure the socket is connected and emit 'get_games'
     if (socket) {
       // Throttled games request function
       const requestGames = () => {
-        if (requestGamesTimeoutId) {
-          clearTimeout(requestGamesTimeoutId);
-        }
+        cleanup(); // Clear any existing timeout
         
         console.log("Requesting games list");
         socket.emit("get_games");
         
         // Set a flag to prevent multiple requests
-        hasRequestedGames = true;
+        requestState.hasRequested = true;
         
-        // Reset the flag after some time to allow future requests
-        requestGamesTimeoutId = setTimeout(() => {
-          hasRequestedGames = false;
-        }, 5000); // 5 second cooldown
+        // Reset the flag after some time to allow future requests, if needed
+        requestState.timeoutId = setTimeout(() => {
+          requestState.hasRequested = false;
+          requestState.timeoutId = null;
+        }, 10000); // 10 second cooldown - increased from 5 seconds
       };
 
-      socket.on("connect", () => {
+      // Connect event handler
+      const handleConnect = () => {
         console.log("Connected with socket ID:", socket.id);
         // Emit a custom event to close previous connections
         socket.emit("close_previous_connections", { userId: user.id });
         
-        // Request games list once on connection
-        if (!hasRequestedGames) {
+        // Request games list once on connection if needed
+        if (!requestState.hasRequested) {
           requestGames();
         }
-      });
+      };
+
+      // Set up event listeners
+      socket.on("connect", handleConnect);
       
-      // Clean up function
-      return () => {
-        if (requestGamesTimeoutId) {
-          clearTimeout(requestGamesTimeoutId);
+      // Set up error event handler
+      const handleError = ({ message }: { message: string }) => {
+        console.error("Game error:", message);
+        
+        // If the error is that the user already has a game, find and join it
+        if (message === 'You already have a game') {
+          console.log("User already has a game, looking for it in the games list");
+          
+          const existingGame = games.find(game => 
+            game.players.some(player => player.id === user.id)
+          );
+          
+          if (existingGame) {
+            console.log("Found existing game, selecting it:", existingGame.id);
+            setCurrentPlayerId(user.id);
+            onGameSelect(existingGame);
+          } else {
+            console.log("Could not find existing game, requesting games update once");
+            // Request an update of the games list, but only once
+            if (!requestState.hasRequested) {
+              console.log("Requesting games list after error");
+              requestGames();
+            }
+          }
         }
+      };
+      
+      // Set up game creation handler
+      const handleGameCreated = ({ gameId, game }: { gameId: string; game: GameState }) => {
+        console.log("Game created:", gameId);
+        setCurrentPlayerId(user.id);
+        
+        // Explicitly join the game after creation
+        console.log("Explicitly joining game after creation:", gameId);
+        socket.emit("join_game", { 
+          gameId, 
+          userId: user.id, 
+          testPlayer: { 
+            name: user.name || "Unknown Player", 
+            team: 1 
+          } 
+        });
+        
+        onGameSelect(game);
+      };
+      
+      // Set up game update handler
+      const handleGameUpdate = (game: GameState) => {
+        console.log("Received game_update for game:", game.id, "with players:", game.players);
+        // Add detailed logging
+        console.log("Current game state:", game);
+        onGameSelect(game);
+      };
+      
+      // Register event handlers
+      socket.on("error", handleError);
+      socket.on("game_created", handleGameCreated);
+      socket.on("game_update", handleGameUpdate);
+      
+      // Initial connection handling
+      if (socket.connected) {
+        handleConnect();
+      }
+
+      // Clean up 
+      return () => {
+        cleanup(); // Clear any timeouts
+        
+        // Remove all event listeners
+        socket.off("connect", handleConnect);
+        socket.off("error", handleError);
+        socket.off("game_created", handleGameCreated);
+        socket.off("game_update", handleGameUpdate);
       };
     }
 
-    // Listen for game creation response
-    socket?.on("game_created", ({ gameId, game }: { gameId: string; game: GameState }) => {
-      console.log("Game created:", gameId);
-      setCurrentPlayerId(user.id);
-      
-      // Explicitly join the game after creation
-      console.log("Explicitly joining game after creation:", gameId);
-      socket?.emit("join_game", { 
-        gameId, 
-        userId: user.id, 
-        testPlayer: { 
-          name: user.name || "Unknown Player", 
-          team: 1 
-        } 
-      });
-      
-      onGameSelect(game);
-    });
-
-    // Listen for errors
-    socket?.on("error", ({ message }: { message: string }) => {
-      console.error("Game error:", message);
-      
-      // If the error is that the user already has a game, find and join it
-      if (message === 'You already have a game') {
-        console.log("User already has a game, looking for it in the games list");
-        
-        const existingGame = games.find(game => 
-          game.players.some(player => player.id === user.id)
-        );
-        
-        if (existingGame) {
-          console.log("Found existing game, selecting it:", existingGame.id);
-          setCurrentPlayerId(user.id);
-          onGameSelect(existingGame);
-        } else {
-          console.log("Could not find existing game, requesting games update once");
-          // Request an update of the games list, but only once
-          if (!hasRequestedGames) {
-            console.log("Requesting games list after error");
-            socket?.emit("get_games");
-            hasRequestedGames = true;
-          }
-        }
-      }
-    });
-
-    // Listen for game update
-    socket?.on("game_update", (game: GameState) => {
-      console.log("Received game_update for game:", game.id, "with players:", game.players);
-      // Add detailed logging
-      console.log("Current game state:", game);
-      onGameSelect(game);
-    });
-
+    // Clean up the effects
     return () => {
       unsubscribe();
-      socket?.off("game_created");
-      socket?.off("error");
-      socket?.off("game_update");
-      socket?.off("connect");
-      
-      if (requestGamesTimeoutId) {
-        clearTimeout(requestGamesTimeoutId);
-      }
+      cleanup();
     };
-  }, [onGamesUpdate, socket, user.id, onGameSelect, joinGame, games, browserSessionId]);
+  }, [onGamesUpdate, socket, user.id, onGameSelect]);
 
   const handleCreateGame = async () => {
     console.log("Creating game with user:", user);
