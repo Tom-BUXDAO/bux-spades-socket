@@ -663,10 +663,9 @@ export default function GameTable({
   return (
     <>
       <LandscapePrompt />
-      <div className="flex flex-col h-screen bg-gray-900">
+      <div className="flex flex-col h-screen bg-gray-900 pt-2">
         {/* Header */}
-        <div className="bg-gray-800 text-white px-4 py-1 flex justify-between items-center"
-             style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}>
+        <div className="bg-gray-800 text-white px-4 py-1 flex justify-between items-center mb-2">
           <div className="flex items-center space-x-4">
             <h2 className="font-bold" style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}>Game #{game.id}</h2>
             <div className="flex space-x-2">
@@ -684,7 +683,7 @@ export default function GameTable({
           </button>
         </div>
 
-        {/* Main content area */}
+        {/* Main content area - removed py-4 to eliminate extra padding */}
         <div className="flex flex-1 min-h-0">
           {/* Game table area - 70% */}
           <div className="w-[70%] p-2 flex flex-col">
