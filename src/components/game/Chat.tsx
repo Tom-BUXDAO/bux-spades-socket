@@ -169,21 +169,52 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   useEffect(() => {
     if (!activeSocket) return;
     
-    const handleMessage = (message: ChatMessage) => {
-      console.log('Received chat message:', message);
+    const handleMessage = (data: any) => {
+      console.log('Received raw chat message data:', data);
+      
+      // Handle different message formats
+      let chatMessage: ChatMessage;
+      
+      if (data.message && typeof data.message === 'object') {
+        // Case where the server wraps the message object
+        chatMessage = data.message;
+      } else if (data.userId || data.user) {
+        // Direct message object
+        chatMessage = data;
+      } else {
+        console.error('Unrecognized chat message format:', data);
+        return;
+      }
+      
+      // Ensure message has an ID and timestamp
+      if (!chatMessage.id) {
+        chatMessage.id = `${Date.now()}-${chatMessage.userId || 'server'}-${Math.random().toString(36).substr(2, 9)}`;
+      }
+      
+      if (!chatMessage.timestamp) {
+        chatMessage.timestamp = Date.now();
+      }
+      
+      console.log('Processed chat message:', chatMessage);
+      
       setMessages(prev => {
         // Deduplicate messages by id if id exists
-        if (message.id && prev.some(m => m.id === message.id)) {
+        if (chatMessage.id && prev.some(m => m.id === chatMessage.id)) {
           return prev;
         }
-        return [...prev, message];
+        return [...prev, chatMessage];
       });
     };
 
+    // Listen for direct chat messages
     activeSocket.on('chat_message', handleMessage);
+    
+    // Some servers might use this event name instead
+    activeSocket.on('chat', handleMessage);
 
     return () => {
       activeSocket.off('chat_message', handleMessage);
+      activeSocket.off('chat', handleMessage);
     };
   }, [activeSocket]);
 
@@ -199,25 +230,26 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
     try {
       // Generate a unique ID for this message
       const messageId = `${Date.now()}-${userId}-${Math.random().toString(36).substr(2, 9)}`;
-  
-      const chatMessage: ChatMessage = {
+
+      const chatMessage = {
         id: messageId,
-        userName,
+        userName: userName,
         userId: userId,
         message: inputValue.trim(),
-        text: inputValue.trim(), // For compatibility
-        user: userName, // For compatibility
         timestamp: Date.now()
       };
-  
+
       console.log('Sending chat message:', chatMessage, 'to game:', gameId);
       
-      // Use the utility function from socket.ts
-      sendChatMessage(activeSocket, gameId, chatMessage);
-  
+      // Try both methods of sending the message
+      activeSocket.emit('chat_message', {
+        gameId,
+        message: chatMessage
+      });
+      
       // Add the message to our local state immediately (optimistic UI)
-      setMessages(prev => [...prev, chatMessage]);
-  
+      setMessages(prev => [...prev, chatMessage as ChatMessage]);
+
       // Clear the input field
       setInputValue('');
       setShowEmojiPicker(false);
