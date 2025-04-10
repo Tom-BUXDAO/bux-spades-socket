@@ -470,53 +470,46 @@ export default function GameTable({
       "absolute right-0 top-1/2 -translate-y-1/2"     // Right
     ];
     
-    console.log("RENDERING TRICK CARDS WITH SERVER DATA");
+    console.log("RENDERING TRICK CARDS - ULTRA SIMPLE VERSION");
     console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`).join(", "));
     console.log("My position:", myPosition);
     
-    // Use the cardPlayers state to get who played each card
-    const playerPositions = game.players.reduce((acc, player) => {
-      if (player.position !== undefined) {
-        acc[player.id] = player.position;
+    // Find all player positions by ID for quick lookup
+    const playerPositionsById = game.players.reduce((map, player) => {
+      if (player.id) {
+        map[player.id] = player.position !== undefined ? player.position : 0;
       }
-      return acc;
+      return map;
     }, {} as Record<string, number>);
     
-    // Calculate which player played which card by using the server's turn order
-    // The game.currentPlayer is the next player to play
-    // We can work backwards from there to identify who played each card
-    const cardPlayerInfo = game.currentTrick.map((card, index) => {
-      const playerIds = game.players.map(p => p.id);
-      const currentPlayerIndex = playerIds.indexOf(game.currentPlayer);
-      
-      // The player who played this card is (currentPlayerIndex - (remaining cards) + player count) % player count
-      const cardsRemaining = game.currentTrick.length - index;
-      const playerIndex = (currentPlayerIndex - cardsRemaining + playerIds.length) % playerIds.length;
-      const playerId = playerIds[playerIndex];
-      const player = game.players.find(p => p.id === playerId);
-      
-      return {
-        card,
-        playerId,
-        playerName: player?.name || "Unknown",
-        playerPosition: player?.position
-      };
-    });
+    // CRITICAL FIX: Instead of calculating who played which card,
+    // get the real data from the server's events
+    // The server ACTUALLY tells us this in the logs - we should trust that!
     
-    console.log("Card player info:", cardPlayerInfo);
+    // We'll create a simple map for the display position
+    // We know there are only 4 possible positions (0-3)
     
     return (
       <div className="relative" style={{ 
         width: `${Math.floor(200 * scaleFactor)}px`, 
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
-        {cardPlayerInfo.map((info, index) => {
-          // Calculate the relative position (0-3) for this card
-          // This is the player's position relative to the current player
-          const playerPos = info.playerPosition !== undefined ? info.playerPosition : 0;
+        {game.currentTrick.map((card, index) => {
+          // In a 4-player game, relative display positions are fixed:
+          // Your cards (position 0) show at the bottom
+          // Player to your left (position 1) shows at left
+          // Player across (position 2) shows at top
+          // Player to your right (position 3) shows at right
+          
+          // If we have a cardPlayers record, use it
+          const playerId = cardPlayers[index];
+          const player = playerId ? game.players.find(p => p.id === playerId) : null;
+          const playerPos = player?.position ?? 0;
+          
+          // Calculate display position relative to current player's view
           const relativePos = (playerPos - myPosition + 4) % 4;
           
-          console.log(`Card ${index} (${info.card.rank}${info.card.suit}) played by ${info.playerName} at position ${playerPos}, showing at relative position ${relativePos}`);
+          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPos}, showing at relative position ${relativePos}`);
           
           return (
             <div 
@@ -529,8 +522,8 @@ export default function GameTable({
               }}
             >
               <Image
-                src={`/cards/${getCardImage(info.card)}`}
-                alt={`${info.card.rank}${info.card.suit}`}
+                src={`/cards/${getCardImage(card)}`}
+                alt={`${card.rank}${card.suit}`}
                 width={trickCardWidth}
                 height={trickCardHeight}
                 className="rounded-lg shadow-md"
