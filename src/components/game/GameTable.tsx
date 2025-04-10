@@ -328,7 +328,7 @@ export default function GameTable({
     }
   };
 
-  // Update the getCardDisplayPosition function for correct card placement
+  // Simplify the card positioning logic to match player positions directly
   const getCardDisplayPosition = (cardIndex: number): number => {
     if (!game.currentTrick || game.currentTrick.length <= cardIndex) {
       console.error(`Invalid trick index: ${cardIndex} for trick of length ${game.currentTrick?.length || 0}`);
@@ -347,18 +347,10 @@ export default function GameTable({
     // (leadingPosition + cardIndex) % 4 gives the position of the player who played this card
     const cardPlayedByPosition = (leadingPlayerPosition + cardIndex) % 4;
     
-    // Now, convert to visual position from current player's perspective
-    // If I'm at position 0, then positions 0,1,2,3 correspond to visual positions 0,1,2,3 (S,W,N,E)
-    // If I'm at position 1, then positions 0,1,2,3 correspond to visual positions 3,0,1,2 (E,S,W,N)
-    // And so on...
-    const myPosition = currentPlayer?.position || 0;
+    // Simply return the position directly - card should appear at the same position as the player
+    console.log(`Card ${cardIndex} played by player at position ${cardPlayedByPosition}, showing at position ${cardPlayedByPosition}`);
     
-    // Calculate the visual position ((cardPlayedByPosition - myPosition) + 4) % 4
-    const visualPosition = (cardPlayedByPosition - myPosition + 4) % 4;
-    
-    console.log(`Card ${cardIndex} played by player at position ${cardPlayedByPosition}, showing at visual position ${visualPosition}`);
-    
-    return visualPosition;
+    return cardPlayedByPosition;
   };
   
   // Helper function to determine the position of the player who led the trick
@@ -706,8 +698,7 @@ export default function GameTable({
     onLeaveTable();
   };
 
-  // Replace the trick card rendering part with improved positioning
-  // In the main render function, find where the trick cards are rendered
+  // Replace the trick card rendering part with direct position mapping
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
@@ -723,24 +714,23 @@ export default function GameTable({
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          const visualPosition = getCardDisplayPosition(index);
+          const position = getCardDisplayPosition(index);
           
-          // Calculate position based on the player's visual position
-          // These positions align with the player avatars (South, West, North, East)
+          // Fixed position classes that match player positions
+          // 0: bottom, 1: left, 2: top, 3: right
           let positionClass;
-          let style = {};
           
-          switch(visualPosition) {
-            case 0: // South (bottom) position
+          switch(position) {
+            case 0: // Bottom position
               positionClass = "absolute bottom-0 left-1/2 -translate-x-1/2";
               break;
-            case 1: // West (left) position
+            case 1: // Left position
               positionClass = "absolute left-0 top-1/2 -translate-y-1/2";
               break;
-            case 2: // North (top) position
+            case 2: // Top position
               positionClass = "absolute top-0 left-1/2 -translate-x-1/2";
               break;
-            case 3: // East (right) position
+            case 3: // Right position
               positionClass = "absolute right-0 top-1/2 -translate-y-1/2";
               break;
             default:
@@ -752,7 +742,6 @@ export default function GameTable({
             <div 
               key={`trick-card-${index}`} 
               className={positionClass}
-              style={style}
             >
               <Image
                 src={`/cards/${getCardImage(card)}`}
@@ -767,7 +756,7 @@ export default function GameTable({
         
         {/* Add indicator for leading suit */}
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
-              style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
+             style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
           Lead: {game.currentTrick[0].suit}
         </div>
       </div>
