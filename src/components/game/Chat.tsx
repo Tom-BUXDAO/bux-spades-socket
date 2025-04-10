@@ -141,21 +141,29 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
     };
   }, [activeSocket, gameId, userId]);
 
-  // Get a player's avatar
+  // Get a player's avatar - updated to match GameTable.tsx logic
   const getPlayerAvatar = (playerId: string): string => {
+    // Find the player in the players array
+    const player = players.find(p => p.id === playerId);
+    
+    // Type guard for image property
+    if (player && 'image' in player && player.image) {
+      return player.image as string;
+    }
+    
     // Discord user ID (numeric string)
     if (playerId && /^\d+$/.test(playerId)) {
       // For Discord users without an avatar hash or with invalid avatar, use the default Discord avatar
       return `https://cdn.discordapp.com/embed/avatars/${parseInt(playerId) % 5}.png`;
     }
     
-    // Guest user
+    // Guest user, use default avatar
     if (playerId && playerId.startsWith('guest_')) {
-      return 'https://api.dicebear.com/7.x/bottts/svg?seed=' + playerId;
+      return GUEST_AVATAR;
     }
     
-    // Fallback to default avatar
-    return 'https://api.dicebear.com/7.x/bottts/svg?seed=default';
+    // Fallback to bot avatar
+    return BOT_AVATAR;
   };
 
   useEffect(() => {
@@ -186,7 +194,7 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || !activeSocket || !isConnected) return;
+    if (!inputValue.trim() || !activeSocket) return; // Removed isConnected check
 
     try {
       // Generate a unique ID for this message
@@ -202,6 +210,8 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
         timestamp: Date.now()
       };
   
+      console.log('Sending chat message:', chatMessage, 'to game:', gameId);
+      
       // Send the message to the server
       activeSocket.emit('chat_message', {
         gameId,
