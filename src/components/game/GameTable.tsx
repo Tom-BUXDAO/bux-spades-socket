@@ -335,12 +335,50 @@ export default function GameTable({
     console.log('Socket connected:', socket?.connected);
   };
 
+  // A completely simple approach to tracking cards
+  useEffect(() => {
+    // When the currentPlayer changes, that means someone played a card
+    // The previous player (who just finished their turn) played the last card
+    
+    // Get the length of the current trick
+    const trickLength = game.currentTrick.length;
+    
+    // If the trick just started, reset our tracking
+    if (trickLength === 0) {
+      setCardPlayers({});
+      return;
+    }
+    
+    // Skip if we have already recorded this card (the last one played)
+    const lastCardIndex = trickLength - 1;
+    if (lastCardIndex in cardPlayers) {
+      return;
+    }
+    
+    // Get the previous player who just played (the player before current player)
+    const playerIds = game.players.map(p => p.id);
+    const currentIndex = playerIds.indexOf(game.currentPlayer);
+    
+    // The player who just played is always the one right before the current player
+    const previousIndex = (currentIndex - 1 + playerIds.length) % playerIds.length;
+    const previousPlayerId = playerIds[previousIndex];
+    
+    // Log who played what
+    const previousPlayer = game.players.find(p => p.id === previousPlayerId);
+    const card = game.currentTrick[lastCardIndex];
+    console.log(`TRACKED: ${previousPlayer?.name} (${previousPlayerId}) played ${card?.rank}${card?.suit} as card ${lastCardIndex}`);
+    
+    // Update our tracking
+    setCardPlayers(prev => ({ ...prev, [lastCardIndex]: previousPlayerId }));
+  }, [game.currentPlayer, game.currentTrick.length]);
+
+  // When WE play a card, we need to record that immediately
   const handlePlayCard = (card: Card) => {
     if (!socket || !currentPlayerId || !currentPlayer) return;
 
     // Validate if it's player's turn
     if (game.currentPlayer !== currentPlayerId) {
-      console.error(`Cannot play card: Not your turn. Current player is ${game.currentPlayer}, you are ${currentPlayerId}`);
+      console.error(`Cannot play card: Not your turn`);
       return;
     }
     
@@ -354,68 +392,99 @@ export default function GameTable({
 
     console.log(`Playing card: ${card.rank}${card.suit}`);
     
-    try {
-      // CRITICAL: Store which player is playing this card
-      // This is the ONLY place we track who plays cards
-      const newCardPlayers = { ...cardPlayers };
-      newCardPlayers[game.currentTrick.length] = currentPlayerId;
-      setCardPlayers(newCardPlayers);
-      
-      console.log(`RECORDED: ${currentPlayer.name} playing card at position ${game.currentTrick.length}`);
-      
-      socket.emit("play_card", { 
-        gameId: game.id, 
-        userId: currentPlayerId, 
-        card 
-      });
-    } catch (error) {
-      console.error('Error playing card:', error);
-    }
+    // Record that I am playing this card at this position
+    setCardPlayers(prev => ({ 
+      ...prev, 
+      [game.currentTrick.length]: currentPlayerId 
+    }));
+    
+    // Send the play to the server
+    socket.emit("play_card", { 
+      gameId: game.id, 
+      userId: currentPlayerId, 
+      card 
+    });
   };
 
-  // Add a very direct listener for when the current trick changes
-  useEffect(() => {
-    if (!game.currentTrick) return;
-    
-    console.log("CURRENT TRICK CHANGED:", game.currentTrick);
-    console.log("Current cardPlayers:", cardPlayers);
-    
-    // If the trick is empty, reset our tracking
-    if (game.currentTrick.length === 0) {
-      setCardPlayers({});
-      return;
+  // Render cards using the simplest possible approach
+  const renderTrickCards = () => {
+    if (!game.currentTrick || game.currentTrick.length === 0) {
+      return null;
     }
     
-    // If we already have this position tracked, no need to do anything
-    if (Object.keys(cardPlayers).length >= game.currentTrick.length) {
-      return;
-    }
+    // Scale the card size for the trick
+    const trickCardWidth = Math.floor(60 * scaleFactor); 
+    const trickCardHeight = Math.floor(84 * scaleFactor);
     
-    // We have fewer tracked players than cards in the trick
-    // We need to figure out who played the most recent card
-    const lastCardIndex = game.currentTrick.length - 1;
+    console.log('=== RENDERING CARDS ===');
+    console.log('Current trick:', game.currentTrick);
+    console.log('Card players:', cardPlayers);
+    console.log('My position:', currentPlayer?.position);
     
-    // If we don't already have this card position tracked
-    if (!(lastCardIndex in cardPlayers)) {
-      // We need to infer who played this card
-      // It should be the player right before the current player in turn order
-      const playerIds = game.players.map(p => p.id);
-      const currentPlayerIndex = playerIds.indexOf(game.currentPlayer);
-      
-      if (currentPlayerIndex !== -1) {
-        // The player who played the last card is the one before the current player
-        const previousPlayerIndex = (currentPlayerIndex - 1 + playerIds.length) % playerIds.length;
-        const previousPlayerId = playerIds[previousPlayerIndex];
+    return (
+      <div className="relative" style={{ 
+        width: `${Math.floor(200 * scaleFactor)}px`, 
+        height: `${Math.floor(200 * scaleFactor)}px` 
+      }}>
+        {Object.entries(cardPlayers).map(([cardIdx, playerId]) => {
+          // Look up which player and card this is
+          const player = game.players.find(p => p.id === playerId);
+          const card = game.currentTrick[parseInt(cardIdx)];
+          
+          // Skip if we don't have a player or card
+          if (!player || !player.position || !card) return null;
+          
+          // Calculate relative position from current player's view
+          const myPosition = currentPlayer?.position ?? 0;
+          const relativePosition = (player.position - myPosition + 4) % 4;
+          
+          console.log(`Card ${cardIdx}: ${card.rank}${card.suit} played by ${player.name} (pos ${player.position}), showing at position ${relativePosition}`);
+          
+          // Fixed positions for cards
+          let positionClass;
+          switch (relativePosition) {
+            case 0: // Bottom - current player's position
+              positionClass = "absolute bottom-0 left-1/2 -translate-x-1/2";
+              break;
+            case 1: // Left - player to the left of current player
+              positionClass = "absolute left-0 top-1/2 -translate-y-1/2";
+              break;
+            case 2: // Top - player opposite to current player
+              positionClass = "absolute top-0 left-1/2 -translate-x-1/2";
+              break;
+            case 3: // Right - player to the right of current player
+              positionClass = "absolute right-0 top-1/2 -translate-y-1/2";
+              break;
+            default:
+              positionClass = "absolute";
+          }
+          
+          return (
+            <div 
+              key={`card-${cardIdx}`} 
+              className={positionClass}
+            >
+              <Image
+                src={`/cards/${getCardImage(card)}`}
+                alt={`${card.rank}${card.suit}`}
+                width={trickCardWidth}
+                height={trickCardHeight}
+                className="rounded-lg shadow-md"
+              />
+            </div>
+          );
+        })}
         
-        console.log(`INFERRED: Player ${previousPlayerId} played card at position ${lastCardIndex}`);
-        
-        // Update our tracking
-        const newCardPlayers = { ...cardPlayers };
-        newCardPlayers[lastCardIndex] = previousPlayerId;
-        setCardPlayers(newCardPlayers);
-      }
-    }
-  }, [game.currentTrick, game.currentPlayer, game.players]);
+        {/* Lead suit indicator */}
+        {game.currentTrick[0] && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
+               style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
+            Lead: {game.currentTrick[0].suit}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const handleLeaveTable = () => {
     if (currentPlayerId && socket) {
@@ -452,96 +521,6 @@ export default function GameTable({
     } catch (error) {
       console.error("Failed to start game:", error);
     }
-  };
-
-  // This is a complete rewrite of the renderTrickCards function
-  // Focus on absolute simplicity - we look up the player for each card
-  const renderTrickCards = () => {
-    if (!game.currentTrick || game.currentTrick.length === 0) {
-      return null;
-    }
-    
-    // Scale the card size for the trick
-    const trickCardWidth = Math.floor(60 * scaleFactor); 
-    const trickCardHeight = Math.floor(84 * scaleFactor);
-    
-    console.log('---------- RENDERING TRICK CARDS ----------');
-    console.log('Current trick:', game.currentTrick);
-    console.log('Card players mapping:', cardPlayers);
-    
-    return (
-      <div className="relative" style={{ 
-        width: `${Math.floor(200 * scaleFactor)}px`, 
-        height: `${Math.floor(200 * scaleFactor)}px` 
-      }}>
-        {/* We iterate through cardPlayers instead of the trick */}
-        {Object.entries(cardPlayers).map(([index, playerId]) => {
-          // Look up which player this is
-          const player = game.players.find(p => p.id === playerId);
-          if (!player || player.position === undefined) {
-            console.error(`Cannot find player for ${playerId} or player has no position`);
-            return null;
-          }
-          
-          // Get the card from the trick
-          const cardIndex = parseInt(index);
-          const card = game.currentTrick[cardIndex];
-          if (!card) {
-            console.error(`No card found at index ${cardIndex}`);
-            return null;
-          }
-          
-          // SUPER SIMPLE RELATIVE POSITION CALCULATION
-          // This player's position relative to the current player's view
-          const myPosition = currentPlayer?.position ?? 0;
-          const relativePos = (player.position - myPosition + 4) % 4;
-          
-          console.log(`Card ${index}: ${card.rank}${card.suit} played by ${player.name} (pos ${player.position}), showing at position ${relativePos}`);
-          
-          // Fixed absolute positions for each relative position
-          let positionClass;
-          switch (relativePos) {
-            case 0: // Bottom - current player's position
-              positionClass = "absolute bottom-0 left-1/2 -translate-x-1/2";
-              break;
-            case 1: // Left - player to the left of current player
-              positionClass = "absolute left-0 top-1/2 -translate-y-1/2";
-              break;
-            case 2: // Top - player opposite to current player
-              positionClass = "absolute top-0 left-1/2 -translate-x-1/2";
-              break;
-            case 3: // Right - player to the right of current player
-              positionClass = "absolute right-0 top-1/2 -translate-y-1/2";
-              break;
-            default:
-              positionClass = "absolute";
-          }
-          
-          return (
-            <div 
-              key={`trick-card-${index}`} 
-              className={positionClass}
-            >
-              <Image
-                src={`/cards/${getCardImage(card)}`}
-                alt={`${card.rank}${card.suit}`}
-                width={trickCardWidth}
-                height={trickCardHeight}
-                className="rounded-lg shadow-md"
-              />
-            </div>
-          );
-        })}
-        
-        {/* Leading suit indicator */}
-        {game.currentTrick[0] && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
-               style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
-            Lead: {game.currentTrick[0].suit}
-          </div>
-        )}
-      </div>
-    );
   };
 
   const handleWinnerClose = () => {
