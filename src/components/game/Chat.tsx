@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useSocket } from '@/lib/socket';
+import { useSocket, sendChatMessage } from '@/lib/socket';
 import type { Socket } from 'socket.io-client';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
@@ -194,7 +194,7 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || !activeSocket) return; // Removed isConnected check
+    if (!inputValue.trim() || !activeSocket) return;
 
     try {
       // Generate a unique ID for this message
@@ -212,11 +212,8 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   
       console.log('Sending chat message:', chatMessage, 'to game:', gameId);
       
-      // Send the message to the server
-      activeSocket.emit('chat_message', {
-        gameId,
-        ...chatMessage
-      });
+      // Use the utility function from socket.ts
+      sendChatMessage(activeSocket, gameId, chatMessage);
   
       // Add the message to our local state immediately (optimistic UI)
       setMessages(prev => [...prev, chatMessage]);

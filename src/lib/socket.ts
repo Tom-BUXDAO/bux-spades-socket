@@ -295,6 +295,22 @@ export function playCard(socket: typeof Socket | null, gameId: string, userId: s
 }
 
 export function sendChatMessage(socket: typeof Socket | null, gameId: string, message: any) {
-  if (!socket) return;
-  socket.emit('chat_message', { gameId, message });
+  if (!socket) {
+    console.error('Cannot send chat message: socket is null');
+    return;
+  }
+  
+  try {
+    console.log(`Sending chat message to game ${gameId}:`, message);
+    
+    // Ensure the message has all required fields
+    const chatMessage = {
+      gameId,
+      ...message
+    };
+    
+    socket.emit('chat_message', chatMessage);
+  } catch (error) {
+    console.error('Error sending chat message:', error);
+  }
 } 
