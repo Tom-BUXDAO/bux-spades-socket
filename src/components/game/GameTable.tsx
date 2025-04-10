@@ -435,32 +435,36 @@ export default function GameTable({
       return -1;
     }
     
-    // In the game state, we always know the currentPlayer (next to play)
-    // To find who led the trick, we need to go back [tricklength] positions from currentPlayer
-    const currentPlayerIdx = game.players.findIndex(p => p.id === game.currentPlayer);
+    // The problem is that we're using an incorrect approach to find the leading player
+    // We just need to go backward from the current player by the number of cards played
+    
+    // Get indices of all players in original order
+    const playerIds = game.players.map(p => p.id);
+    
+    // Find the index of the current player (next to play)
+    const currentPlayerIdx = playerIds.indexOf(game.currentPlayer);
     if (currentPlayerIdx === -1) {
       console.error("Current player not found in players array");
       return -1;
     }
     
-    // Find the player who started the trick
-    // If 2 cards played and current player is at position 2, then player at position 0 led
-    const leadingPlayerIdx = (currentPlayerIdx - game.currentTrick.length + 4) % 4;
+    // Calculate who played first in this trick by going backwards
+    // For example, if 1 card has been played and currentPlayerIdx is 0,
+    // then player at index 3 played first (moving clockwise)
+    const leadingPlayerIdx = (currentPlayerIdx - game.currentTrick.length + playerIds.length) % playerIds.length;
     
-    // Get the position value (0-3) for this player
-    const leadingPlayerPosition = game.players[leadingPlayerIdx]?.position;
+    // Get the player who led the trick
+    const leadingPlayer = game.players[leadingPlayerIdx];
     
-    if (leadingPlayerPosition === undefined) {
-      console.error("Leading player position is undefined", {
-        currentPlayerIdx,
-        leadingPlayerIdx,
-        tricklength: game.currentTrick.length,
-        players: game.players
-      });
+    // Return the position (0-3) of the leading player
+    if (!leadingPlayer || leadingPlayer.position === undefined) {
+      console.error("Leading player or position is undefined");
       return -1;
     }
     
-    return leadingPlayerPosition;
+    console.log(`Current player: ${game.currentPlayer} at idx ${currentPlayerIdx}, trick length: ${game.currentTrick.length}, leading player: ${leadingPlayer.name} at position ${leadingPlayer.position}`);
+    
+    return leadingPlayer.position;
   };
   
   // Add some debugging info for cards
