@@ -328,7 +328,21 @@ export default function GameTable({
     }
   };
 
-  // Simplify the card positioning logic to match player positions directly
+  // Convert a player's absolute position to a visual position relative to the current player
+  const getRelativePosition = (absolutePosition: number): number => {
+    // Get the current player's position (0,1,2,3)
+    const myPosition = currentPlayer?.position ?? 0;
+    
+    // Calculate relative position - this rotates the view so current player is always at bottom (0)
+    // (absolutePosition - myPosition + 4) % 4 gives the position relative to current player:
+    // 0 = bottom/South (current player's position)
+    // 1 = left/West (player to the left of current player)
+    // 2 = top/North (player across from current player)
+    // 3 = right/East (player to the right of current player)
+    return (absolutePosition - myPosition + 4) % 4;
+  };
+  
+  // Update the card positioning logic to account for player rotation
   const getCardDisplayPosition = (cardIndex: number): number => {
     if (!game.currentTrick || game.currentTrick.length <= cardIndex) {
       console.error(`Invalid trick index: ${cardIndex} for trick of length ${game.currentTrick?.length || 0}`);
@@ -347,10 +361,12 @@ export default function GameTable({
     // (leadingPosition + cardIndex) % 4 gives the position of the player who played this card
     const cardPlayedByPosition = (leadingPlayerPosition + cardIndex) % 4;
     
-    // Simply return the position directly - card should appear at the same position as the player
-    console.log(`Card ${cardIndex} played by player at position ${cardPlayedByPosition}, showing at position ${cardPlayedByPosition}`);
+    // Convert the absolute position to a relative position from current player's perspective
+    const relativePosition = getRelativePosition(cardPlayedByPosition);
     
-    return cardPlayedByPosition;
+    console.log(`Card ${cardIndex} played by player at position ${cardPlayedByPosition}, showing at relative position ${relativePosition}`);
+    
+    return relativePosition;
   };
   
   // Helper function to determine the position of the player who led the trick
@@ -698,7 +714,7 @@ export default function GameTable({
     onLeaveTable();
   };
 
-  // Replace the trick card rendering part with direct position mapping
+  // Render the trick cards with proper perspective rotation
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
@@ -714,23 +730,23 @@ export default function GameTable({
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          const position = getCardDisplayPosition(index);
+          const relativePosition = getCardDisplayPosition(index);
           
-          // Fixed position classes that match player positions
-          // 0: bottom, 1: left, 2: top, 3: right
+          // Fixed position classes based on relative position to the current player
+          // 0: bottom (current player), 1: left, 2: top, 3: right
           let positionClass;
           
-          switch(position) {
-            case 0: // Bottom position
+          switch(relativePosition) {
+            case 0: // Bottom position (current player)
               positionClass = "absolute bottom-0 left-1/2 -translate-x-1/2";
               break;
-            case 1: // Left position
+            case 1: // Left position (player to current player's left)
               positionClass = "absolute left-0 top-1/2 -translate-y-1/2";
               break;
-            case 2: // Top position
+            case 2: // Top position (player across from current player)
               positionClass = "absolute top-0 left-1/2 -translate-x-1/2";
               break;
-            case 3: // Right position
+            case 3: // Right position (player to current player's right)
               positionClass = "absolute right-0 top-1/2 -translate-y-1/2";
               break;
             default:
