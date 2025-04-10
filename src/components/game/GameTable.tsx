@@ -714,7 +714,7 @@ export default function GameTable({
     onLeaveTable();
   };
 
-  // Render the trick cards with proper perspective rotation
+  // Render the trick cards with fixed positions once placed
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
@@ -730,29 +730,46 @@ export default function GameTable({
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          const relativePosition = getCardDisplayPosition(index);
+          // Get the position of the player who played this card
+          const leadingPlayerPosition = getLeadingPlayerPosition();
+          if (leadingPlayerPosition === -1) {
+            console.error("Could not determine leading player position");
+            return null;
+          }
           
-          // Fixed position classes based on relative position to the current player
-          // 0: bottom (current player), 1: left, 2: top, 3: right
+          // Calculate which player played this card - this is the absolute position in the game
+          const playerWhoPlayedCardPosition = (leadingPlayerPosition + index) % 4;
+          
+          // Find the player object based on position
+          const playerWhoPlayedCard = game.players.find(p => p.position === playerWhoPlayedCardPosition);
+          if (!playerWhoPlayedCard) {
+            console.error(`Could not find player at position ${playerWhoPlayedCardPosition}`);
+            return null;
+          }
+          
+          // Calculate fixed position based on the player's position
+          // Position 0: Bottom, 1: Left, 2: Top, 3: Right
           let positionClass;
           
-          switch(relativePosition) {
-            case 0: // Bottom position (current player)
+          switch(playerWhoPlayedCardPosition) {
+            case 0: // Bottom player's position
               positionClass = "absolute bottom-0 left-1/2 -translate-x-1/2";
               break;
-            case 1: // Left position (player to current player's left)
+            case 1: // Left player's position
               positionClass = "absolute left-0 top-1/2 -translate-y-1/2";
               break;
-            case 2: // Top position (player across from current player)
+            case 2: // Top player's position
               positionClass = "absolute top-0 left-1/2 -translate-x-1/2";
               break;
-            case 3: // Right position (player to current player's right)
+            case 3: // Right player's position
               positionClass = "absolute right-0 top-1/2 -translate-y-1/2";
               break;
             default:
               positionClass = "absolute";
               break;
           }
+          
+          console.log(`Card ${index} played by player ${playerWhoPlayedCard.name} at position ${playerWhoPlayedCardPosition}, staying at fixed position ${playerWhoPlayedCardPosition}`);
           
           return (
             <div 
