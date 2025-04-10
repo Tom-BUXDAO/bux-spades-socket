@@ -449,7 +449,7 @@ export default function GameTable({
     });
   };
 
-  // Render cards based directly on the event data from the server
+  // Completely rewritten renderTrickCards function - ultra simple approach
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
@@ -459,35 +459,19 @@ export default function GameTable({
     const trickCardWidth = Math.floor(60 * scaleFactor); 
     const trickCardHeight = Math.floor(84 * scaleFactor);
     
-    // Get the position of the current player
-    const myPosition = currentPlayer?.position ?? 0;
-    
-    // Position classes for the four card positions
+    // Fixed positions for the four visual positions
     const positionClasses = [
-      "absolute bottom-0 left-1/2 -translate-x-1/2",  // Bottom (User's position)
-      "absolute left-0 top-1/2 -translate-y-1/2",     // Left  
-      "absolute top-0 left-1/2 -translate-x-1/2",     // Top
-      "absolute right-0 top-1/2 -translate-y-1/2"     // Right
+      "absolute bottom-0 left-1/2 -translate-x-1/2",  // Position 0 (bottom)
+      "absolute left-0 top-1/2 -translate-y-1/2",     // Position 1 (left)  
+      "absolute top-0 left-1/2 -translate-x-1/2",     // Position 2 (top)
+      "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
     ];
     
-    console.log("RENDERING TRICK CARDS - ULTRA SIMPLE VERSION");
+    console.log("RENDERING TRICK CARDS - SIMPLIFIED");
     console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`).join(", "));
+    
+    const myPosition = currentPlayer?.position ?? 0;
     console.log("My position:", myPosition);
-    
-    // Find all player positions by ID for quick lookup
-    const playerPositionsById = game.players.reduce((map, player) => {
-      if (player.id) {
-        map[player.id] = player.position !== undefined ? player.position : 0;
-      }
-      return map;
-    }, {} as Record<string, number>);
-    
-    // CRITICAL FIX: Instead of calculating who played which card,
-    // get the real data from the server's events
-    // The server ACTUALLY tells us this in the logs - we should trust that!
-    
-    // We'll create a simple map for the display position
-    // We know there are only 4 possible positions (0-3)
     
     return (
       <div className="relative" style={{ 
@@ -495,30 +479,25 @@ export default function GameTable({
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          // In a 4-player game, relative display positions are fixed:
-          // Your cards (position 0) show at the bottom
-          // Player to your left (position 1) shows at left
-          // Player across (position 2) shows at top
-          // Player to your right (position 3) shows at right
-          
-          // If we have a cardPlayers record, use it
+          // Get the player who played this card from our tracking
           const playerId = cardPlayers[index];
           const player = playerId ? game.players.find(p => p.id === playerId) : null;
-          const playerPos = player?.position ?? 0;
           
-          // Calculate display position relative to current player's view
-          const relativePos = (playerPos - myPosition + 4) % 4;
+          // Get the player's position (0-3)
+          const playerPosition = player?.position ?? 0;
           
-          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPos}, showing at relative position ${relativePos}`);
+          // Calculate the position relative to the current player's view
+          const relativePosition = (playerPosition - myPosition + 4) % 4;
+          
+          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}, showing at position ${relativePosition}`);
           
           return (
             <div 
               key={`trick-card-${index}`} 
-              className={positionClasses[relativePos]}
+              className={positionClasses[relativePosition]}
               data-testid={`trick-card-${index}`}
               style={{
-                zIndex: 10 + index,
-                transform: `translate(${index * 3}px, ${index * 3}px)`
+                zIndex: 10 + index
               }}
             >
               <Image
