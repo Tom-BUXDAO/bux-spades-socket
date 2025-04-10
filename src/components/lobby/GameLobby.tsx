@@ -317,7 +317,7 @@ export default function GameLobby({
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto p-4 space-y-6 min-h-screen overflow-y-auto pb-20">
       {/* Header with user info and logout */}
       <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg shadow-md">
         <div>

@@ -137,7 +137,7 @@ export default function GamePage() {
   }
 
   return (
-    <main className="container mx-auto p-4">
+    <main className="container mx-auto p-4 min-h-screen overflow-y-auto">
       {currentGame ? (
         <GameTable 
           game={currentGame} 
