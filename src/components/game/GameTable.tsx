@@ -335,78 +335,52 @@ export default function GameTable({
     console.log('Socket connected:', socket?.connected);
   };
 
-  // A completely simple approach to tracking cards
+  // Remove all the complex tracking logic and rewrite from scratch
   useEffect(() => {
-    // When the currentPlayer changes, that means someone played a card
-    // The previous player (who just finished their turn) played the last card
-    
-    // Get the length of the current trick
-    const trickLength = game.currentTrick.length;
-    
-    // If the trick just started, reset our tracking
-    if (trickLength === 0) {
+    // When a new trick starts, reset our tracking
+    if (game.currentTrick.length === 0) {
       setCardPlayers({});
       return;
     }
-    
-    // Skip if we have already recorded this card (the last one played)
-    const lastCardIndex = trickLength - 1;
-    if (lastCardIndex in cardPlayers) {
-      return;
-    }
-    
-    // Get the previous player who just played (the player before current player)
-    const playerIds = game.players.map(p => p.id);
-    const currentIndex = playerIds.indexOf(game.currentPlayer);
-    
-    // The player who just played is always the one right before the current player
-    const previousIndex = (currentIndex - 1 + playerIds.length) % playerIds.length;
-    const previousPlayerId = playerIds[previousIndex];
-    
-    // Log who played what
-    const previousPlayer = game.players.find(p => p.id === previousPlayerId);
-    const card = game.currentTrick[lastCardIndex];
-    console.log(`TRACKED: ${previousPlayer?.name} (${previousPlayerId}) played ${card?.rank}${card?.suit} as card ${lastCardIndex}`);
-    
-    // Update our tracking
-    setCardPlayers(prev => ({ ...prev, [lastCardIndex]: previousPlayerId }));
-  }, [game.currentPlayer, game.currentTrick.length]);
 
-  // Additional effect to ensure all cards are tracked
-  // This is a safety net to make sure all cards have players assigned
-  useEffect(() => {
-    // Skip if trick is empty
-    if (game.currentTrick.length === 0) return;
+    // If the server sends us a complete trick, we need to reconstruct who played each card
+    // We know for sure:
+    // 1. The server knows the play order
+    // 2. The current player is always the next person to play
+    // 3. The order is always clockwise (players at positions 0, 1, 2, 3)
     
-    // For each card, ensure we have a player assigned
-    let needsUpdate = false;
-    const updatedCardPlayers = { ...cardPlayers };
-    
-    for (let i = 0; i < game.currentTrick.length; i++) {
-      // If this card position isn't assigned to a player yet
-      if (!(i in cardPlayers)) {
-        const playerIds = game.players.map(p => p.id);
-        // If we're at the first position and first player is Tom
-        if (i === 0 && currentPlayerId === playerIds[0]) {
-          // This means Tom played the first card
-          console.log(`SAFETY: Assigning first card to Tom (${playerIds[0]})`);
-          updatedCardPlayers[i] = currentPlayerId;
-          needsUpdate = true;
-        } else {
-          // Otherwise count backward from current player
-          const currentIndex = playerIds.indexOf(game.currentPlayer);
-          const playerIndex = (currentIndex - (game.currentTrick.length - i) + playerIds.length) % playerIds.length;
-          const playerId = playerIds[playerIndex];
-          console.log(`SAFETY: Assigning card ${i} to ${playerId}`);
-          updatedCardPlayers[i] = playerId;
-          needsUpdate = true;
-        }
+    // Get all playerIds in position order (not the rotated order)
+    const orderedPlayerIds: (string | undefined)[] = [];
+    for (let i = 0; i < 4; i++) {
+      const player = game.players.find(p => p.position === i);
+      if (player) {
+        orderedPlayerIds[i] = player.id;
       }
     }
     
-    // Only update if we made changes
-    if (needsUpdate) {
-      console.log('SAFETY: Updating card players', updatedCardPlayers);
+    // The current player is always the next to play
+    const currentPlayerIndex = orderedPlayerIds.indexOf(game.currentPlayer);
+    
+    // Figure out who played each card by counting backward from current player
+    const updatedCardPlayers: Record<number, string> = {};
+    
+    // For each card in the trick
+    for (let i = 0; i < game.currentTrick.length; i++) {
+      // The player who played this card is (currentPlayerIndex - (cardsRemaining) + 4) % 4
+      const cardsRemaining = game.currentTrick.length - i;
+      const playerIndex = (currentPlayerIndex - cardsRemaining + 4) % 4;
+      const playerId = orderedPlayerIds[playerIndex];
+      
+      if (playerId) {
+        updatedCardPlayers[i] = playerId;
+        const player = game.players.find(p => p.id === playerId);
+        console.log(`SERVER DATA: Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) played by ${player?.name || 'Unknown'}`);
+      }
+    }
+    
+    // Only update if we have new information
+    if (Object.keys(updatedCardPlayers).length > 0) {
+      console.log('Updated card players from server data:', updatedCardPlayers);
       setCardPlayers(updatedCardPlayers);
     }
   }, [game.currentTrick, game.players, game.currentPlayer]);
@@ -449,7 +423,7 @@ export default function GameTable({
     });
   };
 
-  // Completely rewritten renderTrickCards function - ultra simple approach
+  // Completely rewritten renderTrickCards function
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
@@ -467,7 +441,7 @@ export default function GameTable({
       "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
     ];
     
-    console.log("RENDERING TRICK CARDS - SIMPLIFIED");
+    console.log("RENDERING TRICK CARDS - SERVER DATA");
     console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`).join(", "));
     
     const myPosition = currentPlayer?.position ?? 0;
