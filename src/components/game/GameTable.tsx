@@ -158,6 +158,10 @@ export default function GameTable({
   const [showWinner, setShowWinner] = useState(false);
   const [handScores, setHandScores] = useState<ReturnType<typeof calculateHandScore> | null>(null);
   const user = propUser || session?.user;
+  
+  // Add state to store player positions for the current trick
+  const [trickCardPositions, setTrickCardPositions] = useState<Record<number, number>>({});
+  const [lastTrickLength, setLastTrickLength] = useState(0);
 
   // Find the current player's ID
   const currentPlayerId = user?.id;
@@ -187,9 +191,36 @@ export default function GameTable({
     // Force UI update when cards are played
     if (game.currentTrick && game.currentTrick.length > 0) {
       console.log(`Current trick updated: ${game.currentTrick.length} cards played`);
+
+      // If this is a new trick (length was 0 before), or continuing the same trick (length increased)
+      if (lastTrickLength === 0 || game.currentTrick.length > lastTrickLength) {
+        // Update positions for new cards only
+        const updatedPositions = { ...trickCardPositions };
+        
+        // Calculate positions for new cards (those not already in trickCardPositions)
+        for (let i = lastTrickLength; i < game.currentTrick.length; i++) {
+          const leadingPlayerPosition = getLeadingPlayerPosition();
+          if (leadingPlayerPosition !== -1) {
+            const playerWhoPlayedCardPosition = (leadingPlayerPosition + i) % 4;
+            const relativePosition = getRelativePosition(playerWhoPlayedCardPosition);
+            updatedPositions[i] = relativePosition;
+          }
+        }
+        
+        // Update state with new positions
+        setTrickCardPositions(updatedPositions);
+      }
+      
+      // Update the last trick length
+      setLastTrickLength(game.currentTrick.length);
+      
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('gameStateChanged'));
       }
+    } else {
+      // Reset positions when a new trick starts (current trick is empty)
+      setTrickCardPositions({});
+      setLastTrickLength(0);
     }
   }, [game.currentTrick?.length]);
 
@@ -730,46 +761,60 @@ export default function GameTable({
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          // Get the position of the player who played this card
+          // Use pre-calculated position from trickCardPositions if available
+          let relativePosition = trickCardPositions[index];
+          
+          // If position not calculated yet (failsafe), calculate it now
+          if (relativePosition === undefined) {
+            const leadingPlayerPosition = getLeadingPlayerPosition();
+            if (leadingPlayerPosition === -1) {
+              console.error("Could not determine leading player position");
+              return null;
+            }
+            
+            // Calculate which player played this card - this is the absolute position in the game
+            const playerWhoPlayedCardPosition = (leadingPlayerPosition + index) % 4;
+            
+            // Convert to relative position from current player's perspective
+            relativePosition = getRelativePosition(playerWhoPlayedCardPosition);
+            
+            // Store it for future reference
+            const newPositions = { ...trickCardPositions };
+            newPositions[index] = relativePosition;
+            setTrickCardPositions(newPositions);
+          }
+          
+          // Find the player who played this card (for logging)
           const leadingPlayerPosition = getLeadingPlayerPosition();
-          if (leadingPlayerPosition === -1) {
-            console.error("Could not determine leading player position");
-            return null;
+          if (leadingPlayerPosition !== -1) {
+            const playerWhoPlayedCardPosition = (leadingPlayerPosition + index) % 4;
+            const playerWhoPlayedCard = game.players.find(p => p.position === playerWhoPlayedCardPosition);
+            if (playerWhoPlayedCard) {
+              console.log(`Card ${index} played by player ${playerWhoPlayedCard.name} at position ${playerWhoPlayedCardPosition}, showing at fixed relative position ${relativePosition}`);
+            }
           }
-          
-          // Calculate which player played this card - this is the absolute position in the game
-          const playerWhoPlayedCardPosition = (leadingPlayerPosition + index) % 4;
-          
-          // Find the player object based on position
-          const playerWhoPlayedCard = game.players.find(p => p.position === playerWhoPlayedCardPosition);
-          if (!playerWhoPlayedCard) {
-            console.error(`Could not find player at position ${playerWhoPlayedCardPosition}`);
-            return null;
-          }
-          
-          // Calculate fixed position based on the player's position
+
+          // Calculate position based on the player's RELATIVE position to current player
           // Position 0: Bottom, 1: Left, 2: Top, 3: Right
           let positionClass;
           
-          switch(playerWhoPlayedCardPosition) {
-            case 0: // Bottom player's position
+          switch(relativePosition) {
+            case 0: // Bottom/South (current player's position)
               positionClass = "absolute bottom-0 left-1/2 -translate-x-1/2";
               break;
-            case 1: // Left player's position
+            case 1: // Left/West (player to the left of current player)
               positionClass = "absolute left-0 top-1/2 -translate-y-1/2";
               break;
-            case 2: // Top player's position
+            case 2: // Top/North (player across from current player)
               positionClass = "absolute top-0 left-1/2 -translate-x-1/2";
               break;
-            case 3: // Right player's position
+            case 3: // Right/East (player to the right of current player)
               positionClass = "absolute right-0 top-1/2 -translate-y-1/2";
               break;
             default:
               positionClass = "absolute";
               break;
           }
-          
-          console.log(`Card ${index} played by player ${playerWhoPlayedCard.name} at position ${playerWhoPlayedCardPosition}, staying at fixed position ${playerWhoPlayedCardPosition}`);
           
           return (
             <div 
