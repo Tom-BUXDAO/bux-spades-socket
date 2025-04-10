@@ -141,6 +141,11 @@ function determineWinningCard(trick: Card[]): number {
   );
 }
 
+// Add a new interface to track which player played each card
+interface TrickCard extends Card {
+  playedBy?: string; // Player ID who played this card
+}
+
 export default function GameTable({ 
   game, 
   socket, 
@@ -197,13 +202,37 @@ export default function GameTable({
         // Update positions for new cards only
         const updatedPositions = { ...trickCardPositions };
         
-        // Calculate positions for new cards (those not already in trickCardPositions)
-        for (let i = lastTrickLength; i < game.currentTrick.length; i++) {
-          const leadingPlayerPosition = getLeadingPlayerPosition();
-          if (leadingPlayerPosition !== -1) {
-            const playerWhoPlayedCardPosition = (leadingPlayerPosition + i) % 4;
-            const relativePosition = getRelativePosition(playerWhoPlayedCardPosition);
-            updatedPositions[i] = relativePosition;
+        // Simple approach - there are exactly 4 players, with positions 0-3
+        // Sandra should have position 2 (across from player 0)
+        // Bob should have position 3 (to the right of player 0)
+        // Find the trick leader first
+        const leadingPlayer = game.players.find(p => {
+          // The player who played the first card in the trick
+          return p.id === game.players[(game.players.findIndex(p => p.id === game.currentPlayer) - game.currentTrick.length + 4) % 4]?.id;
+        });
+        
+        if (leadingPlayer && leadingPlayer.position !== undefined && currentPlayer?.position !== undefined) {
+          console.log(`Leading player is ${leadingPlayer.name} at position ${leadingPlayer.position}`);
+          
+          // For each new card in the trick, determine who played it
+          for (let i = lastTrickLength; i < game.currentTrick.length; i++) {
+            // Calculate whose turn it was to play this card
+            // Start with lead player and go clockwise
+            const playerPositionWhoPlayed = (leadingPlayer.position + i) % 4;
+            const playerWhoPlayed = game.players.find(p => p.position === playerPositionWhoPlayed);
+            
+            if (playerWhoPlayed) {
+              // Calculate relative position from current player's view
+              // We know current player is at position 0, so the relative position is:
+              // 0 = current player (bottom/South)
+              // 1 = player to the left (West)
+              // 2 = player across (North)
+              // 3 = player to the right (East)
+              const relativePosition = (playerPositionWhoPlayed - currentPlayer.position + 4) % 4;
+              updatedPositions[i] = relativePosition;
+              
+              console.log(`Card ${i} played by ${playerWhoPlayed.name} at position ${playerPositionWhoPlayed}, showing at fixed relative position ${relativePosition}`);
+            }
           }
         }
         
@@ -222,7 +251,7 @@ export default function GameTable({
       setTrickCardPositions({});
       setLastTrickLength(0);
     }
-  }, [game.currentTrick?.length]);
+  }, [game.currentTrick?.length, game.players, game.currentPlayer, currentPlayer?.position]);
 
   // Use the explicit position property if available, otherwise fall back to array index
   // @ts-ignore - position property might not be on the type yet
@@ -766,36 +795,32 @@ export default function GameTable({
           
           // If position not calculated yet (failsafe), calculate it now
           if (relativePosition === undefined) {
-            const leadingPlayerPosition = getLeadingPlayerPosition();
-            if (leadingPlayerPosition === -1) {
-              console.error("Could not determine leading player position");
-              return null;
+            // Find leading player
+            const leadingPlayerIdx = (game.players.findIndex(p => p.id === game.currentPlayer) - game.currentTrick.length + 4) % 4;
+            const leadingPlayer = game.players[leadingPlayerIdx];
+            
+            if (leadingPlayer && leadingPlayer.position !== undefined && currentPlayer?.position !== undefined) {
+              // Calculate whose turn it was to play this card
+              const playerPositionWhoPlayed = (leadingPlayer.position + index) % 4;
+              
+              // Calculate relative position
+              relativePosition = (playerPositionWhoPlayed - currentPlayer.position + 4) % 4;
+              
+              // Store it for future reference
+              const newPositions = { ...trickCardPositions };
+              newPositions[index] = relativePosition;
+              setTrickCardPositions(newPositions);
+            } else {
+              // Fallback
+              relativePosition = index;
             }
-            
-            // Calculate which player played this card - this is the absolute position in the game
-            const playerWhoPlayedCardPosition = (leadingPlayerPosition + index) % 4;
-            
-            // Convert to relative position from current player's perspective
-            relativePosition = getRelativePosition(playerWhoPlayedCardPosition);
-            
-            // Store it for future reference
-            const newPositions = { ...trickCardPositions };
-            newPositions[index] = relativePosition;
-            setTrickCardPositions(newPositions);
           }
           
-          // Find the player who played this card (for logging)
-          const leadingPlayerPosition = getLeadingPlayerPosition();
-          if (leadingPlayerPosition !== -1) {
-            const playerWhoPlayedCardPosition = (leadingPlayerPosition + index) % 4;
-            const playerWhoPlayedCard = game.players.find(p => p.position === playerWhoPlayedCardPosition);
-            if (playerWhoPlayedCard) {
-              console.log(`Card ${index} played by player ${playerWhoPlayedCard.name} at position ${playerWhoPlayedCardPosition}, showing at fixed relative position ${relativePosition}`);
-            }
-          }
-
-          // Calculate position based on the player's RELATIVE position to current player
-          // Position 0: Bottom, 1: Left, 2: Top, 3: Right
+          // These positions are from the current player's perspective:
+          // 0 = current player (bottom)
+          // 1 = player to the left
+          // 2 = player across
+          // 3 = player to the right
           let positionClass;
           
           switch(relativePosition) {
