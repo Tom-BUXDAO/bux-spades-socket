@@ -113,32 +113,37 @@ function determineWinningCard(trick: Card[]): number {
   if (!trick.length) return -1;
 
   const leadSuit = trick[0].suit;
-  let highestSpade: Card | null = null;
-  let highestLeadSuit: Card | null = null;
-
-  trick.forEach((card, index) => {
-    if (card.suit === 'S') {
-      if (!highestSpade || card.rank > highestSpade.rank) {
-        highestSpade = card;
-      }
-    } else if (card.suit === leadSuit) {
-      if (!highestLeadSuit || card.rank > highestLeadSuit.rank) {
-        highestLeadSuit = card;
+  
+  // Check if any spades were played - spades always trump other suits
+  const spadesPlayed = trick.filter(card => card.suit === 'S');
+  
+  if (spadesPlayed.length > 0) {
+    // Find the highest spade
+    const highestSpade = spadesPlayed.reduce((highest, current) => 
+      current.rank > highest.rank ? current : highest, spadesPlayed[0]);
+    
+    // Return the index of the highest spade
+    for (let i = 0; i < trick.length; i++) {
+      if (trick[i].suit === 'S' && trick[i].rank === highestSpade.rank) {
+        return i;
       }
     }
-  });
-
-  // If any spades were played, highest spade wins
-  if (highestSpade) {
-    return trick.findIndex(card => 
-      card.suit === highestSpade!.suit && card.rank === highestSpade!.rank
-    );
   }
-
-  // Otherwise, highest card of lead suit wins
-  return trick.findIndex(card => 
-    card.suit === highestLeadSuit!.suit && card.rank === highestLeadSuit!.rank
-  );
+  
+  // If no spades, find the highest card of the lead suit
+  const leadSuitCards = trick.filter(card => card.suit === leadSuit);
+  const highestLeadSuitCard = leadSuitCards.reduce((highest, current) => 
+    current.rank > highest.rank ? current : highest, leadSuitCards[0]);
+  
+  // Return the index of the highest lead suit card
+  for (let i = 0; i < trick.length; i++) {
+    if (trick[i].suit === leadSuit && trick[i].rank === highestLeadSuitCard.rank) {
+      return i;
+    }
+  }
+  
+  // Fallback (should never happen)
+  return 0;
 }
 
 // Add a new interface to track which player played each card
