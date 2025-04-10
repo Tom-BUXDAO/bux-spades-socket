@@ -449,7 +449,7 @@ export default function GameTable({
     });
   };
 
-  // Render cards using the simplest possible approach - COMPLETELY REWRITTEN FOR CLARITY
+  // Render cards based directly on the event data from the server
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
@@ -459,36 +459,10 @@ export default function GameTable({
     const trickCardWidth = Math.floor(60 * scaleFactor); 
     const trickCardHeight = Math.floor(84 * scaleFactor);
     
-    // In a 4 player game, we will always know the order of play
-    // Player 0 is at the bottom (from our view)
-    // Player 1 is at the left
-    // Player 2 is at the top
-    // Player 3 is at the right
-    
-    // Get the relative positions of all players
+    // Get the position of the current player
     const myPosition = currentPlayer?.position ?? 0;
-    const relativePositions: Record<number, number> = {};
-    game.players.forEach(player => {
-      if (player && player.position !== undefined) {
-        // Map each player position to a visual position
-        relativePositions[player.position] = (player.position - myPosition + 4) % 4;
-      }
-    });
     
-    // Debug info
-    console.log("RENDERING TRICK CARDS");
-    console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`).join(", "));
-    console.log("My position:", myPosition);
-    console.log("Relative positions:", relativePositions);
-    
-    // Determine who played which card
-    // Instead of trying to track this, just place cards in a fixed arrangement
-    
-    // First card is always at the bottom visual position (user's position)
-    // Second card is always at the left visual position
-    // Third card is always at the top visual position
-    // Fourth card is always at the right visual position
-    
+    // Position classes for the four card positions
     const positionClasses = [
       "absolute bottom-0 left-1/2 -translate-x-1/2",  // Bottom (User's position)
       "absolute left-0 top-1/2 -translate-y-1/2",     // Left  
@@ -496,36 +470,58 @@ export default function GameTable({
       "absolute right-0 top-1/2 -translate-y-1/2"     // Right
     ];
     
-    // FIXED POSITIONING OF CARDS FOR INVESTOR DEMO
-    // We're going to simplify drastically and place cards in fixed positions:
-    // - If user is Tom (position 0), cards go clockwise
-    // - If user is someone else, use visual positioning where bottom = player's position
+    console.log("RENDERING TRICK CARDS WITH SERVER DATA");
+    console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`).join(", "));
+    console.log("My position:", myPosition);
+    
+    // Use the cardPlayers state to get who played each card
+    const playerPositions = game.players.reduce((acc, player) => {
+      if (player.position !== undefined) {
+        acc[player.id] = player.position;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Calculate which player played which card by using the server's turn order
+    // The game.currentPlayer is the next player to play
+    // We can work backwards from there to identify who played each card
+    const cardPlayerInfo = game.currentTrick.map((card, index) => {
+      const playerIds = game.players.map(p => p.id);
+      const currentPlayerIndex = playerIds.indexOf(game.currentPlayer);
+      
+      // The player who played this card is (currentPlayerIndex - (remaining cards) + player count) % player count
+      const cardsRemaining = game.currentTrick.length - index;
+      const playerIndex = (currentPlayerIndex - cardsRemaining + playerIds.length) % playerIds.length;
+      const playerId = playerIds[playerIndex];
+      const player = game.players.find(p => p.id === playerId);
+      
+      return {
+        card,
+        playerId,
+        playerName: player?.name || "Unknown",
+        playerPosition: player?.position
+      };
+    });
+    
+    console.log("Card player info:", cardPlayerInfo);
     
     return (
       <div className="relative" style={{ 
         width: `${Math.floor(200 * scaleFactor)}px`, 
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
-        {game.currentTrick.map((card, index) => {
-          // Determine the visual position (0-3) for this card
-          let visualPosition;
+        {cardPlayerInfo.map((info, index) => {
+          // Calculate the relative position (0-3) for this card
+          // This is the player's position relative to the current player
+          const playerPos = info.playerPosition !== undefined ? info.playerPosition : 0;
+          const relativePos = (playerPos - myPosition + 4) % 4;
           
-          if (myPosition === 0) {
-            // Tom's view - cards go clockwise (0, 1, 2, 3)
-            visualPosition = index;
-          } else {
-            // Other players' views - adjust accordingly
-            // This part is simplified for the demo
-            // We just shift everything based on player's position
-            visualPosition = (index + myPosition) % 4;
-          }
-          
-          console.log(`Card ${index} (${card.rank}${card.suit}) positioning at visual position ${visualPosition}`);
+          console.log(`Card ${index} (${info.card.rank}${info.card.suit}) played by ${info.playerName} at position ${playerPos}, showing at relative position ${relativePos}`);
           
           return (
             <div 
               key={`trick-card-${index}`} 
-              className={positionClasses[visualPosition]}
+              className={positionClasses[relativePos]}
               data-testid={`trick-card-${index}`}
               style={{
                 zIndex: 10 + index,
@@ -533,8 +529,8 @@ export default function GameTable({
               }}
             >
               <Image
-                src={`/cards/${getCardImage(card)}`}
-                alt={`${card.rank}${card.suit}`}
+                src={`/cards/${getCardImage(info.card)}`}
+                alt={`${info.card.rank}${info.card.suit}`}
                 width={trickCardWidth}
                 height={trickCardHeight}
                 className="rounded-lg shadow-md"
