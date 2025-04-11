@@ -287,18 +287,23 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   });
 
   return (
-    <div className="flex flex-col h-full bg-gray-800 rounded-lg overflow-hidden border border-gray-600 shadow-lg">
-      {/* Messages container */}
-      <div className="flex-1 overflow-y-auto p-3 bg-gray-850" style={{ backgroundColor: '#1a202c' }}>
+    <div className="flex flex-col h-full bg-gray-800 overflow-hidden border-l border-gray-600">
+      {/* Chat header */}
+      <div className="bg-gray-900 p-2 border-b border-gray-600">
+        <h3 className="text-white font-bold" style={{ fontSize: `${mobileHeaderFontSize}px` }}>Game Chat</h3>
+      </div>
+      
+      {/* Messages container - flex-grow to fill available space */}
+      <div className="flex-grow overflow-y-auto p-2 bg-gray-850" style={{ backgroundColor: '#1a202c' }}>
         {messages.length === 0 ? (
-          <div className="text-gray-400 text-center" style={{ fontSize: `${mobileFontSize}px` }}>
+          <div className="text-gray-400 text-center my-4" style={{ fontSize: `${mobileFontSize}px` }}>
             No messages yet. Start the conversation!
           </div>
         ) : (
           messages.map((msg, index) => (
             <div
               key={msg.id || index}
-              className={`mb-3 flex items-start ${msg.userId === userId ? 'justify-end' : ''}`}
+              className={`mb-2 flex items-start ${msg.userId === userId ? 'justify-end' : ''}`}
             >
               {msg.userId !== userId && (
                 <div className={`w-${isMobile ? '6' : '8'} h-${isMobile ? '6' : '8'} mr-2 rounded-full overflow-hidden flex-shrink-0`}>

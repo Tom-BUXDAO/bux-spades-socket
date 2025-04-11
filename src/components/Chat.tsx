@@ -115,11 +115,16 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
   });
 
   return (
-    <div className="flex flex-col h-full bg-gray-800 rounded-lg overflow-hidden">
-      {/* Messages container */}
-      <div className="flex-1 overflow-y-auto p-3" style={{ backgroundColor: '#1a202c' }}>
+    <div className="flex flex-col h-full bg-gray-800 overflow-hidden border-l border-gray-600">
+      {/* Chat header */}
+      <div className="bg-gray-900 p-2 border-b border-gray-600">
+        <h3 className="text-white font-bold" style={{ fontSize: `${headerFontSize}px` }}>Game Chat</h3>
+      </div>
+
+      {/* Messages container - flex-grow to fill available space */}
+      <div className="flex-grow overflow-y-auto p-2" style={{ backgroundColor: '#1a202c' }}>
         {messages.length === 0 ? (
-          <div className="text-gray-400 text-center" style={{ fontSize: `${fontSize}px` }}>
+          <div className="text-gray-400 text-center my-4" style={{ fontSize: `${fontSize}px` }}>
             No messages yet. Start the conversation!
           </div>
         ) : (
@@ -144,21 +149,22 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
       </div>
 
       {/* Message input */}
-      <form onSubmit={handleSendMessage} className="p-2 bg-gray-900 flex">
+      <form onSubmit={handleSendMessage} className="p-2 bg-gray-900 flex border-t border-gray-600">
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder={screenSize.width < 640 ? "Type..." : "Type a message..."}
-          className="bg-gray-700 text-white rounded-l px-3 py-1 flex-1 outline-none"
+          className="bg-gray-700 text-white rounded-l px-3 py-2 flex-1 outline-none border-0"
           style={{ fontSize: `${fontSize}px` }}
         />
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 rounded-r hover:bg-blue-700"
-          style={{ fontSize: `${fontSize}px` }}
+          className="bg-blue-600 text-white rounded-r hover:bg-blue-700 flex items-center justify-center w-10"
         >
-          Send
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+          </svg>
         </button>
       </form>
     </div>
