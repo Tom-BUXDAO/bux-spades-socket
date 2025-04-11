@@ -610,17 +610,6 @@ export default function GameTable({
           );
         })}
         
-        {/* Show winner message overlay */}
-        {game.currentTrick.length === 4 && showWinningCardHighlight && winningPlayerId && (
-          <div className="absolute inset-0 flex items-center justify-center z-30">
-            <div className="bg-black/70 text-white px-4 py-2 rounded-lg text-center animate-pulse shadow-lg">
-              <div className="font-bold" style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}>
-                {game.players.find(p => p.id === winningPlayerId)?.name || 'Player'} wins the trick!
-              </div>
-            </div>
-          </div>
-        )}
-        
         {/* Leading suit indicator */}
         {game.currentTrick[0] && game.currentTrick.length < 4 && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
