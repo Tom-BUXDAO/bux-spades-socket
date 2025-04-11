@@ -340,7 +340,7 @@ export default function GameTable({
       console.log("🔄 New trick starting - resetting card players mapping");
       // Save the completed trick mapping before clearing
       setCardPlayers({});
-      setShowWinningCardHighlight(false);
+          setShowWinningCardHighlight(false);
       return;
     }
 
@@ -383,7 +383,7 @@ export default function GameTable({
       completedTrickCardPlayers.current = { ...cardPlayers };
       
       // Calculate the winning card index
-      const winningCardIndex = determineWinningCard(game.currentTrick);
+        const winningCardIndex = determineWinningCard(game.currentTrick);
       if (winningCardIndex >= 0) {
         setShowWinningCardHighlight(true);
       }
@@ -919,12 +919,12 @@ export default function GameTable({
         // Don't start a new hand, game is over
       } else {
         // Game continues, update scores and start new hand
-        socket.emit("update_scores", {
-          gameId: game.id,
-          team1Score: handScores.team1.score,
-          team2Score: handScores.team2.score,
-          startNewHand: true
-        });
+      socket.emit("update_scores", {
+        gameId: game.id,
+        team1Score: handScores.team1.score,
+        team2Score: handScores.team2.score,
+        startNewHand: true
+      });
       }
       
       setHandScores(null);
