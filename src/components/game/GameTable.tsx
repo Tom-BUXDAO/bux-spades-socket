@@ -689,7 +689,8 @@ export default function GameTable({
       return null;
     }
 
-    const isActive = game.currentPlayer === player.id;
+    // Only mark a player as active if the game has started (not in WAITING status)
+    const isActive = game.status !== "WAITING" && game.currentPlayer === player.id;
     const isWinningPlayer = player.id === winningPlayerId && showWinningCardHighlight;
     
     // Determine if we're on mobile
@@ -771,15 +772,13 @@ export default function GameTable({
       <div className={`absolute ${getPositionClasses(position)}`}>
         <div className={`relative rounded-lg ${
           player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-        } text-white flex items-center px-2 py-1 ${isActive ? 'ring-2 ring-yellow-400' : ''}`} style={{
+        } text-white flex items-center px-2 py-1 ${isActive ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`} style={{
           minWidth: '120px',
           maxWidth: '200px'
         }}>
           {/* Avatar inside container */}
           <div className="relative mr-2">
-            <div className={`rounded-full overflow-hidden ${
-              isActive ? 'animate-pulse' : ''
-            }`} style={{ 
+            <div className="rounded-full overflow-hidden" style={{ 
               width: screenSize.width < 640 ? '40px' : '50px', 
               height: screenSize.width < 640 ? '40px' : '50px' 
             }}>
@@ -809,23 +808,22 @@ export default function GameTable({
               fontSize: screenSize.width < 640 ? '14px' : '16px' 
             }}>{player.name}</div>
             
-            {game.status !== "WAITING" && (
-              <div className="w-full flex justify-between items-center" style={{ 
-                fontSize: screenSize.width < 640 ? '14px' : '16px' 
-              }}>
-                {/* Made / Bid display */}
-                <div className={`font-bold ${madeStatusColor}`}>
-                  {madeCount} <span className="text-white opacity-60">/</span> {bidCount}
-                </div>
-                
-                {/* Show +1 animation when player wins a trick */}
-                {isWinningPlayer && (
-                  <div className="text-green-400 font-bold animate-bounce ml-2">
-                    +1
-                  </div>
-                )}
+            {/* Always show the bid/made display - show 0/0 when waiting */}
+            <div className="w-full flex justify-between items-center" style={{ 
+              fontSize: screenSize.width < 640 ? '14px' : '16px' 
+            }}>
+              {/* Made / Bid display */}
+              <div className={`font-bold ${game.status === "WAITING" ? "text-yellow-200" : madeStatusColor}`}>
+                {game.status === "WAITING" ? "0" : madeCount} <span className="text-white opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
               </div>
-            )}
+              
+              {/* Show +1 animation when player wins a trick */}
+              {isWinningPlayer && (
+                <div className="text-green-400 font-bold animate-bounce ml-2">
+                  +1
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
