@@ -38,7 +38,13 @@ function getCardImage(card: Card): string {
 }
 
 // Helper function to get card rank value
-function getCardValue(rank: string): number {
+function getCardValue(rank: string | number): number {
+  // If rank is already a number, return it
+  if (typeof rank === 'number') {
+    return rank;
+  }
+  
+  // Otherwise, convert string ranks to numbers
   const rankMap: { [key: string]: number } = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
     'J': 11, 'Q': 12, 'K': 13, 'A': 14
@@ -122,8 +128,8 @@ function determineWinningCard(trick: Card[]): number {
   if (spadesPlayed.length > 0) {
     // Find the highest spade
     const highestSpade = spadesPlayed.reduce((highest, current) => {
-      const currentValue = getCardValue(String(current.rank));
-      const highestValue = getCardValue(String(highest.rank));
+      const currentValue = getCardValue(current.rank);
+      const highestValue = getCardValue(highest.rank);
       console.log(`Comparing spades: ${current.rank}${current.suit} (${currentValue}) vs ${highest.rank}${highest.suit} (${highestValue})`);
       return currentValue > highestValue ? current : highest;
     }, spadesPlayed[0]);
@@ -146,12 +152,12 @@ function determineWinningCard(trick: Card[]): number {
   
   // Debug each card's numeric value
   leadSuitCards.forEach(card => {
-    console.log(`Card ${card.rank}${card.suit} has numeric value: ${getCardValue(String(card.rank))}`);
+    console.log(`Card ${card.rank}${card.suit} has numeric value: ${getCardValue(card.rank)}`);
   });
   
   const highestLeadSuitCard = leadSuitCards.reduce((highest, current) => {
-    const currentValue = getCardValue(String(current.rank));
-    const highestValue = getCardValue(String(highest.rank));
+    const currentValue = getCardValue(current.rank);
+    const highestValue = getCardValue(highest.rank);
     console.log(`Comparing: ${current.rank}${current.suit} (${currentValue}) vs ${highest.rank}${highest.suit} (${highestValue})`);
     return currentValue > highestValue ? current : highest;
   }, leadSuitCards[0]);
