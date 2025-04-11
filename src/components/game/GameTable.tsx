@@ -253,42 +253,30 @@ export default function GameTable({
     if (game.currentTrick && game.currentTrick.length > 0) {
       console.log(`Current trick updated: ${game.currentTrick.length} cards played`);
 
-      // If this is a new trick (length was 0 before), or continuing the same trick (length increased)
-      if (lastTrickLength === 0 || game.currentTrick.length > lastTrickLength) {
-        // Update positions for new cards only
+      // Only update positions for NEW cards
+      if (lastTrickLength < game.currentTrick.length) {
+        // Create a copy of existing positions
         const updatedPositions = { ...trickCardPositions };
         
-        // Simple approach - there are exactly 4 players, with positions 0-3
-        // Sandra should have position 2 (across from player 0)
-        // Bob should have position 3 (to the right of player 0)
-        // Find the trick leader first
-        const leadingPlayer = game.players.find(p => {
-          // The player who played the first card in the trick
-          return p.id === game.players[(game.players.findIndex(p => p.id === game.currentPlayer) - game.currentTrick.length + 4) % 4]?.id;
-        });
-        
-        if (leadingPlayer && leadingPlayer.position !== undefined && currentPlayer?.position !== undefined) {
-          console.log(`Leading player is ${leadingPlayer.name} at position ${leadingPlayer.position}`);
+        // Only process newly added cards
+        for (let i = lastTrickLength; i < game.currentTrick.length; i++) {
+          // Skip if this card already has a position (should NEVER happen)
+          if (updatedPositions[i] !== undefined) continue;
           
-          // For each new card in the trick, determine who played it
-          for (let i = lastTrickLength; i < game.currentTrick.length; i++) {
-            // Calculate whose turn it was to play this card
-            // Start with lead player and go clockwise
-            const playerPositionWhoPlayed = (leadingPlayer.position + i) % 4;
-            const playerWhoPlayed = game.players.find(p => p.position === playerPositionWhoPlayed);
+          // Get the player who played this card
+          const playerId = cardPlayers[i];
+          const player = playerId ? game.players.find(p => p.id === playerId) : null;
+          
+          if (player && currentPlayer) {
+            // Calculate fixed table position
+            const playerPosition = player.position ?? 0;
+            const myPosition = currentPlayer.position ?? 0;
+            const tablePosition = (playerPosition - myPosition + 4) % 4;
             
-            if (playerWhoPlayed) {
-              // Calculate relative position from current player's view
-              // We know current player is at position 0, so the relative position is:
-              // 0 = current player (bottom/South)
-              // 1 = player to the left (West)
-              // 2 = player across (North)
-              // 3 = player to the right (East)
-              const relativePosition = (playerPositionWhoPlayed - currentPlayer.position + 4) % 4;
-              updatedPositions[i] = relativePosition;
-              
-              console.log(`Card ${i} played by ${playerWhoPlayed.name} at position ${playerPositionWhoPlayed}, showing at fixed relative position ${relativePosition}`);
-            }
+            // Save this position permanently
+            updatedPositions[i] = tablePosition;
+            
+            console.log(`FIXED POSITION: Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) played by ${player.name} at position ${playerPosition}, fixed at table position ${tablePosition}`);
           }
         }
         
@@ -298,23 +286,13 @@ export default function GameTable({
       
       // Update the last trick length
       setLastTrickLength(game.currentTrick.length);
-      
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('gameStateChanged'));
-      }
-    } else {
+    } else if (game.currentTrick?.length === 0) {
       // Only reset positions when a new trick starts (current trick is empty)
-      // IMPORTANT: Don't reset positions if we still have a winner being highlighted
-      // This prevents the cards from moving when a trick is complete
-      if (!showWinningCardHighlight) {
-        console.log("Resetting trick card positions for new trick");
-        setTrickCardPositions({});
-        setLastTrickLength(0);
-      } else {
-        console.log("Keeping trick card positions while winner is highlighted");
-      }
+      console.log("New trick starting - clearing fixed positions");
+      setTrickCardPositions({});
+      setLastTrickLength(0);
     }
-  }, [game.currentTrick?.length, game.players, game.currentPlayer, currentPlayer?.position, showWinningCardHighlight]);
+  }, [game.currentTrick, game.players, currentPlayer, cardPlayers]);
 
   // Use the explicit position property if available, otherwise fall back to array index
   // @ts-ignore - position property might not be on the type yet
@@ -499,8 +477,6 @@ export default function GameTable({
     
     // If the trick length changed, update our cardPlayers mapping
     if (currentLength !== lastTrickLength) {
-      setLastTrickLength(currentLength);
-      
       // If a new card was played (trick length increased)
       if (currentLength > lastTrickLength) {
         const cardIndex = currentLength - 1; // Index of the newly played card
@@ -512,7 +488,7 @@ export default function GameTable({
         if (player) {
           console.log(`Detected new card played: card ${cardIndex} (${game.currentTrick[cardIndex].rank}${game.currentTrick[cardIndex].suit}) played by ${player.name}`);
           
-          // Update cardPlayers with this new information
+          // Update cardPlayers with this new information and NEVER change it
           setCardPlayers(prev => ({
             ...prev,
             [cardIndex]: previousPlayerId
@@ -520,7 +496,7 @@ export default function GameTable({
         }
       }
     }
-  }, [game.currentTrick, game.players, game.currentPlayer, lastTrickLength, lastCurrentPlayer]);
+  }, [game.currentTrick?.length, game.players, game.currentPlayer, lastTrickLength, lastCurrentPlayer]);
 
   // When WE play a card, we need to record that immediately
   const handlePlayCard = (card: Card) => {
@@ -625,9 +601,8 @@ export default function GameTable({
     // Get my position
     const myPosition = currentPlayer?.position ?? 0;
     
-    // Check if we have server-determined winning info
+    // Calculate winning card index for a complete trick
     const isCompleteTrick = game.currentTrick.length === 4;
-    const hasServerWinner = serverWinningCard !== null && serverWinningPlayerId !== null;
     
     // Debug card players mapping
     console.log("Card players mapping:", cardPlayers);
@@ -647,18 +622,11 @@ export default function GameTable({
             return null;
           }
           
-          // Get the player's position (0-3)
-          const playerPosition = player.position ?? 0;
+          // Use the original table position from our trickCardPositions state
+          // This ensures positions NEVER change during a trick
+          const tablePosition = trickCardPositions[index] || 0;
           
-          // Calculate the table position relative to the current player's view
-          const tablePosition = (playerPosition - myPosition + 4) % 4;
-          
-          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
-          
-          // Check if this is the winning card based on server data
-          const isWinningCard = hasServerWinner && 
-            serverWinningCard?.rank === card.rank && 
-            serverWinningCard?.suit === card.suit;
+          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${player.position}, showing at table position ${tablePosition}`);
           
           return (
             <div 
@@ -666,7 +634,7 @@ export default function GameTable({
               className={positionClasses[tablePosition]}
               data-testid={`trick-card-${index}`}
             >
-              <div className={`relative transition-all duration-300 ${isWinningCard ? 'transform scale-110 z-10' : ''}`}>
+              <div className="relative transition-all duration-300">
                 <Image
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank}${card.suit}`}
@@ -674,16 +642,6 @@ export default function GameTable({
                   height={trickCardHeight}
                   className="rounded-lg shadow-md"
                 />
-                
-                {/* Highlight for winning card - controlled by server event */}
-                {isWinningCard && (
-                  <div className="absolute inset-0 rounded-lg ring-4 ring-yellow-400 animate-pulse z-10"></div>
-                )}
-                
-                {/* Darken non-winning cards - controlled by server event */}
-                {isCompleteTrick && hasServerWinner && !isWinningCard && (
-                  <div className="absolute inset-0 bg-black/40 rounded-lg"></div>
-                )}
               </div>
             </div>
           );
