@@ -997,7 +997,7 @@ io.on('connection', (socket) => {
             // Broadcast the real game state with empty trick
             io.to(gameId).emit('game_update', currentGame);
           }
-        }, 5000); // 5 second delay for animation
+        }, 3000); // 3 second delay for animation
       } else {
         console.log('Could not determine trick winner!');
       }
