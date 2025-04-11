@@ -324,30 +324,15 @@ export default function GameTable({
     console.log('Socket connected:', socket?.connected);
   };
 
-  // After all the other state declarations at the top of the component
-  // Add these new state variables to store the last completed trick
-  const [lastCompletedTrick, setLastCompletedTrick] = useState<Card[] | null>(null);
-  const [lastTrickWinnerIndex, setLastTrickWinnerIndex] = useState<number | null>(null);
-  const [showLastTrick, setShowLastTrick] = useState(false);
-  const [lastTrickPlayers, setLastTrickPlayers] = useState<Record<number, string>>({});
-
   // Modify the effect that tracks card players to capture the completed trick
   useEffect(() => {
     // When a new trick starts, reset our tracking
     if (game.currentTrick.length === 0) {
-      // Don't clear card players here, as we want to keep them for displaying the last trick
+      // Only reset card players mapping when a new trick starts
+      setCardPlayers({});
       
-      // If we're not already showing the last trick and we have a completed trick stored
-      if (!showLastTrick && lastCompletedTrick && lastCompletedTrick.length === 4) {
-        // Show the last completed trick
-        setShowLastTrick(true);
-        
-        // Set a timeout to clear it after 3 seconds
-        setTimeout(() => {
-          setShowWinningCardHighlight(false);
-          setShowLastTrick(false);
-        }, 3000);
-      }
+      // Also reset any state related to last trick
+      setShowWinningCardHighlight(false);
       
       return;
     }
@@ -392,39 +377,33 @@ export default function GameTable({
       }
     }
     
-    // Only update if we have new information
+    // Only update if we have new information AND if the trick is not complete
     if (Object.keys(updatedCardPlayers).length > 0) {
       console.log('Updated card players from server data:', updatedCardPlayers);
       
-      // ALWAYS use the server's version of truth, overwriting our local mapping
-      // BUT preserve completed trick mappings
+      // Do not update card players mapping for completed tricks to avoid position shifts
       if (isTrickComplete && Object.keys(cardPlayers).length === 4) {
         // Don't update the mapping for a completed trick - this prevents position changes
         console.log("Trick is complete, preserving card positions");
       } else {
-        setCardPlayers(updatedCardPlayers);
-      }
-      
-      // If we have a complete trick (4 cards), save it as the last completed trick
-      if (isTrickComplete && Object.keys(updatedCardPlayers).length === 4) {
-        const winningCardIndex = determineWinningCard(game.currentTrick);
-        if (winningCardIndex >= 0 && updatedCardPlayers[winningCardIndex]) {
-          const winningPlayerId = updatedCardPlayers[winningCardIndex];
-          const winningPlayer = game.players.find(p => p.id === winningPlayerId);
-          const winningCard = game.currentTrick[winningCardIndex];
+        // Update card players mapping for in-progress tricks
+        setCardPlayers(prevCardPlayers => {
+          // Merge with any existing mappings
+          const mergedPlayers = { ...prevCardPlayers };
           
-          console.log(`✅ CLIENT DETERMINED: Trick should be won by ${winningPlayer?.name || 'Unknown'} (${winningPlayerId}) with ${winningCard.rank}${winningCard.suit}`);
+          // Only add cards that aren't already mapped
+          Object.keys(updatedCardPlayers).forEach(idx => {
+            const index = parseInt(idx, 10);
+            if (!mergedPlayers[index]) {
+              mergedPlayers[index] = updatedCardPlayers[index];
+            }
+          });
           
-          // Save the completed trick before it's cleared by the server
-          setLastCompletedTrick([...game.currentTrick]);
-          setLastTrickWinnerIndex(winningCardIndex);
-          setLastTrickPlayers({...cardPlayers}); // Use the preserved mapping
-          
-          // We'll set showLastTrick to true only once the server clears the trick (see above)
-        }
+          return mergedPlayers;
+        });
       }
     }
-  }, [game.currentTrick, game.players, game.currentPlayer, showLastTrick, lastCompletedTrick, cardPlayers]);
+  }, [game.currentTrick, game.players, game.currentPlayer]);
 
   // When playing a card, we now rely solely on server data for tracking
   const handlePlayCard = (card: Card) => {
@@ -521,8 +500,18 @@ export default function GameTable({
     // Get my position
     const myPosition = currentPlayer?.position ?? 0;
     
-    // Debug card players mapping
-    console.log("Card players mapping:", cardPlayers);
+    // Calculate winning card when trick is complete
+    const isTrickComplete = game.currentTrick.length === 4;
+    const winningIndex = isTrickComplete ? determineWinningCard(game.currentTrick) : -1;
+    
+    // Create a local copy of cardPlayers to prevent updates during complete tricks
+    const currentCardPlayers = { ...cardPlayers };
+    
+    // IMPORTANT: For completed tricks, freeze the card players mapping
+    // This prevents card positions from changing after trick is complete
+    if (isTrickComplete && Object.keys(currentCardPlayers).length === 4) {
+      console.log("Trick is complete, using frozen player mapping");
+    }
     
     return (
       <div className="relative" style={{ 
@@ -531,7 +520,7 @@ export default function GameTable({
       }}>
         {game.currentTrick.map((card, index) => {
           // Get the player who played this card from our tracking
-          const playerId = cardPlayers[index];
+          const playerId = currentCardPlayers[index];
           const player = playerId ? game.players.find(p => p.id === playerId) : null;
           
           if (!player) {
@@ -544,6 +533,9 @@ export default function GameTable({
           // The relative position from current player's view
           const tablePosition = (4 + playerPosition - myPosition) % 4;
           
+          // Check if this is the winning card in a complete trick
+          const isWinningCard = isTrickComplete && index === winningIndex;
+          
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
           
           return (
@@ -552,21 +544,29 @@ export default function GameTable({
               className={positionClasses[tablePosition]}
               data-testid={`trick-card-${index}`}
             >
-              <div className="relative transition-all duration-300">
+              <div className={`relative transition-all duration-300 ${isWinningCard ? 'ring-4 ring-yellow-400 rounded-lg' : ''}`}>
                 <Image
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank}${card.suit}`}
                   width={trickCardWidth}
                   height={trickCardHeight}
-                  className="rounded-lg shadow-md"
+                  className={`rounded-lg shadow-md ${isWinningCard ? 'brightness-110' : ''}`}
                 />
               </div>
             </div>
           );
         })}
         
-        {/* Leading suit indicator */}
-        {game.currentTrick[0] && (
+        {/* Winner indicator when trick is complete */}
+        {isTrickComplete && winningIndex >= 0 && currentCardPlayers[winningIndex] && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
+               style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
+            Winner: {game.players.find(p => p.id === currentCardPlayers[winningIndex])?.name || 'Unknown'}
+          </div>
+        )}
+        
+        {/* Leading suit indicator (only show when trick isn't complete) */}
+        {!isTrickComplete && game.currentTrick[0] && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
