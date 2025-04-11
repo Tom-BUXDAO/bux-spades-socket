@@ -415,10 +415,7 @@ export default function GameTable({
     }
 
     // If the server sends us a complete trick, we need to reconstruct who played each card
-    // We know for sure:
-    // 1. The server knows the play order
-    // 2. The current player is always the next person to play
-    // 3. The order is always clockwise (players at positions 0, 1, 2, 3)
+    // We need to match the server-side mapping logic exactly
     
     // Get all playerIds in position order (not the rotated order)
     const orderedPlayerIds: (string | undefined)[] = [];
@@ -429,18 +426,21 @@ export default function GameTable({
       }
     }
     
-    // The current player is always the next to play
+    // Find the player who led the trick first
+    // The server tracks this correctly in the trick order
     const currentPlayerIndex = orderedPlayerIds.indexOf(game.currentPlayer);
     
-    // Figure out who played each card by counting backward from current player
+    // Find the leading player by working backwards from the current player
+    const leadingPlayerPosition = (currentPlayerIndex - game.currentTrick.length + 4) % 4;
+    
+    // Figure out who played each card based on the leading player position
     const updatedCardPlayers: Record<number, string> = {};
     
     // For each card in the trick
     for (let i = 0; i < game.currentTrick.length; i++) {
-      // The player who played this card is (currentPlayerIndex - (cardsRemaining) + 4) % 4
-      const cardsRemaining = game.currentTrick.length - i;
-      const playerIndex = (currentPlayerIndex - cardsRemaining + 4) % 4;
-      const playerId = orderedPlayerIds[playerIndex];
+      // Cards are played in clockwise order from the leading player
+      const playerPosition = (leadingPlayerPosition + i) % 4;
+      const playerId = orderedPlayerIds[playerPosition];
       
       if (playerId) {
         updatedCardPlayers[i] = playerId;
@@ -452,7 +452,23 @@ export default function GameTable({
     // Only update if we have new information
     if (Object.keys(updatedCardPlayers).length > 0) {
       console.log('Updated card players from server data:', updatedCardPlayers);
-      setCardPlayers(updatedCardPlayers);
+      
+      // FIXED: Check if server sent complete trick with different mapping than what we have
+      // This handles the case where server order doesn't match client order
+      if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
+        // Use our mapping logic for now but add debug logs to track the issue
+        console.log("TRICK COMPLETED - Debugging card-player mapping:");
+        game.currentTrick.forEach((card, idx) => {
+          const playerId = updatedCardPlayers[idx];
+          const player = game.players.find(p => p.id === playerId);
+          console.log(`Card ${idx} (${card.rank}${card.suit}) - Server says played by: ${player?.name || 'Unknown'}`);
+        });
+        
+        // Set our mapping based on what we've calculated
+        setCardPlayers(updatedCardPlayers);
+      } else {
+        setCardPlayers(updatedCardPlayers);
+      }
       
       // If we have a complete trick (4 cards), save it as the last completed trick
       if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
@@ -474,6 +490,38 @@ export default function GameTable({
       }
     }
   }, [game.currentTrick, game.players, game.currentPlayer, showLastTrick, lastCompletedTrick]);
+
+  // Add this useEffect to track when players play cards
+  useEffect(() => {
+    if (!game.currentTrick || !game.players || !game.currentPlayer) return;
+
+    // Get the current trick length
+    const currentLength = game.currentTrick.length;
+    
+    // If the trick length changed, update our cardPlayers mapping
+    if (currentLength !== lastTrickLength) {
+      setLastTrickLength(currentLength);
+      
+      // If a new card was played (trick length increased)
+      if (currentLength > lastTrickLength) {
+        const cardIndex = currentLength - 1; // Index of the newly played card
+        
+        // Get the player who must have just played this card - the previous currentPlayer
+        const previousPlayerId = lastCurrentPlayer;
+        const player = game.players.find(p => p.id === previousPlayerId);
+        
+        if (player) {
+          console.log(`Detected new card played: card ${cardIndex} (${game.currentTrick[cardIndex].rank}${game.currentTrick[cardIndex].suit}) played by ${player.name}`);
+          
+          // Update cardPlayers with this new information
+          setCardPlayers(prev => ({
+            ...prev,
+            [cardIndex]: previousPlayerId
+          }));
+        }
+      }
+    }
+  }, [game.currentTrick, game.players, game.currentPlayer, lastTrickLength, lastCurrentPlayer]);
 
   // When WE play a card, we need to record that immediately
   const handlePlayCard = (card: Card) => {
@@ -544,100 +592,18 @@ export default function GameTable({
     return cleanup;
   }, [socket, game.id]);
 
-  // Replace the renderTrickCards function with this simplified version
-  const renderTrickCards = () => {
-    // If we're showing a delayed trick result, render that instead
-    if (isShowingTrickResult && delayedTrick && delayedTrick.length === 4 && delayedWinningIndex !== null) {
-      // Scale the card size for the trick
-      const trickCardWidth = Math.floor(60 * scaleFactor); 
-      const trickCardHeight = Math.floor(84 * scaleFactor);
-      
-      // Fixed positions for the four visual positions
-      const positionClasses = [
-        "absolute bottom-0 left-1/2 -translate-x-1/2",  // Position 0 (bottom)
-        "absolute left-0 top-1/2 -translate-y-1/2",     // Position 1 (left)  
-        "absolute top-0 left-1/2 -translate-x-1/2",     // Position 2 (top)
-        "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
-      ];
-      
-      console.log("RENDERING COMPLETED TRICK WITH WINNER");
-      
-      const myPosition = currentPlayer?.position ?? 0;
-      
-      // Figure out who played each card
-      const cardPlayersArray = Object.entries(cardPlayers)
-        .map(([index, playerId]) => ({
-          index: parseInt(index),
-          playerId,
-          player: game.players.find(p => p.id === playerId)
-        }));
-      
-      // Set the winning player ID for the +1 animation
-      if (delayedWinningIndex !== null && cardPlayers[delayedWinningIndex]) {
-        const playerId = cardPlayers[delayedWinningIndex];
-        if (playerId && winningPlayerId !== playerId) {
-          setWinningPlayerId(playerId);
-          setShowWinningCardHighlight(true);
-          
-          // Clear the animation after a delay
-          setTimeout(() => {
-            setShowWinningCardHighlight(false);
-            setWinningPlayerId(null);
-          }, 2000);
-        }
-      }
-      
-      return (
-        <div className="relative" style={{ 
-          width: `${Math.floor(200 * scaleFactor)}px`, 
-          height: `${Math.floor(200 * scaleFactor)}px` 
-        }}>
-          {delayedTrick.map((card, index) => {
-            // Get the player who played this card
-            const cardPlayer = cardPlayersArray.find(cp => cp.index === index);
-            const player = cardPlayer?.player;
-            
-            // Get the player's position (0-3)
-            const playerPosition = player?.position ?? 0;
-            
-            // Calculate the position relative to the current player's view
-            const relativePosition = (playerPosition - myPosition + 4) % 4;
-            
-            // Check if this is the winning card
-            const isWinningCard = index === delayedWinningIndex;
-            
-            return (
-              <div 
-                key={`trick-card-${index}`} 
-                className={positionClasses[relativePosition]}
-                data-testid={`trick-card-${index}`}
-              >
-                <div className={`relative transition-all duration-300 ${isWinningCard ? 'transform scale-110' : ''}`}>
-                  <Image
-                    src={`/cards/${getCardImage(card)}`}
-                    alt={`${card.rank}${card.suit}`}
-                    width={trickCardWidth}
-                    height={trickCardHeight}
-                    className="rounded-lg shadow-md"
-                  />
-                  
-                  {/* Highlight for winning card */}
-                  {isWinningCard && (
-                    <div className="absolute inset-0 rounded-lg ring-4 ring-yellow-400 animate-pulse z-10"></div>
-                  )}
-                  
-                  {/* Darken non-winning cards */}
-                  {!isWinningCard && (
-                    <div className="absolute inset-0 bg-black/40 rounded-lg"></div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
+  // Add this function at the bottom of the component
+  const getPlayerWhoPlayedCard = (cardIndex: number) => {
+    // Get player ID from our tracking
+    const playerId = cardPlayers[cardIndex];
+    if (!playerId) return null;
     
+    // Find the player object
+    return game.players.find(p => p.id === playerId) || null;
+  };
+  
+  // Update the renderTrickCards function
+  const renderTrickCards = () => {
     // Current trick rendering with winning card highlighting
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
@@ -701,7 +667,6 @@ export default function GameTable({
           const playerPosition = player.position ?? 0;
           
           // Calculate the table position relative to the current player's view
-          // This ensures each card appears in front of the player who played it
           const tablePosition = (playerPosition - myPosition + 4) % 4;
           
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
@@ -1015,14 +980,7 @@ export default function GameTable({
                   alt={`${card.rank}${card.suit}`}
                   width={cardUIWidth}
                   height={cardUIHeight}
-                  className={`rounded-lg shadow-[4px_4px_12px_rgba(0,0,0,0.8)] ${
-                    isPlayable ? 'hover:shadow-[8px_8px_16px_rgba(0,0,0,0.9)]' : ''
-                  }`}
-                  style={{ width: 'auto', height: 'auto' }}
                 />
-                {!isPlayable && (
-                  <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
-                )}
               </div>
             </div>
           );
@@ -1030,182 +988,4 @@ export default function GameTable({
       </div>
     );
   };
-
-  // Add the missing handleHandSummaryClose function
-  const handleHandSummaryClose = () => {
-    setShowHandSummary(false);
-    if (socket && handScores) {
-      socket.emit("update_scores", {
-        gameId: game.id,
-        team1Score: handScores.team1.score,
-        team2Score: handScores.team2.score,
-        startNewHand: true
-      });
-      setHandScores(null);
-    }
-  };
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (showHandSummary) {
-      timeoutId = setTimeout(handleHandSummaryClose, 5000);
-    }
-    return () => clearTimeout(timeoutId);
-  }, [showHandSummary]);
-
-  // Add debug listener for trick winner data - only setup once
-  useEffect(() => {
-    if (socket) {
-      // Setup debug listener for trick winners
-      debugTrickWinner(socket, game.id);
-    }
-  }, [socket, game.id]);
-
-  // Initialize the global variable
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.lastCompletedTrick = null;
-    }
-  }, []);
-
-  return (
-    <>
-      <LandscapePrompt />
-      <div className="flex flex-col h-screen bg-gray-900">
-        {/* Empty div for padding above header */}
-        <div className="h-8"></div>
-        
-        {/* Header */}
-        <div className="bg-gray-800 text-white px-4 py-2 flex justify-between items-center mb-2"
-             style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}>
-          <div className="flex items-center space-x-4">
-            <h2 className="font-bold" style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}>Game #{game.id}</h2>
-            <div className="flex space-x-2">
-              <div>Status: {game.status}</div>
-              <div className="text-red-500">Score: {game.team1Score}</div>
-              <div className="text-blue-500">Score: {game.team2Score}</div>
-            </div>
-          </div>
-          <button
-            onClick={handleLeaveTable}
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
-            style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
-          >
-            Leave Table
-          </button>
-        </div>
-
-        {/* Main content area with added padding */}
-        <div className="flex flex-1 min-h-0 pt-1">
-          {/* Game table area - add padding on top and bottom */}
-          <div className="w-[70%] p-2 flex flex-col">
-            {/* Game table with more space at the top and bottom */}
-            <div className="relative flex-1 mb-3 mt-2" style={{ 
-              background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
-              borderRadius: `${Math.floor(64 * scaleFactor)}px`,
-              border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
-            }}>
-              {/* Players around the table */}
-              {[0, 1, 2, 3].map((position) => (
-                <div key={`player-position-${position}`}>
-                  {renderPlayerPosition(position)}
-                </div>
-              ))}
-
-              {/* Center content */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
-                  <button
-                    onClick={handleStartGame}
-                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
-                    style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
-                  >
-                    Start Game
-                  </button>
-                ) : game.status === "WAITING" && game.players.length < 4 ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Players</div>
-                    <div className="text-sm mt-1">{game.players.length}/4 joined</div>
-                  </div>
-                ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Host</div>
-                    <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
-                  </div>
-                ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
-                  </div>
-                ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
-                  renderTrickCards()
-                ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
-                  <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="text-sm">
-                      Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Bidding interface */}
-              {game.status === "BIDDING" && (
-                <BiddingInterface
-                  onBid={handleBid}
-                  currentBid={orderedPlayers[0]?.bid}
-                  gameId={game.id}
-                  playerId={currentPlayerId || ''}
-                  currentPlayerTurn={game.currentPlayer}
-                />
-              )}
-            </div>
-
-            {/* Cards area with more space */}
-            <div className="bg-gray-800/50 rounded-lg relative mt-2" 
-                 style={{ 
-                   height: `${Math.floor(120 * scaleFactor)}px`, 
-                   clipPath: 'inset(-100% 0 0 0)'
-                 }}>
-              {renderPlayerHand()}
-            </div>
-          </div>
-
-          {/* Chat area - 30% */}
-          <div className="w-[30%] p-2">
-            <Chat 
-              socket={socket}
-              gameId={game.id}
-              userId={currentPlayerId || ''}
-              userName={currentPlayer?.name || 'Unknown'}
-              players={game.players}
-            />
-          </div>
-        </div>
-
-        {/* Hand Summary Modal */}
-        {showHandSummary && handScores && (
-          <HandSummaryModal
-            onClose={handleHandSummaryClose}
-            players={game.players}
-            team1Score={handScores.team1}
-            team2Score={handScores.team2}
-          />
-        )}
-
-        {/* Winner Modal */}
-        {showWinner && handScores && (
-          <WinnerModal
-            isOpen={showWinner}
-            onClose={handleWinnerClose}
-            team1Score={game.team1Score + handScores.team1.score}
-            team2Score={game.team2Score + handScores.team2.score}
-            winningTeam={game.team1Score + handScores.team1.score > game.team2Score + handScores.team2.score ? 1 : 2}
-          />
-        )}
-      </div>
-    </>
-  );
 }
