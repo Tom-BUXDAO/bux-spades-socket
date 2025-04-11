@@ -203,6 +203,11 @@ export default function GameTable({
   const [cardPlayers, setCardPlayers] = useState<Record<number, string>>({});
   const [lastTrickLength, setLastTrickLength] = useState(0);
   
+  // Add state for tracking the winning card
+  const [winningCardIndex, setWinningCardIndex] = useState<number | null>(null); 
+  const [winningPlayerId, setWinningPlayerId] = useState<string | null>(null);
+  const [showWinningCardHighlight, setShowWinningCardHighlight] = useState(false);
+  
   const user = propUser || session?.user;
   
   // Add state to store player positions for the current trick
@@ -429,6 +434,19 @@ export default function GameTable({
           
           console.log(`✅ CLIENT DETERMINED: Trick should be won by ${winningPlayer?.name || 'Unknown'} (${winningPlayerId}) with ${winningCard.rank}${winningCard.suit}`);
           
+          // Highlight the winning card and player
+          setWinningCardIndex(winningCardIndex);
+          setWinningPlayerId(winningPlayerId);
+          setShowWinningCardHighlight(true);
+          
+          // Add a delay to show the winning card before the server clears it
+          // This will give players time to see who won the trick
+          setTimeout(() => {
+            setShowWinningCardHighlight(false);
+            setWinningCardIndex(null);
+            setWinningPlayerId(null);
+          }, 2000); // 2 second delay
+          
           // SERVER BUG WORKAROUND: The server incorrectly attributes the winning card to the wrong player
           // This is because the server message is printed with incorrect information. We need to display the correct winner.
           if (game.currentTrick.length === 4) {
@@ -520,6 +538,9 @@ export default function GameTable({
           // Calculate the position relative to the current player's view
           const relativePosition = (playerPosition - myPosition + 4) % 4;
           
+          // Check if this is the winning card
+          const isWinningCard = showWinningCardHighlight && winningCardIndex === index;
+          
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}, showing at position ${relativePosition}`);
           
           return (
@@ -536,8 +557,11 @@ export default function GameTable({
                 alt={`${card.rank}${card.suit}`}
                 width={trickCardWidth}
                 height={trickCardHeight}
-                className="rounded-lg shadow-md"
+                className={`rounded-lg ${isWinningCard ? 'ring-4 ring-yellow-400 shadow-lg shadow-yellow-300/50' : 'shadow-md'}`}
               />
+              {isWinningCard && (
+                <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-50 z-20"></div>
+              )}
             </div>
           );
         })}
@@ -547,6 +571,14 @@ export default function GameTable({
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
+          </div>
+        )}
+        
+        {/* Winner indicator */}
+        {showWinningCardHighlight && winningPlayerId && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded animate-pulse"
+               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+            {game.players.find(p => p.id === winningPlayerId)?.name || 'Player'} wins the trick!
           </div>
         )}
       </div>
@@ -645,6 +677,7 @@ export default function GameTable({
     }
 
     const isActive = game.currentPlayer === player.id;
+    const isWinningPlayer = player.id === winningPlayerId && showWinningCardHighlight;
     
     // Determine if we're on mobile
     const isMobile = screenSize.width < 640;
@@ -755,9 +788,19 @@ export default function GameTable({
             }}>Bid: {player.bid}</div>
           )}
           {game.status === "PLAYING" && (
-            <div className="text-yellow-200" style={{ 
+            <div className="relative text-yellow-200" style={{ 
               fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
-            }}>Tricks: {player.tricks}</div>
+            }}>
+              Tricks: {player.tricks}
+              
+              {/* Show +1 animation when player wins a trick */}
+              {isWinningPlayer && (
+                <div className="absolute -right-6 top-0 text-green-400 font-bold animate-bounce"
+                     style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}>
+                  +1
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
