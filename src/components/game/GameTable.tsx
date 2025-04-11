@@ -765,139 +765,137 @@ export default function GameTable({
     // Determine made/bid status color
     const madeCount = player.tricks || 0;
     const bidCount = player.bid !== undefined ? player.bid : 0;
-    const madeStatusColor = 
-      game.status === "PLAYING" ? 
-        (madeCount < bidCount ? "text-red-400" : "text-green-400") :
-        "text-yellow-200";
+    const madeStatusColor = madeCount < bidCount ? "text-red-600" : "text-green-600";
+    const teamColor = player.team === 1 ? 'red' : 'blue';
+    const teamBorderColor = player.team === 1 ? 'border-red-500' : 'border-blue-500';
+    const teamBgColor = player.team === 1 ? 'bg-red-500' : 'bg-blue-500';
 
     return (
-      <div className={`absolute ${getPositionClasses(position)}`}>
+      <div className={`absolute ${getPositionClasses(position)} ${isActive ? 'z-10' : ''}`}>
         {isSideSeat ? (
-          // Side seats (left/right) - container with all elements
-          <div className={`bg-opacity-90 rounded-lg p-0.5 ${
-            player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-          } ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`}
-            style={{ width: screenSize.width < 640 ? '48px' : '90px' }}>
-            {/* Avatar at the top */}
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="rounded-full overflow-hidden border border-white" style={{ 
-                  width: screenSize.width < 640 ? '28px' : '50px', 
-                  height: screenSize.width < 640 ? '28px' : '50px' 
-                }}>
-                  <Image
-                    src={getPlayerAvatar(player)}
-                    alt="Player avatar"
-                    width={screenSize.width < 640 ? 28 : 50}
-                    height={screenSize.width < 640 ? 28 : 50}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                {player.isDealer && (
-                  <div className="absolute -right-1 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-sm border border-black"
-                      style={{ 
-                        width: screenSize.width < 640 ? '12px' : '20px', 
-                        height: screenSize.width < 640 ? '12px' : '20px', 
-                        fontSize: screenSize.width < 640 ? '6px' : '10px'
-                      }}>
-                    D
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Name centered below avatar */}
-            <div className="text-center text-white font-semibold truncate text-xs px-0.5 mt-0.5" style={{ 
-              fontSize: screenSize.width < 640 ? '8px' : '14px'
-            }}>
-              {player.name}
-            </div>
-            
-            {/* Made/Bid counter centered at bottom */}
-            <div className="flex justify-center mt-0.5">
-              <div className={`font-bold px-1.5 py-0.5 bg-white rounded-full ${
-                game.status === "WAITING" ? "text-gray-600" : 
-                madeCount < bidCount ? "text-red-600" : "text-green-600"
-              }`} style={{ 
-                fontSize: screenSize.width < 640 ? '8px' : '14px' 
-              }}>
-                {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
-              </div>
-            </div>
-            
-            {/* Show +1 animation when player wins a trick */}
-            {isWinningPlayer && (
-              <div className="text-green-400 font-bold animate-bounce text-center" style={{ 
-                fontSize: screenSize.width < 640 ? '8px' : '14px' 
-              }}>
-                +1
-              </div>
-            )}
-          </div>
-        ) : (
-          // Top/bottom seats - horizontal layout with avatar on left
-        <div className={`relative rounded-lg ${
-          player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-          } text-white flex items-center px-1.5 py-0.5 ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`} style={{
-            minWidth: screenSize.width < 640 ? '80px' : '120px',
-            maxWidth: screenSize.width < 640 ? '100px' : '200px'
-          }}>
-            {/* Avatar inside container */}
-            <div className="relative mr-1.5">
+          // Side seats (left/right) - vertical layout
+          <div className="flex flex-col items-center gap-1">
+            {/* Avatar in circle with team color border */}
+            <div className={`relative rounded-full p-0.5 ${teamBgColor} ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`}>
               <div className="rounded-full overflow-hidden" style={{ 
-                width: screenSize.width < 640 ? '26px' : '50px', 
-                height: screenSize.width < 640 ? '26px' : '50px' 
+                width: screenSize.width < 640 ? '28px' : '48px', 
+                height: screenSize.width < 640 ? '28px' : '48px' 
               }}>
                 <Image
                   src={getPlayerAvatar(player)}
                   alt="Player avatar"
-                  width={screenSize.width < 640 ? 26 : 50}
-                  height={screenSize.width < 640 ? 26 : 50}
+                  width={screenSize.width < 640 ? 28 : 48}
+                  height={screenSize.width < 640 ? 28 : 48}
                   className="w-full h-full object-cover"
                 />
               </div>
               {player.isDealer && (
                 <div className="absolute -right-1 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-sm border border-black"
                     style={{ 
-                      width: screenSize.width < 640 ? '12px' : '20px', 
-                      height: screenSize.width < 640 ? '12px' : '20px', 
-                      fontSize: screenSize.width < 640 ? '6px' : '10px'
+                      width: screenSize.width < 640 ? '12px' : '18px', 
+                      height: screenSize.width < 640 ? '12px' : '18px', 
+                      fontSize: screenSize.width < 640 ? '6px' : '9px'
                     }}>
                   D
                 </div>
               )}
             </div>
             
-            {/* Player info */}
-            <div className="flex flex-col items-start flex-grow">
-              <div className="font-semibold w-full truncate text-xs" style={{ 
-                fontSize: screenSize.width < 640 ? '9px' : '16px' 
-              }}>{player.name}</div>
-              
-              {/* Always show the bid/made display - show 0/0 when waiting */}
-              <div className="w-full flex justify-center items-center" style={{ 
-                fontSize: screenSize.width < 640 ? '9px' : '16px' 
+            {/* Name in team color container */}
+            <div className={`${teamBgColor} text-white text-center px-1 py-0.5 rounded-md text-xs w-full`} style={{ 
+              fontSize: screenSize.width < 640 ? '8px' : '12px',
+              maxWidth: screenSize.width < 640 ? '48px' : '70px'
+            }}>
+              <div className="truncate">
+                {player.name}
+              </div>
+            </div>
+            
+            {/* Made/Bid counter in white container with team color border */}
+            <div className={`bg-white ${teamBorderColor} border rounded-full px-1.5 py-0.5 text-center`} style={{ 
+              fontSize: screenSize.width < 640 ? '8px' : '12px' 
+            }}>
+              <span className={game.status === "WAITING" ? "text-gray-600" : madeStatusColor}>
+                {game.status === "WAITING" ? "0" : madeCount}
+              </span>
+              <span className="text-gray-400">{" / "}</span>
+              <span className="text-gray-600">
+                {game.status === "WAITING" ? "0" : bidCount}
+              </span>
+            </div>
+            
+            {/* Show +1 animation when player wins a trick */}
+            {isWinningPlayer && (
+              <div className="text-green-400 font-bold animate-bounce text-center" style={{ 
+                fontSize: screenSize.width < 640 ? '8px' : '12px' 
               }}>
-                {/* Made / Bid display */}
-                <div className={`font-bold px-1.5 py-0.5 bg-white rounded-full ${
-                  game.status === "WAITING" ? "text-gray-600" : 
-                  madeCount < bidCount ? "text-red-600" : "text-green-600"
-                }`} style={{ 
-                  fontSize: screenSize.width < 640 ? '8px' : '14px'
-                }}>
-                  {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
+                +1
+              </div>
+            )}
+          </div>
+        ) : (
+          // Top/bottom seats - horizontal layout
+          <div className="flex items-start gap-1.5">
+            {/* Avatar in circle with team color border */}
+            <div className={`relative rounded-full p-0.5 ${teamBgColor} ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`}>
+              <div className="rounded-full overflow-hidden" style={{ 
+                width: screenSize.width < 640 ? '28px' : '48px', 
+                height: screenSize.width < 640 ? '28px' : '48px' 
+              }}>
+                <Image
+                  src={getPlayerAvatar(player)}
+                  alt="Player avatar"
+                  width={screenSize.width < 640 ? 28 : 48}
+                  height={screenSize.width < 640 ? 28 : 48}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {player.isDealer && (
+                <div className="absolute -right-1 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-sm border border-black"
+                    style={{ 
+                      width: screenSize.width < 640 ? '12px' : '18px', 
+                      height: screenSize.width < 640 ? '12px' : '18px', 
+                      fontSize: screenSize.width < 640 ? '6px' : '9px'
+                    }}>
+                  D
                 </div>
+              )}
+            </div>
+            
+            {/* Name and bid in vertical stack */}
+            <div className="flex flex-col items-center gap-1">
+              {/* Name in team color container */}
+              <div className={`${teamBgColor} text-white text-center px-1.5 py-0.5 rounded-md text-xs w-full`} style={{ 
+                fontSize: screenSize.width < 640 ? '8px' : '12px',
+                minWidth: screenSize.width < 640 ? '60px' : '80px'
+              }}>
+                <div className="truncate">
+                  {player.name}
+                </div>
+              </div>
+              
+              {/* Made/Bid counter in white container with team color border */}
+              <div className={`bg-white ${teamBorderColor} border rounded-full px-2 py-0.5 text-center`} style={{ 
+                fontSize: screenSize.width < 640 ? '8px' : '12px' 
+              }}>
+                <span className={game.status === "WAITING" ? "text-gray-600" : madeStatusColor}>
+                  {game.status === "WAITING" ? "0" : madeCount}
+                </span>
+                <span className="text-gray-400">{" / "}</span>
+                <span className="text-gray-600">
+                  {game.status === "WAITING" ? "0" : bidCount}
+                </span>
+              </div>
               
               {/* Show +1 animation when player wins a trick */}
               {isWinningPlayer && (
-                  <div className="text-green-400 font-bold animate-bounce ml-1" style={{ 
-                    fontSize: screenSize.width < 640 ? '8px' : '14px' 
-                  }}>
+                <div className="text-green-400 font-bold animate-bounce text-center" style={{ 
+                  fontSize: screenSize.width < 640 ? '8px' : '12px' 
+                }}>
                   +1
                 </div>
               )}
             </div>
-        </div>
           </div>
         )}
       </div>
