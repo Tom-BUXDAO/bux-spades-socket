@@ -494,6 +494,29 @@ export default function GameTable({
     
     console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`));
     
+    // Find the server-reported winning card and player for a completed trick
+    let serverWinnerInfo = null;
+    if (isTrickComplete && serverWinningCard && serverWinningPlayerId) {
+      const winnerPlayer = game.players.find(p => p.id === serverWinningPlayerId);
+      if (winnerPlayer) {
+        serverWinnerInfo = {
+          card: serverWinningCard,
+          player: winnerPlayer
+        };
+        console.log("🏆 Server reported winner:", winnerPlayer.name, "with card", `${serverWinningCard.rank}${serverWinningCard.suit}`);
+      }
+    }
+
+    // Create a debug view of player-to-card mappings
+    if (isTrickComplete) {
+      for (let i = 0; i < game.currentTrick.length; i++) {
+        const card = game.currentTrick[i];
+        const playerId = activeMapping[i];
+        const player = playerId ? game.players.find(p => p.id === playerId) : null;
+        console.log(`Card ${i} (${card.rank}${card.suit}) -> played by ${player?.name || 'Unknown'}`);
+      }
+    }
+    
     return (
       <div className="relative" style={{ 
         width: `${Math.floor(200 * scaleFactor)}px`, 
@@ -514,12 +537,17 @@ export default function GameTable({
           // Calculate card's visual position relative to current player
           const tablePosition = (4 + (player.position ?? 0) - myPosition) % 4;
           
-          // Check if this is the winning card
-          let isWinningCard = isTrickComplete && index === winningIndex;
+          // Determine if this is the winning card
+          let isWinningCard = false;
           
-          // If we have server data about the winning card, use that instead
-          if (isTrickComplete && serverWinningCard) {
-            isWinningCard = card.rank === serverWinningCard.rank && card.suit === serverWinningCard.suit;
+          // First check server-reported winner if available
+          if (isTrickComplete && serverWinnerInfo && playerId === serverWinningPlayerId) {
+            isWinningCard = true;
+            console.log(`✅ Highlighting card at index ${index} as winning card`);
+          } 
+          // Fall back to calculated winner
+          else if (isTrickComplete && index === winningIndex) {
+            isWinningCard = true;
           }
           
           return (
@@ -547,7 +575,7 @@ export default function GameTable({
         })}
         
         {/* Winner indicator when trick is complete */}
-        {isTrickComplete && winningIndex >= 0 && (
+        {isTrickComplete && (serverWinningPlayerId || winningIndex >= 0) && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             {(() => {
