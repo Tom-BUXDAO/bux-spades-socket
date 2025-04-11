@@ -526,17 +526,83 @@ export default function GameTable({
     const isTrickComplete = game.currentTrick.length === 4;
     const winningIndex = isTrickComplete ? determineWinningCard(game.currentTrick) : -1;
     
-    // Create a local copy of cardPlayers to prevent updates during complete tricks
-    const currentCardPlayers = { ...cardPlayers };
-    
-    // IMPORTANT: For completed tricks, freeze the card players mapping
-    // This prevents card positions from changing after trick is complete
-    if (isTrickComplete && Object.keys(currentCardPlayers).length === 4) {
-      console.log("Trick is complete, using frozen player mapping");
+    // For complete tricks, use a direct position-based approach instead of relying on cardPlayers mapping
+    // This ensures all cards are shown and positioned correctly
+    if (isTrickComplete) {
+      console.log("Trick is complete, using position-based approach");
+      // Find the player who led the trick - it's the player after the current player
+      const currentPlayerIndex = game.players.findIndex(p => p.id === game.currentPlayer);
+      
+      return (
+        <div className="relative" style={{ 
+          width: `${Math.floor(200 * scaleFactor)}px`, 
+          height: `${Math.floor(200 * scaleFactor)}px` 
+        }}>
+          {game.currentTrick.map((card, index) => {
+            // For completed tricks, calculate player positions directly based on game state
+            // Start with the player who led the trick and go clockwise
+            // The trick leader is -4 positions from current player
+            const leadPlayerPosition = (currentPlayerIndex - 4 + game.players.length) % game.players.length;
+            const playerPosition = (leadPlayerPosition + index) % game.players.length;
+            const player = game.players[playerPosition];
+            
+            if (!player) {
+              console.error(`Cannot find player at position ${playerPosition}`);
+              return null;
+            }
+            
+            // Calculate card's visual position relative to current player
+            const tablePosition = (4 + playerPosition - myPosition) % 4;
+            
+            // Check if this is the winning card
+            const isWinningCard = index === winningIndex;
+            
+            console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
+            
+            return (
+              <div 
+                key={`trick-card-${index}`} 
+                className={positionClasses[tablePosition]}
+                data-testid={`trick-card-${index}`}
+              >
+                <div className={`relative transition-all duration-300 ${isWinningCard ? 'ring-4 ring-yellow-400 rounded-lg' : ''}`}>
+                  <Image
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank}${card.suit}`}
+                    width={trickCardWidth}
+                    height={trickCardHeight}
+                    className={`rounded-lg shadow-md ${isWinningCard ? 'brightness-110' : ''}`}
+                  />
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* Winner indicator when trick is complete */}
+          {winningIndex >= 0 && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
+                 style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
+              Winner: {game.currentTrick[winningIndex] ? 
+                // Find the player who played the winning card
+                (() => {
+                  // The player who led the trick is -4 positions from current player
+                  const currentPlayerIndex = game.players.findIndex(p => p.id === game.currentPlayer);
+                  const leadPlayerPosition = (currentPlayerIndex - 4 + game.players.length) % game.players.length;
+                  const winnerPosition = (leadPlayerPosition + winningIndex) % game.players.length;
+                  const winner = game.players[winnerPosition];
+                  return winner?.name || 'Unknown Player';
+                })() : 
+                'Unknown'}
+            </div>
+          )}
+        </div>
+      );
     }
     
-    // HANDLE DUPLICATE PLAYERS: Create a filtered mapping that ensures each player only appears once
-    // This prevents cards from showing in the wrong positions
+    // For in-progress tricks, use the cardPlayers mapping
+    const currentCardPlayers = { ...cardPlayers };
+    
+    // Filter out duplicate players from the mapping
     const seenPlayers = new Set<string>();
     const filteredCardPlayers: Record<number, string> = {};
     
@@ -570,9 +636,6 @@ export default function GameTable({
           // The relative position from current player's view
           const tablePosition = (4 + playerPosition - myPosition) % 4;
           
-          // Check if this is the winning card in a complete trick
-          const isWinningCard = isTrickComplete && index === winningIndex;
-          
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
           
           return (
@@ -581,29 +644,21 @@ export default function GameTable({
               className={positionClasses[tablePosition]}
               data-testid={`trick-card-${index}`}
             >
-              <div className={`relative transition-all duration-300 ${isWinningCard ? 'ring-4 ring-yellow-400 rounded-lg' : ''}`}>
+              <div className="relative transition-all duration-300">
                 <Image
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank}${card.suit}`}
                   width={trickCardWidth}
                   height={trickCardHeight}
-                  className={`rounded-lg shadow-md ${isWinningCard ? 'brightness-110' : ''}`}
+                  className="rounded-lg shadow-md"
                 />
               </div>
             </div>
           );
         })}
         
-        {/* Winner indicator when trick is complete */}
-        {isTrickComplete && winningIndex >= 0 && filteredCardPlayers[winningIndex] && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
-               style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
-            Winner: {game.players.find(p => p.id === filteredCardPlayers[winningIndex])?.name || 'Unknown'}
-          </div>
-        )}
-        
         {/* Leading suit indicator (only show when trick isn't complete) */}
-        {!isTrickComplete && game.currentTrick[0] && (
+        {game.currentTrick[0] && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
