@@ -398,7 +398,23 @@ export default function GameTable({
     // Only update if we have new information
     if (Object.keys(updatedCardPlayers).length > 0) {
       console.log('Updated card players from server data:', updatedCardPlayers);
-      setCardPlayers(updatedCardPlayers);
+      
+      // CRITICAL FIX: Don't overwrite existing card player mappings
+      setCardPlayers(prev => {
+        // Start with the existing data
+        const updated = { ...prev };
+        
+        // Only add new mappings for cards that don't have a player assigned yet
+        Object.entries(updatedCardPlayers).forEach(([index, playerId]) => {
+          const i = parseInt(index);
+          // Only set if we don't already know who played this card
+          if (!updated[i]) {
+            updated[i] = playerId;
+          }
+        });
+        
+        return updated;
+      });
       
       // If we have a complete trick (4 cards), save it as the last completed trick
       if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
@@ -441,13 +457,24 @@ export default function GameTable({
         if (player) {
           console.log(`Detected new card played: card ${cardIndex} (${game.currentTrick[cardIndex].rank}${game.currentTrick[cardIndex].suit}) played by ${player.name}`);
           
-          // Update cardPlayers with this new information and NEVER change it
-          setCardPlayers(prev => ({
-            ...prev,
-            [cardIndex]: previousPlayerId
-          }));
+          // CRITICAL FIX: Only update if this card position doesn't already have a player assigned
+          setCardPlayers(prev => {
+            // If we already know who played this card, DO NOT CHANGE IT
+            if (prev[cardIndex]) {
+              return prev;
+            }
+            
+            // Otherwise, update with the new information
+            return {
+              ...prev,
+              [cardIndex]: previousPlayerId
+            };
+          });
         }
       }
+      
+      // Update the last trick length regardless
+      setLastTrickLength(currentLength);
     }
   }, [game.currentTrick?.length, game.players, game.currentPlayer, lastTrickLength, lastCurrentPlayer]);
 
@@ -475,7 +502,11 @@ export default function GameTable({
     const cardPosition = game.currentTrick.length;
     console.log(`I'm playing card at position ${cardPosition}`);
     
+    // CRITICAL FIX: Don't overwrite existing mappings and make this one sticky
     setCardPlayers(prev => {
+      // If we already have a player for this position (should never happen), keep it
+      if (prev[cardPosition]) return prev;
+      
       const updated = { ...prev, [cardPosition]: currentPlayerId };
       console.log('Updated cardPlayers:', updated);
       return updated;
@@ -954,6 +985,15 @@ export default function GameTable({
       window.lastCompletedTrick = null;
     }
   }, []);
+
+  // Add a specific effect to reset lastTrickLength when the trick is cleared
+  useEffect(() => {
+    // If the trick is empty, reset our tracking completely
+    if (game.currentTrick.length === 0) {
+      setLastTrickLength(0);
+      // Note: We don't reset cardPlayers here since we want to keep it for displaying the last trick
+    }
+  }, [game.currentTrick.length]);
 
   // Return the JSX for the component
   return (
