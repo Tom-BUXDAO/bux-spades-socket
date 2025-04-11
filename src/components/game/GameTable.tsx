@@ -192,36 +192,6 @@ export default function GameTable({
   startGame,
   user: propUser
 }: GameTableProps) {
-  // Add CSS for winning card highlight animation
-  useEffect(() => {
-    // Add the CSS for the winning card highlight if it doesn't exist
-    if (!document.getElementById('winning-card-styles')) {
-      const style = document.createElement('style');
-      style.id = 'winning-card-styles';
-      style.innerHTML = `
-        .winning-card-highlight {
-          box-shadow: 0 0 15px 8px rgba(255, 215, 0, 0.7) !important;
-          transform: scale(1.1) !important;
-          z-index: 100 !important;
-          transition: all 0.3s ease !important;
-        }
-        .winning-card-highlight img {
-          border: 3px solid gold !important;
-          border-radius: 0.5rem !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      const style = document.getElementById('winning-card-styles');
-      if (style) {
-        document.head.removeChild(style);
-      }
-    };
-  }, []);
-  
   const { data: session } = useSession();
   const regularSocket = !socket ? useSocket("") : { playCard: () => {}, makeBid: () => {} };
   const [selectedBid, setSelectedBid] = useState<number | null>(null);
@@ -479,100 +449,29 @@ export default function GameTable({
 
   // Add a dedicated effect to detect completed tricks and highlight the winner
   useEffect(() => {
-    // Add logging to see exactly what's happening
-    console.log("🚨 TRICK CHECK - Current trick length:", game.currentTrick.length);
-    console.log("🚨 TRICK CHECK - cardPlayers:", cardPlayers);
-    
     // Check if we have a complete trick (4 cards)
     if (game.currentTrick.length === 4) {
-      console.log("🎯 COMPLETE TRICK DETECTED:", game.currentTrick);
-      console.log("🎯 Card players:", cardPlayers);
+      console.log("COMPLETE TRICK DETECTED:", game.currentTrick);
       
       // Calculate the winning card
       const winningCardIndex = determineWinningCard(game.currentTrick);
-      console.log("🎯 Winning card index:", winningCardIndex);
       
       if (winningCardIndex >= 0 && cardPlayers[winningCardIndex]) {
         const winningPlayerId = cardPlayers[winningCardIndex];
         
-        console.log(`🏆 TRICK WINNER: Card ${winningCardIndex} (${game.currentTrick[winningCardIndex].rank}${game.currentTrick[winningCardIndex].suit}) wins, played by ${winningPlayerId}`);
+        console.log(`Winner determined: Card ${winningCardIndex} wins, played by ${winningPlayerId}`);
         
-        // Force the DOM to update with winner visuals
+        // Update state to highlight the winning card
         setWinningCardIndex(winningCardIndex);
         setWinningPlayerId(winningPlayerId);
         setShowWinningCardHighlight(true);
         
-        // Debug logs for highlight state
-        console.log("🎮 Setting highlight state:", { 
-          winningCardIndex,
-          winningPlayerId,
-          showWinningCardHighlight: true 
-        });
-        
-        // Try the direct DOM approach for highlighting the winning card
-        try {
-          // Give time for the DOM to update
-          setTimeout(() => {
-            // Find the card element by test ID
-            const cardElement = document.querySelector(`[data-testid="trick-card-${winningCardIndex}"]`);
-            if (cardElement) {
-              console.log("🔍 Found card element to highlight via DOM:", cardElement);
-              
-              // Add a custom class for animation
-              cardElement.classList.add("winning-card-highlight");
-              
-              // Find the player's trick count and add +1 animation
-              const playerElement = document.querySelector(`[data-player-id="${winningPlayerId}"]`);
-              if (playerElement) {
-                console.log("🔍 Found player element:", playerElement);
-                
-                // Create and append +1 indicator
-                const plusOneElement = document.createElement("div");
-                plusOneElement.innerHTML = "+1";
-                plusOneElement.className = "absolute -right-6 top-0 text-green-400 font-bold animate-bounce";
-                plusOneElement.style.fontSize = `${Math.floor(16 * scaleFactor)}px`;
-                
-                // Find the tricks count element and append
-                const tricksElement = playerElement.querySelector(".tricks-count");
-                if (tricksElement) {
-                  tricksElement.appendChild(plusOneElement);
-                }
-              }
-              
-              // Remove after 2 seconds
-              setTimeout(() => {
-                cardElement.classList.remove("winning-card-highlight");
-                
-                // Remove plus one element if it exists
-                const plusOneElement = document.querySelector(".animate-bounce");
-                if (plusOneElement && plusOneElement.parentNode) {
-                  plusOneElement.parentNode.removeChild(plusOneElement);
-                }
-                
-                // Clear state
-                setShowWinningCardHighlight(false);
-                setWinningCardIndex(null);
-                setWinningPlayerId(null);
-              }, 2000);
-            }
-          }, 0);
-        } catch (error) {
-          console.error("Failed to manipulate DOM for trick animation:", error);
-        }
-        
         // Clear highlight after delay
         setTimeout(() => {
-          console.log("🎮 Clearing highlight state");
           setShowWinningCardHighlight(false);
           setWinningCardIndex(null);
           setWinningPlayerId(null);
         }, 2000); // 2 second delay
-      } else {
-        console.log("⚠️ Cannot identify winning player:", {
-          winningCardIndex,
-          cardPlayers,
-          currentTrick: game.currentTrick
-        });
       }
     }
   }, [game.currentTrick, cardPlayers]);
@@ -621,13 +520,6 @@ export default function GameTable({
       return null;
     }
     
-    // Add debug log when rendering
-    console.log("🎨 RENDERING CARDS - Highlight state:", { 
-      showWinningCardHighlight, 
-      winningCardIndex, 
-      winningPlayerId 
-    });
-    
     // Scale the card size for the trick
     const trickCardWidth = Math.floor(60 * scaleFactor); 
     const trickCardHeight = Math.floor(84 * scaleFactor);
@@ -664,11 +556,6 @@ export default function GameTable({
           
           // Check if this is the winning card
           const isWinningCard = showWinningCardHighlight && winningCardIndex === index;
-          
-          // Debug for each card
-          if (isWinningCard) {
-            console.log(`🌟 Rendering WINNING card ${index} (${card.rank}${card.suit})`);
-          }
           
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}, showing at position ${relativePosition}`);
           
@@ -895,15 +782,11 @@ export default function GameTable({
             </div>
           )}
         </div>
-        <div 
-          data-player-id={player.id} 
-          className="rounded-lg ${
-            player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-          } text-white text-center" 
-          style={{
-            padding: screenSize.width < 640 ? '2px 6px' : '4px 12px'
-          }}
-        >
+        <div className={`rounded-lg ${
+          player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
+        } text-white text-center`} style={{
+          padding: screenSize.width < 640 ? '2px 6px' : '4px 12px'
+        }}>
           <div className="font-semibold" style={{ 
             fontSize: screenSize.width < 640 ? '12px' : `${Math.floor(16 * scaleFactor)}px` 
           }}>{player.name}</div>
@@ -913,7 +796,7 @@ export default function GameTable({
             }}>Bid: {player.bid}</div>
           )}
           {game.status === "PLAYING" && (
-            <div className="relative text-yellow-200 tricks-count" style={{ 
+            <div className="relative text-yellow-200" style={{ 
               fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
             }}>
               Tricks: {player.tricks}
