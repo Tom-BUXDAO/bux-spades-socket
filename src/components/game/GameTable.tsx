@@ -710,9 +710,9 @@ export default function GameTable({
     const getPositionClasses = (pos: number): string => {
       // Base positioning
       const basePositions = [
-        'bottom-1 left-1/2 -translate-x-1/2',  // South (bottom)
+        'bottom-4 left-1/2 -translate-x-1/2',  // South (bottom)
         'left-4 top-1/2 -translate-y-1/2',     // West (left)
-        'top-1 left-1/2 -translate-x-1/2',     // North (top)
+        'top-4 left-1/2 -translate-x-1/2',     // North (top)
         'right-4 top-1/2 -translate-y-1/2'     // East (right)
       ];
       
@@ -720,10 +720,10 @@ export default function GameTable({
       if (screenSize.width < 768) {
         // Tighter positioning for smaller screens
         const mobilePositions = [
-          'bottom-1 left-1/2 -translate-x-1/2',  // South
-          'left-1 top-1/2 -translate-y-1/2',     // West
-          'top-1 left-1/2 -translate-x-1/2',     // North
-          'right-1 top-1/2 -translate-y-1/2'     // East
+          'bottom-2 left-1/2 -translate-x-1/2',  // South
+          'left-2 top-1/2 -translate-y-1/2',     // West
+          'top-2 left-1/2 -translate-x-1/2',     // North
+          'right-2 top-1/2 -translate-y-1/2'     // East
         ];
         return mobilePositions[pos];
       }
@@ -761,156 +761,170 @@ export default function GameTable({
     // Determine if this is a left/right seat (position 1 or 3)
     const isSideSeat = position === 1 || position === 3;
     
-    // Calculate font sizes based on scale
-    const nameSize = Math.max(14, Math.floor(16 * scaleFactor));
-    const infoSize = Math.max(12, Math.floor(14 * scaleFactor));
+    // Calculate sizes based on device
+    const avatarWidth = isMobile ? 32 : 40;
+    const avatarHeight = isMobile ? 32 : 40;
     
-    // Smaller sizes for mobile
-    const mobileNameSize = isMobile ? 9 : nameSize;
-    const mobileInfoSize = isMobile ? 8 : infoSize;
-    const mobileAvatarSize = isMobile ? Math.floor(avatarSize * 0.6) : avatarSize;
-    const mobileDealerSize = isMobile ? 12 : Math.floor(24 * scaleFactor);
-
     // Determine made/bid status color
     const madeCount = player.tricks || 0;
     const bidCount = player.bid !== undefined ? player.bid : 0;
-    const madeStatusColor = madeCount < bidCount ? "text-red-600" : "text-green-600";
+    const madeStatusColor = madeCount < bidCount ? "text-red-500" : "text-emerald-500";
     
     // Custom team colors
-    const redTeamColor = "#c62a0f";
-    const blueTeamColor = "#212bf2";
-    const teamColor = player.team === 1 ? redTeamColor : blueTeamColor;
-    const teamBorderColor = player.team === 1 ? 'border-[#c62a0f]' : 'border-[#212bf2]';
-    const teamBgColor = player.team === 1 ? 'bg-[#c62a0f]' : 'bg-[#212bf2]';
+    const redTeamGradient = "bg-gradient-to-r from-red-700 to-red-500";
+    const blueTeamGradient = "bg-gradient-to-r from-blue-700 to-blue-500";
+    const teamGradient = player.team === 1 ? redTeamGradient : blueTeamGradient;
+    const teamLightColor = player.team === 1 ? 'bg-red-400' : 'bg-blue-400';
+    const teamAccentColor = player.team === 1 ? 'from-red-400' : 'from-blue-400';
+    const teamTextColor = player.team === 1 ? 'text-red-600' : 'text-blue-600';
 
     return (
-      <div className={`absolute ${getPositionClasses(position)} ${isActive ? 'z-10' : ''}`}>
-        {isSideSeat ? (
-          // Side seats (left/right) - vertical layout
-          <div className="flex flex-col items-center gap-1">
-            {/* Avatar in circle with team color border */}
-            <div className={`relative rounded-full ${isActive ? 'border-yellow-400 animate-[border-flash_0.6s_ease-in-out_infinite]' : teamBorderColor} border-[3px]`}>
-              <div className="rounded-full overflow-hidden" style={{ 
-                width: screenSize.width < 640 ? '28px' : '48px', 
-                height: screenSize.width < 640 ? '28px' : '48px' 
-              }}>
-                <Image
-                  src={getPlayerAvatar(player)}
-                  alt="Player avatar"
-                  width={screenSize.width < 640 ? 28 : 48}
-                  height={screenSize.width < 640 ? 28 : 48}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {player.isDealer && (
-                <div className="absolute -right-1 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-sm border border-black"
-                    style={{ 
-                      width: screenSize.width < 640 ? '12px' : '18px', 
-                      height: screenSize.width < 640 ? '12px' : '18px', 
-                      fontSize: screenSize.width < 640 ? '6px' : '9px'
-                    }}>
-                  D
+      <div className={`absolute ${getPositionClasses(position)} ${isActive ? 'z-10' : 'z-0'}`}>
+        <div className={`
+          backdrop-blur-sm bg-white/10 rounded-xl overflow-hidden
+          ${isActive ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/30' : 'shadow-md'}
+          transition-all duration-200
+        `}>
+          {isSideSeat ? (
+            // Side seats (left/right) - vertical layout
+            <div className="flex flex-col items-center p-1.5 gap-1.5">
+              {/* Avatar with glowing active border */}
+              <div className={`relative`}>
+                <div className={`
+                  rounded-full overflow-hidden p-0.5
+                  ${isActive ? 'bg-gradient-to-r from-yellow-300 to-yellow-500 animate-pulse' : 
+                    `bg-gradient-to-r ${teamAccentColor} to-white/80`}
+                `}>
+                  <div className="bg-gray-900 rounded-full p-0.5">
+                    <Image
+                      src={getPlayerAvatar(player)}
+                      alt={player.name || "Player"}
+                      width={avatarWidth}
+                      height={avatarHeight}
+                      className="rounded-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Dealer chip with premium styling */}
+                  {player.isDealer && (
+                    <div className="absolute -bottom-1 -right-1">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-md">
+                        <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-yellow-200">D</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            
-            {/* Name in team color container */}
-            <div className={`${teamBgColor} text-white text-center px-2 py-1 rounded-md text-xs w-full`} style={{ 
-              fontSize: screenSize.width < 640 ? '8px' : '12px',
-              maxWidth: screenSize.width < 640 ? '48px' : '70px'
-            }}>
-              <div className="truncate font-bold">
-                {player.name}
               </div>
-            </div>
-            
-            {/* Made/Bid counter in white container with team color border */}
-            <div className={`bg-white ${teamBorderColor} border-[3px] rounded-full px-1.5 py-0.5 text-center`} style={{ 
-              fontSize: screenSize.width < 640 ? '8px' : '12px'
-            }}>
-              <span className={`${game.status === "WAITING" ? "text-black" : madeStatusColor} font-bold`}>
-                {game.status === "WAITING" ? "0" : madeCount}
-              </span>
-              <span className="text-gray-400">{" / "}</span>
-              <span className="text-black font-bold">
-                {game.status === "WAITING" ? "0" : bidCount}
-              </span>
-            </div>
-            
-            {/* Show +1 animation when player wins a trick */}
-            {isWinningPlayer && (
-              <div className="text-green-400 font-bold animate-bounce text-center" style={{ 
-                fontSize: screenSize.width < 640 ? '8px' : '12px' 
-              }}>
-                +1
-              </div>
-            )}
-          </div>
-        ) : (
-          // Top/bottom seats - horizontal layout
-          <div className="flex items-start gap-1.5">
-            {/* Avatar in circle with team color border */}
-            <div className={`relative rounded-full ${isActive ? 'border-yellow-400 animate-[border-flash_0.6s_ease-in-out_infinite]' : teamBorderColor} border-[3px]`}>
-              <div className="rounded-full overflow-hidden" style={{ 
-                width: screenSize.width < 640 ? '28px' : '48px', 
-                height: screenSize.width < 640 ? '28px' : '48px' 
-              }}>
-                <Image
-                  src={getPlayerAvatar(player)}
-                  alt="Player avatar"
-                  width={screenSize.width < 640 ? 28 : 48}
-                  height={screenSize.width < 640 ? 28 : 48}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {player.isDealer && (
-                <div className="absolute -right-1 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-sm border border-black"
-                    style={{ 
-                      width: screenSize.width < 640 ? '12px' : '18px', 
-                      height: screenSize.width < 640 ? '12px' : '18px', 
-                      fontSize: screenSize.width < 640 ? '6px' : '9px'
-                    }}>
-                  D
-                </div>
-              )}
-            </div>
-            
-            {/* Name and bid in vertical stack */}
-            <div className="flex flex-col items-center gap-1">
-              {/* Name in team color container */}
-              <div className={`${teamBgColor} text-white text-center px-2 py-1 rounded-md text-xs w-full`} style={{ 
-                fontSize: screenSize.width < 640 ? '8px' : '12px',
-                minWidth: screenSize.width < 640 ? '60px' : '80px'
-              }}>
-                <div className="truncate font-bold">
+              
+              {/* Player name with team color gradient background */}
+              <div className={`w-full px-2 py-1 rounded-lg shadow-sm ${teamGradient}`}>
+                <div className="text-white font-medium text-center truncate" 
+                     style={{ fontSize: isMobile ? '9px' : '11px', maxWidth: isMobile ? '50px' : '70px' }}>
                   {player.name}
                 </div>
               </div>
               
-              {/* Made/Bid counter in white container with team color border */}
-              <div className={`bg-white ${teamBorderColor} border-[3px] rounded-full px-2 py-0.5 text-center`} style={{ 
-                fontSize: screenSize.width < 640 ? '8px' : '12px'
-              }}>
-                <span className={`${game.status === "WAITING" ? "text-black" : madeStatusColor} font-bold`}>
+              {/* Bid/Trick counter with glass morphism effect */}
+              <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center gap-1">
+                <span className={madeStatusColor} style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
                   {game.status === "WAITING" ? "0" : madeCount}
                 </span>
-                <span className="text-gray-400">{" / "}</span>
-                <span className="text-black font-bold">
+                <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
+                <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
                   {game.status === "WAITING" ? "0" : bidCount}
                 </span>
               </div>
               
-              {/* Show +1 animation when player wins a trick */}
+              {/* Winning animation with improved animation */}
               {isWinningPlayer && (
-                <div className="text-green-400 font-bold animate-bounce text-center" style={{ 
-                  fontSize: screenSize.width < 640 ? '8px' : '12px' 
-                }}>
-                  +1
+                <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
+                  <div className={`
+                    ${player.team === 1 ? 'text-red-400' : 'text-blue-400'} 
+                    font-bold animate-bounce flex items-center gap-0.5
+                  `} style={{ fontSize: isMobile ? '10px' : '12px' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" 
+                         className="w-3 h-3 inline-block">
+                      <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 01.919-.53l4.78 1.281a.75.75 0 01.531.919l-1.281 4.78a.75.75 0 01-1.449-.387l.81-3.022a19.407 19.407 0 00-5.594 5.203.75.75 0 01-1.139.093L7 10.06l-4.72 4.72a.75.75 0 01-1.06-1.061l5.25-5.25a.75.75 0 011.06 0l3.074 3.073a20.923 20.923 0 015.545-4.931l-3.042-.815a.75.75 0 01-.53-.919z" clipRule="evenodd" />
+                    </svg>
+                    <span>+1</span>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
-        )}
+          ) : (
+            // Top/bottom seats - horizontal layout
+            <div className="flex items-center p-1.5 gap-1.5">
+              {/* Avatar with glowing active border */}
+              <div className={`relative`}>
+                <div className={`
+                  rounded-full overflow-hidden p-0.5
+                  ${isActive ? 'bg-gradient-to-r from-yellow-300 to-yellow-500 animate-pulse' : 
+                    `bg-gradient-to-r ${teamAccentColor} to-white/80`}
+                `}>
+                  <div className="bg-gray-900 rounded-full p-0.5">
+                    <Image
+                      src={getPlayerAvatar(player)}
+                      alt={player.name || "Player"}
+                      width={avatarWidth}
+                      height={avatarHeight}
+                      className="rounded-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Dealer chip with premium styling */}
+                  {player.isDealer && (
+                    <div className="absolute -bottom-1 -right-1">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-md">
+                        <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-yellow-200">D</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                {/* Player name with team color gradient background */}
+                <div className={`px-2 py-1 rounded-lg shadow-sm ${teamGradient}`}>
+                  <div className="text-white font-medium truncate"
+                       style={{ fontSize: isMobile ? '9px' : '11px', minWidth: isMobile ? '60px' : '80px', maxWidth: isMobile ? '60px' : '130px' }}>
+                    {player.name}
+                  </div>
+                </div>
+                
+                {/* Bid/Trick counter with glass morphism effect */}
+                <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1">
+                  <span className={madeStatusColor} style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
+                    {game.status === "WAITING" ? "0" : madeCount}
+                  </span>
+                  <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
+                  <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
+                    {game.status === "WAITING" ? "0" : bidCount}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Winning animation with improved animation */}
+              {isWinningPlayer && (
+                <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
+                  <div className={`
+                    ${player.team === 1 ? 'text-red-400' : 'text-blue-400'} 
+                    font-bold animate-bounce flex items-center gap-0.5
+                  `} style={{ fontSize: isMobile ? '10px' : '12px' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" 
+                         className="w-3 h-3 inline-block">
+                      <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 01.919-.53l4.78 1.281a.75.75 0 01.531.919l-1.281 4.78a.75.75 0 01-1.449-.387l.81-3.022a19.407 19.407 0 00-5.594 5.203.75.75 0 01-1.139.093L7 10.06l-4.72 4.72a.75.75 0 01-1.06-1.061l5.25-5.25a.75.75 0 011.06 0l3.074 3.073a20.923 20.923 0 015.545-4.931l-3.042-.815a.75.75 0 01-.53-.919z" clipRule="evenodd" />
+                    </svg>
+                    <span>+1</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
