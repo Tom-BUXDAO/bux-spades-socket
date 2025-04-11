@@ -451,7 +451,7 @@ export default function GameTable({
       console.error(`Cannot play card: Not your turn`);
       return;
     }
-    
+
     // Check if card is playable
     const isLeadingTrick = game.currentTrick.length === 0;
     const playableCards = getPlayableCards(game, currentPlayer.hand, isLeadingTrick);
@@ -635,7 +635,7 @@ export default function GameTable({
   const cardWidth = Math.floor(96 * scaleFactor);
   const cardHeight = Math.floor(144 * scaleFactor);
   const avatarSize = Math.floor(64 * scaleFactor);
-
+  
   // Add back these missing functions
   const renderPlayerPosition = (position: number) => {
     const player = orderedPlayers[position];
