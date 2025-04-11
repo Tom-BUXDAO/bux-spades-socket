@@ -451,7 +451,7 @@ export default function GameTable({
   useEffect(() => {
     // Check if we have a complete trick (4 cards)
     if (game.currentTrick.length === 4) {
-      console.log("COMPLETE TRICK DETECTED:", game.currentTrick);
+      console.log("COMPLETE TRICK DETECTED - FREEZING UI:", game.currentTrick);
       
       // Calculate the winning card
       const winningCardIndex = determineWinningCard(game.currentTrick);
@@ -462,21 +462,30 @@ export default function GameTable({
         
         console.log(`Winner determined: Card ${winningCardIndex} wins, played by ${winningPlayerId}`);
         
-        // Update state to highlight the winning card
+        // Force UI to show winner
         setWinningCardIndex(winningCardIndex);
         setWinningPlayerId(winningPlayerId);
         setShowWinningCardHighlight(true);
         
-        // Show winner message in console
-        console.log(`🏆 ${winningPlayer?.name || 'Unknown'} wins the trick with ${game.currentTrick[winningCardIndex].rank}${game.currentTrick[winningCardIndex].suit}`);
+        // Display in console for debugging
+        console.log(`🏆 Trick won by ${winningPlayer?.name || 'Unknown'} with ${game.currentTrick[winningCardIndex].rank}${game.currentTrick[winningCardIndex].suit}`);
         
-        // Prevent the UI from clearing immediately
-        // This freezes the trick display with highlighting
-        setTimeout(() => {
+        // Force the trick to stay visible for 3 seconds
+        // This is the key part that ensures the UI freezes before clearing
+        const forceDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
+        forceDelayPromise.then(() => {
+          console.log("Trick display delay completed, allowing UI to update");
           setShowWinningCardHighlight(false);
           setWinningCardIndex(null);
           setWinningPlayerId(null);
-        }, 3000); // 3 second delay for visibility
+        });
+      }
+    } else {
+      // Clear highlight state when trick length changes (but isn't 4)
+      if (showWinningCardHighlight) {
+        setShowWinningCardHighlight(false);
+        setWinningCardIndex(null);
+        setWinningPlayerId(null);
       }
     }
   }, [game.currentTrick, cardPlayers, game.players]);
@@ -561,7 +570,6 @@ export default function GameTable({
           
           // Check if this is the winning card
           const isWinningCard = showWinningCardHighlight && winningCardIndex === index;
-          const isTrickComplete = game.currentTrick.length === 4 && showWinningCardHighlight;
           
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}, showing at position ${relativePosition}`);
           
@@ -575,31 +583,41 @@ export default function GameTable({
                 transition: 'all 0.3s ease'
               }}
             >
-              <Image
-                src={`/cards/${getCardImage(card)}`}
-                alt={`${card.rank}${card.suit}`}
-                width={trickCardWidth}
-                height={trickCardHeight}
-                className={`rounded-lg transition-all duration-300 ${
-                  isTrickComplete ? (
+              <div className="relative">
+                <Image
+                  src={`/cards/${getCardImage(card)}`}
+                  alt={`${card.rank}${card.suit}`}
+                  width={trickCardWidth}
+                  height={trickCardHeight}
+                  className={`rounded-lg shadow-md`}
+                />
+                
+                {/* Overlay for winning and non-winning cards */}
+                {game.currentTrick.length === 4 && showWinningCardHighlight && (
+                  <div className={`absolute inset-0 rounded-lg ${
                     isWinningCard 
-                      ? 'ring-4 ring-yellow-400 shadow-xl z-30 scale-110' 
-                      : 'opacity-40 blur-[1px]'
-                  ) : 'shadow-md'
-                }`}
-              />
-              {isWinningCard && isTrickComplete && (
-                <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
-              )}
+                      ? "bg-yellow-300/20 ring-4 ring-yellow-400 shadow-lg" 
+                      : "bg-black/50"
+                  }`}></div>
+                )}
+                
+                {/* Pulsing effect for winning card */}
+                {isWinningCard && showWinningCardHighlight && (
+                  <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
+                )}
+              </div>
             </div>
           );
         })}
         
-        {/* Display winner message if all cards played */}
+        {/* Show winner message overlay */}
         {game.currentTrick.length === 4 && showWinningCardHighlight && winningPlayerId && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-lg animate-pulse"
-               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px`, zIndex: 40 }}>
-            {game.players.find(p => p.id === winningPlayerId)?.name || 'Player'} wins!
+          <div className="absolute inset-0 flex items-center justify-center z-30">
+            <div className="bg-black/70 text-white px-4 py-2 rounded-lg text-center animate-pulse shadow-lg">
+              <div className="font-bold" style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}>
+                {game.players.find(p => p.id === winningPlayerId)?.name || 'Player'} wins the trick!
+              </div>
+            </div>
           </div>
         )}
         
