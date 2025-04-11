@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import type { GameState, Card, Suit } from "@/types/game";
+import type { GameState, Card, Suit, Player } from "@/types/game";
 import type { Socket } from "socket.io-client";
 import { useSocket, sendChatMessage, debugTrickWinner, setupTrickCompletionDelay } from "@/lib/socket";
 import Chat from './Chat';
@@ -12,6 +12,7 @@ import WinnerModal from './WinnerModal';
 import BiddingInterface from './BiddingInterface';
 import { calculateHandScore } from '@/lib/scoring';
 import LandscapePrompt from '@/components/LandscapePrompt';
+import TrickDisplay from './TrickDisplay';
 
 interface GameTableProps {
   game: GameState;
@@ -447,7 +448,8 @@ export default function GameTable({
 
     // Check if card is playable
     const isLeadingTrick = game.currentTrick.length === 0;
-    const playableCards = getPlayableCards(game, currentPlayer.hand, isLeadingTrick);
+    const playerHand = currentPlayer.hand || [];
+    const playableCards = getPlayableCards(game, playerHand, isLeadingTrick);
     if (!playableCards.some(c => c.suit === card.suit && c.rank === card.rank)) {
       console.error('This card is not playable in the current context');
       return;
@@ -943,6 +945,105 @@ export default function GameTable({
     }
   }, []);
 
+  // Add state to track current and completed tricks
+  const [currentTrick, setCurrentTrick] = useState<Card[]>([]);
+  const [completedTrick, setCompletedTrick] = useState<Card[]>([]);
+  const [isShowingCompletedTrick, setIsShowingCompletedTrick] = useState(false);
+
+  // This effect captures the current trick whenever it changes
+  useEffect(() => {
+    // Only track if the game has a current trick
+    if (game.currentTrick && game.currentTrick.length > 0) {
+      // Store a copy of the current trick
+      setCurrentTrick([...game.currentTrick]);
+      
+      // Set the leading player based on game state
+      if (game.currentTrick.length === 4) {
+        // When trick is complete, mark the next player as leading
+        const leadingPlayer = game.players.find(p => p.id === game.currentPlayer);
+        if (leadingPlayer) {
+          // Update the players to mark the lead player
+          const updatedPlayers = game.players.map(p => ({
+            ...p,
+            isLeadingPlayer: p.id === leadingPlayer.id
+          }));
+          // Store player info in a better format
+          setPlayers(updatedPlayers);
+        }
+      } else if (game.currentTrick.length === 0) {
+        // When a new trick starts, mark the first player as leading
+        const leadingPlayer = game.players.find(p => p.id === game.currentPlayer);
+        if (leadingPlayer) {
+          // Update the players to mark the lead player
+          const updatedPlayers = game.players.map(p => ({
+            ...p,
+            isLeadingPlayer: p.id === leadingPlayer.id
+          }));
+          // Store player info in a better format
+          setPlayers(updatedPlayers);
+        }
+      }
+    } else if (game.currentTrick && game.currentTrick.length === 0) {
+      // Reset current trick when new trick starts
+      setCurrentTrick([]);
+    }
+  }, [game.currentTrick, game.currentPlayer, game.players]);
+
+  // Add state to store players with additional info
+  const [players, setPlayers] = useState<Player[]>([]);
+
+  // Initialize players with additional info
+  useEffect(() => {
+    if (game.players) {
+      const initialPlayers = game.players.map(p => ({
+        ...p,
+        isLeadingPlayer: p.id === game.currentPlayer
+      }));
+      setPlayers(initialPlayers);
+    }
+  }, []);
+
+  // Handle trick completion
+  const handleTrickComplete = () => {
+    console.log("Trick complete - saving for display");
+    // Save the completed trick
+    setCompletedTrick([...currentTrick]);
+    
+    // Show the completed trick for 3 seconds
+    setIsShowingCompletedTrick(true);
+    setTimeout(() => {
+      setIsShowingCompletedTrick(false);
+    }, 3000);
+  };
+
+  // Render current trick or completed trick
+  const renderTrick = () => {
+    // If we have a completed trick to show, show that
+    if (isShowingCompletedTrick && completedTrick.length === 4) {
+      return (
+        <TrickDisplay 
+          trick={completedTrick}
+          players={players}
+          currentPlayerId={currentPlayerId || ''}
+        />
+      );
+    }
+    
+    // Otherwise show the current trick
+    if (currentTrick.length > 0) {
+      return (
+        <TrickDisplay 
+          trick={currentTrick}
+          players={players}
+          currentPlayerId={currentPlayerId || ''}
+          onTrickComplete={handleTrickComplete}
+        />
+      );
+    }
+    
+    return null;
+  };
+
   // Return the JSX for the component
   return (
     <>
@@ -1016,7 +1117,7 @@ export default function GameTable({
                     <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
                   </div>
                 ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
-                  renderTrickCards()
+                  renderTrick()
                 ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
                   <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
                        style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>

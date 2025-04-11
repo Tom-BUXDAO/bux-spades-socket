@@ -9,13 +9,14 @@ export interface Card {
 export interface Player {
   id: string;
   name: string;
-  hand: Card[];
-  tricks: number;
-  team: 1 | 2;
+  position?: number;
+  hand?: Card[];
+  tricks?: number;
   bid?: number;
+  isLeadingPlayer?: boolean;
+  team: 1 | 2;
   browserSessionId?: string;
   isDealer?: boolean;
-  position?: number;
 }
 
 export type GameStatus = "WAITING" | "BIDDING" | "PLAYING" | "FINISHED";
