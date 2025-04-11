@@ -788,14 +788,10 @@ io.on('connection', (socket) => {
         // Store completed trick
         game.completedTricks.push([...game.currentTrick]);
         
-        // Save the current trick for the animation
-        const completedTrick = [...game.currentTrick];
-        
         // IMPORTANT: Don't clear the trick yet - keep it visible
         // We'll create a delayed version of the game state that will clear it later
         
         // Set the winning player as the next to play
-        const originalCurrentPlayer = game.currentPlayer;
         game.currentPlayer = winningPlayer.id;
         
         // Check if hand is complete (each player has played all 13 cards)
