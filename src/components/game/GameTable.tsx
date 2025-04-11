@@ -918,48 +918,52 @@ export default function GameTable({
       [];
       
     // Calculate card width based on screen size
-    const cardUIWidth = Math.floor(84 * scaleFactor);
-    const cardUIHeight = Math.floor(120 * scaleFactor);
-    const overlapOffset = Math.floor(-32 * scaleFactor); // How much cards overlap
+    const isMobile = screenSize.width < 640;
+    const cardUIWidth = Math.floor(isMobile ? 70 : 84 * scaleFactor);
+    const cardUIHeight = Math.floor(isMobile ? 100 : 120 * scaleFactor);
+    const overlapOffset = Math.floor(isMobile ? -40 : -32 * scaleFactor); // How much cards overlap
 
     return (
-      <div className="absolute bottom-[-1rem] left-1/2 -translate-x-1/2 flex p-2">
-        {sortedHand.map((card: Card, index: number) => {
-          const isPlayable = game.status === "PLAYING" && 
-            game.currentPlayer === currentPlayerId &&
-            playableCards.some((c: Card) => c.suit === card.suit && c.rank === card.rank);
+      <div className="absolute inset-x-0 bottom-0 flex justify-center">
+        <div className="flex">
+          {sortedHand.map((card: Card, index: number) => {
+            const isPlayable = game.status === "PLAYING" && 
+              game.currentPlayer === currentPlayerId &&
+              playableCards.some((c: Card) => c.suit === card.suit && c.rank === card.rank);
 
-          return (
-            <div
-              key={`${card.suit}${card.rank}`}
-              className={`relative transition-transform hover:-translate-y-6 hover:z-10 ${
-                isPlayable ? 'cursor-pointer' : 'cursor-not-allowed'
-              }`}
-              style={{ 
-                width: `${cardUIWidth}px`, 
-                height: `${cardUIHeight}px`,
-                marginLeft: index > 0 ? `${overlapOffset}px` : '0' 
-              }}
-              onClick={() => isPlayable && handlePlayCard(card)}
-            >
-              <div className="relative">
-                <Image
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank}${card.suit}`}
-                  width={cardUIWidth}
-                  height={cardUIHeight}
-                  className={`rounded-lg shadow-[4px_4px_12px_rgba(0,0,0,0.8)] ${
-                    isPlayable ? 'hover:shadow-[8px_8px_16px_rgba(0,0,0,0.9)]' : ''
-                  }`}
-                  style={{ width: 'auto', height: 'auto' }}
-                />
-                {!isPlayable && (
-                  <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
-                )}
+            return (
+              <div
+                key={`${card.suit}${card.rank}`}
+                className={`relative transition-transform hover:-translate-y-4 hover:z-10 ${
+                  isPlayable ? 'cursor-pointer' : 'cursor-not-allowed'
+                }`}
+                style={{ 
+                  width: `${cardUIWidth}px`, 
+                  height: `${cardUIHeight}px`,
+                  marginLeft: index > 0 ? `${overlapOffset}px` : '0',
+                  zIndex: index
+                }}
+                onClick={() => isPlayable && handlePlayCard(card)}
+              >
+                <div className="relative">
+                  <Image
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank}${card.suit}`}
+                    width={cardUIWidth}
+                    height={cardUIHeight}
+                    className={`rounded-lg shadow-md ${
+                      isPlayable ? 'hover:shadow-lg' : ''
+                    }`}
+                    style={{ width: 'auto', height: 'auto' }}
+                  />
+                  {!isPlayable && (
+                    <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -1130,13 +1134,13 @@ export default function GameTable({
   return (
     <>
       <LandscapePrompt />
-      <div className="flex flex-col h-[100vh] bg-gray-900 overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden bg-gray-900">
         {/* Main content area - full height */}
-        <div className="flex flex-1 h-full overflow-hidden">
+        <div className="flex h-full overflow-hidden">
           {/* Game table area - add padding on top and bottom */}
-          <div className="w-[70%] p-2 flex flex-col h-full">
+          <div className="w-[70%] p-2 flex flex-col h-full overflow-hidden">
             {/* Game table with more space top and bottom */}
-            <div className="relative flex-1 mb-3" style={{ 
+            <div className="relative flex-1 mb-2 overflow-hidden" style={{ 
               background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
               borderRadius: `${Math.floor(64 * scaleFactor)}px`,
               border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
@@ -1236,17 +1240,16 @@ export default function GameTable({
             </div>
 
             {/* Cards area with more space */}
-            <div className="bg-gray-800/50 rounded-lg relative mb-1" 
+            <div className="bg-gray-800/50 rounded-lg relative mb-0" 
                  style={{ 
-                   height: `${Math.floor(120 * scaleFactor)}px`, 
-                   clipPath: 'inset(-100% 0 0 0)'
+                   height: `${Math.floor(110 * scaleFactor)}px`
                  }}>
               {renderPlayerHand()}
             </div>
           </div>
 
           {/* Chat area - 30%, full height */}
-          <div className="w-[30%] h-full">
+          <div className="w-[30%] h-full overflow-hidden">
             <Chat 
               socket={socket}
               gameId={game.id}
