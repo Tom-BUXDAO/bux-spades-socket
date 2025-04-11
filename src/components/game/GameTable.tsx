@@ -707,20 +707,20 @@ export default function GameTable({
     const getPositionClasses = (pos: number): string => {
       // Base positioning
       const basePositions = [
-        'bottom-2 left-1/2 -translate-x-1/2 flex-row',  // South (bottom)
-        'left-8 top-1/2 -translate-y-1/2 flex-col',     // West (left)
-        'top-2 left-1/2 -translate-x-1/2 flex-row',     // North (top)
-        'right-8 top-1/2 -translate-y-1/2 flex-col'     // East (right)
+        'bottom-2 left-1/2 -translate-x-1/2',  // South (bottom)
+        'left-8 top-1/2 -translate-y-1/2',     // West (left)
+        'top-2 left-1/2 -translate-x-1/2',     // North (top)
+        'right-8 top-1/2 -translate-y-1/2'     // East (right)
       ];
       
       // Apply responsive adjustments
       if (screenSize.width < 768) {
         // Tighter positioning for smaller screens
         const mobilePositions = [
-          'bottom-1 left-1/2 -translate-x-1/2 flex-row',  // South
-          'left-2 top-1/2 -translate-y-1/2 flex-col',     // West
-          'top-1 left-1/2 -translate-x-1/2 flex-row',     // North
-          'right-2 top-1/2 -translate-y-1/2 flex-col'     // East
+          'bottom-1 left-1/2 -translate-x-1/2',  // South
+          'left-2 top-1/2 -translate-y-1/2',     // West
+          'top-1 left-1/2 -translate-x-1/2',     // North
+          'right-2 top-1/2 -translate-y-1/2'     // East
         ];
         return mobilePositions[pos];
       }
@@ -767,62 +767,74 @@ export default function GameTable({
     const mobileAvatarSize = isMobile ? Math.floor(avatarSize * 0.75) : avatarSize;
     const mobileDealerSize = isMobile ? 16 : Math.floor(24 * scaleFactor);
 
+    // Determine made/bid status color
+    const madeCount = player.tricks || 0;
+    const bidCount = player.bid !== undefined ? player.bid : 0;
+    const madeStatusColor = 
+      game.status === "PLAYING" ? 
+        (madeCount < bidCount ? "text-red-400" : "text-green-400") :
+        "text-yellow-200";
+
     return (
-      <div className={`absolute ${getPositionClasses(position)} flex items-center gap-${Math.max(2, Math.floor(4 * scaleFactor))}`}>
-        <div className="relative">
-          <div className={`rounded-full overflow-hidden ring-4 ${
-            isActive ? 'ring-yellow-400 animate-pulse' : player.team === 1 ? 'ring-red-500' : 'ring-blue-500'
-          }`} style={{ 
-            width: screenSize.width < 640 ? '48px' : `${avatarSize}px`, 
-            height: screenSize.width < 640 ? '48px' : `${avatarSize}px` 
-          }}>
-            <Image
-              src={getPlayerAvatar(player)}
-              alt="Player avatar"
-              width={screenSize.width < 640 ? 48 : avatarSize}
-              height={screenSize.width < 640 ? 48 : avatarSize}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          {player.isDealer && (
-            <div className="absolute -right-6 top-1/2 -translate-y-1/2 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
-                 style={{ 
-                   width: screenSize.width < 640 ? '18px' : `${Math.floor(24 * scaleFactor)}px`, 
-                   height: screenSize.width < 640 ? '18px' : `${Math.floor(24 * scaleFactor)}px`, 
-                   fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
-                 }}>
-              D
-            </div>
-          )}
-        </div>
+      <div className={`absolute ${getPositionClasses(position)}`}>
         <div className={`relative rounded-lg ${
           player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-        } text-white text-center`} style={{
-          padding: screenSize.width < 640 ? '2px 6px' : '4px 12px'
+        } text-white flex items-center px-2 py-1 ${isActive ? 'ring-2 ring-yellow-400' : ''}`} style={{
+          minWidth: '120px',
+          maxWidth: '200px'
         }}>
-          <div className="font-semibold" style={{ 
-            fontSize: screenSize.width < 640 ? '12px' : `${Math.floor(16 * scaleFactor)}px` 
-          }}>{player.name}</div>
-          {player.bid !== undefined && (
-            <div className="text-yellow-200" style={{ 
-              fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
-            }}>Bid: {player.bid}</div>
-          )}
-          {game.status === "PLAYING" && (
-            <div className="relative text-yellow-200" style={{ 
-              fontSize: screenSize.width < 640 ? '10px' : `${Math.floor(14 * scaleFactor)}px` 
+          {/* Avatar inside container */}
+          <div className="relative mr-2">
+            <div className={`rounded-full overflow-hidden ${
+              isActive ? 'animate-pulse' : ''
+            }`} style={{ 
+              width: screenSize.width < 640 ? '40px' : '50px', 
+              height: screenSize.width < 640 ? '40px' : '50px' 
             }}>
-              Tricks: {player.tricks}
-              
-              {/* Show +1 animation when player wins a trick */}
-              {isWinningPlayer && (
-                <div className="absolute -right-6 top-0 text-green-400 font-bold animate-bounce"
-                     style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}>
-                  +1
-                </div>
-              )}
+              <Image
+                src={getPlayerAvatar(player)}
+                alt="Player avatar"
+                width={screenSize.width < 640 ? 40 : 50}
+                height={screenSize.width < 640 ? 40 : 50}
+                className="w-full h-full object-cover"
+              />
             </div>
-          )}
+            {player.isDealer && (
+              <div className="absolute -right-2 -bottom-2 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
+                   style={{ 
+                     width: '20px', 
+                     height: '20px', 
+                     fontSize: '10px'
+                   }}>
+                D
+              </div>
+            )}
+          </div>
+          
+          {/* Player info */}
+          <div className="flex flex-col items-start flex-grow">
+            <div className="font-semibold w-full truncate" style={{ 
+              fontSize: screenSize.width < 640 ? '14px' : '16px' 
+            }}>{player.name}</div>
+            
+            {game.status !== "WAITING" && (
+              <div className="w-full flex justify-between items-center" style={{ 
+                fontSize: screenSize.width < 640 ? '14px' : '16px' 
+              }}>
+                {/* Made / Bid display */}
+                <div className={`font-bold ${madeStatusColor}`}>
+                  {madeCount} <span className="text-white opacity-60">/</span> {bidCount}
+                </div>
+                
+                {/* Show +1 animation when player wins a trick */}
+                {isWinningPlayer && (
+                  <div className="text-green-400 font-bold animate-bounce ml-2">
+                    +1
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
