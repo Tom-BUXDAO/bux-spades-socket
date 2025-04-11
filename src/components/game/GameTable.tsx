@@ -212,7 +212,6 @@ export default function GameTable({
   
   // Add state to directly track which player played which card
   const [cardPlayers, setCardPlayers] = useState<Record<number, string>>({});
-  const [lastTrickLength, setLastTrickLength] = useState(0);
   
   // Add state for tracking the winning card
   const [winningCardIndex, setWinningCardIndex] = useState<number | null>(null); 
@@ -352,6 +351,12 @@ export default function GameTable({
       return;
     }
 
+    // SERVER-SIDE TRUTH: Get the lead player (player who is next to play after all cards in this trick)
+    // and use the server-verified player positions to determine who played each card
+    const leadingPlayer = game.players.find(p => p.id === game.currentPlayer);
+    
+    if (!leadingPlayer || leadingPlayer.position === undefined) return;
+    
     // Get all playerIds in position order (not the rotated order)
     const orderedPlayerIds: (string | undefined)[] = [];
     for (let i = 0; i < 4; i++) {
@@ -361,20 +366,8 @@ export default function GameTable({
       }
     }
     
-    // FIXED MAPPING: The server provides a clear mapping in its logs. We need to trust that data.
-    // Find the leading player by working backwards from the current player
-    const leadingPlayer = game.players.find(p => {
-      // This is the player whose turn it is AFTER all cards were played in order
-      return p.id === game.currentPlayer;
-    });
-    
-    if (!leadingPlayer) return;
-    
     // Create a new mapping object for the cards in the trick
     const updatedCardPlayers: Record<number, string> = {};
-    
-    // For debugging, track the original server order of cards before we map them
-    const serverTrick = [...game.currentTrick];
     
     // Log what we know from the server data
     console.log("RECONSTRUCTING SERVER CARD ORDER:");
@@ -382,8 +375,8 @@ export default function GameTable({
     // For each card in the trick
     for (let i = 0; i < game.currentTrick.length; i++) {
       // Calculate the player who played this card based on server data
-      // The server tracks who played first and then clockwise
-      let playerPosition = (leadingPlayer.position! - game.currentTrick.length + i) % 4;
+      // The server determines who played first and then clockwise by position
+      let playerPosition = (leadingPlayer.position - game.currentTrick.length + i) % 4;
       if (playerPosition < 0) playerPosition += 4; // Ensure positive index
       
       const playerId = orderedPlayerIds[playerPosition];
@@ -399,22 +392,8 @@ export default function GameTable({
     if (Object.keys(updatedCardPlayers).length > 0) {
       console.log('Updated card players from server data:', updatedCardPlayers);
       
-      // CRITICAL FIX: Don't overwrite existing card player mappings
-      setCardPlayers(prev => {
-        // Start with the existing data
-        const updated = { ...prev };
-        
-        // Only add new mappings for cards that don't have a player assigned yet
-        Object.entries(updatedCardPlayers).forEach(([index, playerId]) => {
-          const i = parseInt(index);
-          // Only set if we don't already know who played this card
-          if (!updated[i]) {
-            updated[i] = playerId;
-          }
-        });
-        
-        return updated;
-      });
+      // ALWAYS use the server's version of truth, overwriting our local mapping
+      setCardPlayers(updatedCardPlayers);
       
       // If we have a complete trick (4 cards), save it as the last completed trick
       if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
@@ -437,48 +416,7 @@ export default function GameTable({
     }
   }, [game.currentTrick, game.players, game.currentPlayer, showLastTrick, lastCompletedTrick]);
 
-  // Add this useEffect to track when players play cards
-  useEffect(() => {
-    if (!game.currentTrick || !game.players || !game.currentPlayer) return;
-
-    // Get the current trick length
-    const currentLength = game.currentTrick.length;
-    
-    // If the trick length changed, update our cardPlayers mapping
-    if (currentLength !== lastTrickLength) {
-      // If a new card was played (trick length increased)
-      if (currentLength > lastTrickLength) {
-        const cardIndex = currentLength - 1; // Index of the newly played card
-        
-        // Get the player who must have just played this card - the previous currentPlayer
-        const previousPlayerId = lastCurrentPlayer;
-        const player = game.players.find(p => p.id === previousPlayerId);
-        
-        if (player) {
-          console.log(`Detected new card played: card ${cardIndex} (${game.currentTrick[cardIndex].rank}${game.currentTrick[cardIndex].suit}) played by ${player.name}`);
-          
-          // CRITICAL FIX: Only update if this card position doesn't already have a player assigned
-          setCardPlayers(prev => {
-            // If we already know who played this card, DO NOT CHANGE IT
-            if (prev[cardIndex]) {
-              return prev;
-            }
-            
-            // Otherwise, update with the new information
-            return {
-              ...prev,
-              [cardIndex]: previousPlayerId
-            };
-          });
-        }
-      }
-      
-      // Update the last trick length regardless
-      setLastTrickLength(currentLength);
-    }
-  }, [game.currentTrick?.length, game.players, game.currentPlayer, lastTrickLength, lastCurrentPlayer]);
-
-  // When WE play a card, we need to record that immediately
+  // When playing a card, we now rely solely on server data for tracking
   const handlePlayCard = (card: Card) => {
     if (!socket || !currentPlayerId || !currentPlayer) return;
 
@@ -498,19 +436,7 @@ export default function GameTable({
 
     console.log(`Playing card: ${card.rank}${card.suit} as player ${currentPlayer.name}`);
     
-    // Record that I am playing this card at this position
-    const cardPosition = game.currentTrick.length;
-    console.log(`I'm playing card at position ${cardPosition}`);
-    
-    // CRITICAL FIX: Don't overwrite existing mappings and make this one sticky
-    setCardPlayers(prev => {
-      // If we already have a player for this position (should never happen), keep it
-      if (prev[cardPosition]) return prev;
-      
-      const updated = { ...prev, [cardPosition]: currentPlayerId };
-      console.log('Updated cardPlayers:', updated);
-      return updated;
-    });
+    // We no longer track card players locally - the server will tell us
     
     // Send the play to the server
     socket.emit("play_card", { 
@@ -985,15 +911,6 @@ export default function GameTable({
       window.lastCompletedTrick = null;
     }
   }, []);
-
-  // Add a specific effect to reset lastTrickLength when the trick is cleared
-  useEffect(() => {
-    // If the trick is empty, reset our tracking completely
-    if (game.currentTrick.length === 0) {
-      setLastTrickLength(0);
-      // Note: We don't reset cardPlayers here since we want to keep it for displaying the last trick
-    }
-  }, [game.currentTrick.length]);
 
   // Return the JSX for the component
   return (
