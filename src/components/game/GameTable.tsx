@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import type { GameState, Card, Suit } from "@/types/game";
 import type { Socket } from "socket.io-client";
-import { useSocket } from "@/lib/socket";
+import { useSocket, sendChatMessage, debugTrickWinner } from "@/lib/socket";
 import Chat from './Chat';
 import HandSummaryModal from './HandSummaryModal';
 import WinnerModal from './WinnerModal';
@@ -427,7 +427,16 @@ export default function GameTable({
           const winningPlayer = game.players.find(p => p.id === winningPlayerId);
           const winningCard = game.currentTrick[winningCardIndex];
           
-          console.log(`✅ CLIENT DETERMINED: Trick should be won by ${winningPlayer?.name || 'Unknown'} with ${winningCard.rank}${winningCard.suit}`);
+          console.log(`✅ CLIENT DETERMINED: Trick should be won by ${winningPlayer?.name || 'Unknown'} (${winningPlayerId}) with ${winningCard.rank}${winningCard.suit}`);
+          
+          // SERVER BUG WORKAROUND: The server incorrectly attributes the winning card to the wrong player
+          // This is because the server message is printed with incorrect information. We need to display the correct winner.
+          if (game.currentTrick.length === 4) {
+            const message = `${winningPlayer?.name || 'A player'} won the trick with ${winningCard.rank}${winningCard.suit}`;
+            console.log(`🏆 DISPLAYING CORRECT WINNER: ${message}`);
+            
+            // Could show a toast or some UI notification here with the correct winner
+          }
         }
       }
     }
@@ -836,6 +845,14 @@ export default function GameTable({
     }
     return () => clearTimeout(timeoutId);
   }, [showHandSummary]);
+
+  // Add debug listener for trick winner data - only setup once
+  useEffect(() => {
+    if (socket) {
+      // Setup debug listener for trick winners
+      debugTrickWinner(socket, game.id);
+    }
+  }, [socket, game.id]);
 
   return (
     <>
