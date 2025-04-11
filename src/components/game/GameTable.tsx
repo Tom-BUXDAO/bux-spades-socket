@@ -418,6 +418,18 @@ export default function GameTable({
     if (Object.keys(updatedCardPlayers).length > 0) {
       console.log('Updated card players from server data:', updatedCardPlayers);
       setCardPlayers(updatedCardPlayers);
+      
+      // If we have a complete trick (4 cards), find who should win the trick
+      if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
+        const winningCardIndex = determineWinningCard(game.currentTrick);
+        if (winningCardIndex >= 0 && updatedCardPlayers[winningCardIndex]) {
+          const winningPlayerId = updatedCardPlayers[winningCardIndex];
+          const winningPlayer = game.players.find(p => p.id === winningPlayerId);
+          const winningCard = game.currentTrick[winningCardIndex];
+          
+          console.log(`✅ CLIENT DETERMINED: Trick should be won by ${winningPlayer?.name || 'Unknown'} with ${winningCard.rank}${winningCard.suit}`);
+        }
+      }
     }
   }, [game.currentTrick, game.players, game.currentPlayer]);
 

@@ -313,4 +313,23 @@ export function sendChatMessage(socket: typeof Socket | null, gameId: string, me
   } catch (error) {
     console.error('Error sending chat message:', error);
   }
+}
+
+// Add a new debug function that logs trick winner information received from server
+export function debugTrickWinner(socket: typeof Socket | null, gameId: string) {
+  if (!socket) {
+    console.error('Cannot setup debug: socket is null');
+    return;
+  }
+  
+  // Listen for trick winner events
+  socket.on('trick_winner', (data) => {
+    console.log('🎯 DEBUG TRICK WINNER:', data);
+    
+    if (data.winningCard && data.winningPlayerId) {
+      // Log correct player name to verify server data
+      const playerName = data.playerName || 'Unknown player';
+      console.log(`✅ Server indicates trick won by ${playerName} (ID: ${data.winningPlayerId}) with card ${data.winningCard.rank}${data.winningCard.suit}`);
+    }
+  });
 } 
