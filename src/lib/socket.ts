@@ -354,25 +354,20 @@ export function setupTrickCompletionDelay(
   // Keep track of the most recent trick
   let lastTrick: Card[] = [];
   let isDelaying = false;
+  let trickProcessed = false;
   
-  // Listen for play_card events which happen when any player plays a card
-  const handlePlayCard = (data: any) => {
-    console.log('INTERCEPTED play_card event:', data);
-    
+  // Direct socket message interceptor
+  const handleGameUpdate = (data: any) => {
     // Only process events for our game
-    if (data.gameId !== gameId) return;
+    if (data.id !== gameId) return;
     
-    // Get the current trick after this card was played (if available in the data)
-    const currentTrick = data.gameState?.currentTrick || [];
+    // Check if a trick was just completed - we can detect this if:
+    // 1. Current trick is empty AND
+    // 2. We have not processed this trick yet AND
+    // 3. We have a record of the previous trick with 4 cards
     
-    // Update our record of the current trick
-    if (currentTrick.length > 0) {
-      lastTrick = [...currentTrick];
-    }
-    
-    // Check if this completed a trick (4 cards)
-    if (lastTrick.length === 4 && !isDelaying) {
-      console.log('COMPLETE TRICK DETECTED IN SOCKET:', lastTrick);
+    if (data.currentTrick && data.currentTrick.length === 0 && !trickProcessed && lastTrick.length === 4) {
+      console.log('COMPLETED TRICK DETECTED FROM GAME UPDATE:', lastTrick);
       
       // Calculate winning card
       const determineWinner = (trick: Card[]): number => {
@@ -407,8 +402,11 @@ export function setupTrickCompletionDelay(
       const winningIndex = determineWinner(lastTrick);
       
       if (winningIndex >= 0) {
-        isDelaying = true;
         console.log(`Delaying trick completion - winner is card ${winningIndex}`);
+        
+        // Mark this trick as processed
+        trickProcessed = true;
+        isDelaying = true;
         
         // Call the callback with the trick data
         onTrickComplete({ 
@@ -416,7 +414,7 @@ export function setupTrickCompletionDelay(
           winningIndex 
         });
         
-        // After delay, allow next trick to be delayed
+        // After delay, allow next trick to be processed
         setTimeout(() => {
           isDelaying = false;
           console.log('Trick delay finished, ready for next trick');
@@ -425,11 +423,119 @@ export function setupTrickCompletionDelay(
     }
   };
   
+  // Also handle the trick_winner event directly
+  const handleTrickWinner = (data: TrickWinnerData) => {
+    // Only process events for our game
+    if (data.gameId !== gameId) return;
+    
+    // If we have a completed trick of 4 cards and it's not being processed yet
+    if (lastTrick.length === 4 && !isDelaying && !trickProcessed) {
+      console.log('COMPLETED TRICK DETECTED FROM TRICK_WINNER EVENT:', lastTrick);
+      
+      // Find the winning card in our stored trick
+      let winningIndex = -1;
+      if (data.winningCard) {
+        winningIndex = lastTrick.findIndex(
+          card => card.rank === data.winningCard?.rank && card.suit === data.winningCard?.suit
+        );
+      }
+      
+      // If we couldn't find by direct match, use our own logic
+      if (winningIndex === -1) {
+        // Use the same determineWinner function as above
+        const determineWinner = (trick: Card[]): number => {
+          if (!trick.length) return -1;
+          
+          const leadSuit = trick[0].suit;
+          
+          // Check if any spades were played - spades always trump other suits
+          const spadesPlayed = trick.filter(card => card.suit === 'S');
+          
+          if (spadesPlayed.length > 0) {
+            // Find highest spade
+            const highestSpade = spadesPlayed.reduce((highest, current) => 
+              current.rank > highest.rank ? current : highest, spadesPlayed[0]);
+            
+            // Return index of highest spade
+            return trick.findIndex(card => 
+              card.suit === 'S' && card.rank === highestSpade.rank);
+          }
+          
+          // If no spades, find highest card of lead suit
+          const leadSuitCards = trick.filter(card => card.suit === leadSuit);
+          const highestLeadSuitCard = leadSuitCards.reduce((highest, current) => 
+            current.rank > highest.rank ? current : highest, leadSuitCards[0]);
+          
+          // Return index of highest lead suit card
+          return trick.findIndex(card => 
+            card.suit === leadSuit && card.rank === highestLeadSuitCard.rank);
+        };
+        
+        winningIndex = determineWinner(lastTrick);
+      }
+      
+      if (winningIndex >= 0) {
+        console.log(`Delaying trick completion from trick_winner - winner is card ${winningIndex}`);
+        
+        // Mark this trick as processed
+        trickProcessed = true;
+        isDelaying = true;
+        
+        // Call the callback with the trick data
+        onTrickComplete({ 
+          trickCards: lastTrick, 
+          winningIndex 
+        });
+        
+        // After delay, allow next trick to be processed
+        setTimeout(() => {
+          isDelaying = false;
+          console.log('Trick delay finished, ready for next trick');
+        }, 3000); // 3 second delay
+      }
+    }
+  };
+  
+  // Listen for play_card events which happen when any player plays a card
+  const handlePlayCard = (data: any) => {
+    // Only process events for our game
+    if (data.gameId !== gameId) return;
+    
+    // Get the current trick after this card was played (if available in the data)
+    const currentTrick = data.gameState?.currentTrick || [];
+    
+    // Update our record of the current trick
+    if (currentTrick.length > 0) {
+      lastTrick = [...currentTrick];
+      // Reset the processed flag when cards are being added to a new trick
+      if (currentTrick.length < 4) {
+        trickProcessed = false;
+      }
+    }
+    
+    console.log('Card played, current trick length:', lastTrick.length);
+    
+    // Check if this completed a trick (4 cards)
+    if (lastTrick.length === 4 && !isDelaying && !trickProcessed) {
+      console.log('COMPLETE TRICK DETECTED FROM PLAY CARD:', lastTrick);
+      // We won't process here, but wait for the game_update event
+      // This helps us correctly show the animation after the server acknowledges the play
+    }
+  };
+  
   // Listen for the play_card event
   socket.on('play_card', handlePlayCard);
+  
+  // Listen for game_update to detect when a trick is complete
+  socket.on('game_update', handleGameUpdate);
+  
+  // Listen for trick_winner event
+  socket.on('trick_winner', handleTrickWinner);
   
   // Return cleanup function
   return () => {
     socket.off('play_card', handlePlayCard);
+    socket.off('game_update', handleGameUpdate);
+    socket.off('trick_winner', handleTrickWinner);
   };
 } 

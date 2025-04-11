@@ -561,6 +561,8 @@ export default function GameTable({
       ];
       
       console.log("RENDERING DELAYED TRICK RESULT");
+      console.log("Delayed trick:", delayedTrick.map(c => `${c.rank}${c.suit}`).join(", "));
+      console.log("Winning index:", delayedWinningIndex);
       
       const myPosition = currentPlayer?.position ?? 0;
       
@@ -583,6 +585,8 @@ export default function GameTable({
             // Check if this is the winning card
             const isWinningCard = index === delayedWinningIndex;
             
+            console.log(`Delayed card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'}, winner: ${isWinningCard ? 'YES' : 'no'}`);
+            
             return (
               <div 
                 key={`trick-card-${index}`} 
@@ -599,7 +603,7 @@ export default function GameTable({
                     alt={`${card.rank}${card.suit}`}
                     width={trickCardWidth}
                     height={trickCardHeight}
-                    className={`rounded-lg shadow-md`}
+                    className={`rounded-lg shadow-md ${isWinningCard ? 'ring-4 ring-yellow-400' : ''}`}
                   />
                   
                   {/* Overlay for winning and non-winning cards */}
@@ -617,8 +621,112 @@ export default function GameTable({
               </div>
             );
           })}
+          
+          {/* Add a message showing who won the trick */}
+          {delayedWinningIndex !== null && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-center z-30"
+                 style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+              <div className="font-bold">
+                {(() => {
+                  const winningCard = delayedTrick[delayedWinningIndex];
+                  const playerId = cardPlayers[delayedWinningIndex];
+                  const player = playerId ? game.players.find(p => p.id === playerId) : null;
+                  return `${player?.name || 'Player'} won with ${winningCard.rank}${winningCard.suit}`;
+                })()}
+              </div>
+            </div>
+          )}
         </div>
       );
+    }
+    
+    // Otherwise, show the current trick normally
+    if (!game.currentTrick || game.currentTrick.length === 0) {
+      // If the current trick is empty but we recently had a trick, show it with winner
+      if (lastCompletedTrick && lastCompletedTrick.length === 4 && showLastTrick) {
+        // Similar rendering as delayed trick but with lastCompletedTrick data
+        const trickCardWidth = Math.floor(60 * scaleFactor);
+        const trickCardHeight = Math.floor(84 * scaleFactor);
+        
+        const positionClasses = [
+          "absolute bottom-0 left-1/2 -translate-x-1/2",
+          "absolute left-0 top-1/2 -translate-y-1/2", 
+          "absolute top-0 left-1/2 -translate-x-1/2",
+          "absolute right-0 top-1/2 -translate-y-1/2"
+        ];
+        
+        console.log("RENDERING LAST COMPLETED TRICK");
+        
+        const myPosition = currentPlayer?.position ?? 0;
+        
+        return (
+          <div className="relative" style={{ 
+            width: `${Math.floor(200 * scaleFactor)}px`, 
+            height: `${Math.floor(200 * scaleFactor)}px` 
+          }}>
+            {lastCompletedTrick.map((card, index) => {
+              // Use lastTrickPlayers instead of cardPlayers
+              const playerId = lastTrickPlayers[index];
+              const player = playerId ? game.players.find(p => p.id === playerId) : null;
+              
+              const playerPosition = player?.position ?? 0;
+              const relativePosition = (playerPosition - myPosition + 4) % 4;
+              
+              const isWinningCard = index === lastTrickWinnerIndex;
+              
+              return (
+                <div 
+                  key={`last-trick-card-${index}`} 
+                  className={positionClasses[relativePosition]}
+                  style={{
+                    zIndex: 10 + index,
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <div className="relative">
+                    <Image
+                      src={`/cards/${getCardImage(card)}`}
+                      alt={`${card.rank}${card.suit}`}
+                      width={trickCardWidth}
+                      height={trickCardHeight}
+                      className={`rounded-lg shadow-md ${isWinningCard ? 'ring-4 ring-yellow-400' : ''}`}
+                    />
+                    
+                    {/* Overlay for winning and non-winning cards */}
+                    <div className={`absolute inset-0 rounded-lg ${
+                      isWinningCard 
+                        ? "bg-yellow-300/20 ring-4 ring-yellow-400 shadow-lg" 
+                        : "bg-black/50"
+                    }`}></div>
+                    
+                    {/* Pulsing effect for winning card */}
+                    {isWinningCard && (
+                      <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Add a message showing who won the trick */}
+            {lastTrickWinnerIndex !== null && (
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-center z-30"
+                   style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                <div className="font-bold">
+                  {(() => {
+                    const winningCard = lastCompletedTrick[lastTrickWinnerIndex];
+                    const playerId = lastTrickPlayers[lastTrickWinnerIndex];
+                    const player = playerId ? game.players.find(p => p.id === playerId) : null;
+                    return `${player?.name || 'Player'} won with ${winningCard.rank}${winningCard.suit}`;
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+      
+      return null;
     }
     
     // Otherwise, show the current trick normally
