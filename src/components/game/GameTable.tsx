@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import type { GameState, Card, Suit } from "@/types/game";
@@ -213,6 +213,9 @@ export default function GameTable({
   // Add state to directly track which player played which card
   const [cardPlayers, setCardPlayers] = useState<Record<number, string>>({});
   
+  // Add a ref to preserve completed trick card-player mappings
+  const completedTrickCardPlayers = useRef<Record<number, string>>({});
+  
   // Add state for tracking the winning card
   const [winningCardIndex, setWinningCardIndex] = useState<number | null>(null); 
   const [winningPlayerId, setWinningPlayerId] = useState<string | null>(null);
@@ -329,6 +332,10 @@ export default function GameTable({
     // When a new trick starts, reset our tracking
     if (game.currentTrick.length === 0) {
       console.log("🔄 New trick starting - resetting card players mapping");
+      // Save the completed trick mapping before clearing
+      if (Object.keys(cardPlayers).length === 4) {
+        completedTrickCardPlayers.current = { ...cardPlayers };
+      }
       setCardPlayers({});
       setShowWinningCardHighlight(false);
       return;
@@ -340,9 +347,6 @@ export default function GameTable({
 
     // The key insight is that the game.currentPlayer points to the player who is next to play.
     // Working backwards, we can determine who played each card in the current trick.
-    
-    // The player who leads the next trick is the one who played the last card of this trick
-    // plus the trick length around the table.
     
     // Get the position of the current player (next to play)
     const currentPlayerInfo = game.players.find(p => p.id === game.currentPlayer);
@@ -477,24 +481,13 @@ export default function GameTable({
     const isTrickComplete = game.currentTrick.length === 4;
     const winningIndex = isTrickComplete ? determineWinningCard(game.currentTrick) : -1;
 
-    // Create a mapping of each card to the player who played it
-    // This uses the actual logs to create a reliable mapping
-    const cardToPlayerMapping: (typeof game.players[0] | null)[] = [];
+    // Choose the appropriate card-player mapping based on trick state
+    const activeMapping = isTrickComplete && Object.keys(completedTrickCardPlayers.current).length === 4 
+                         ? completedTrickCardPlayers.current 
+                         : cardPlayers;
     
-    // For each card, find the player who played it
-    for (let i = 0; i < game.currentTrick.length; i++) {
-      // Get the player ID from our tracking
-      const playerId = cardPlayers[i];
-      const player = playerId ? game.players.find(p => p.id === playerId) : null;
-      
-      // If we have the player in our mapping, use it
-      if (player) {
-        cardToPlayerMapping.push(player);
-      } else {
-        // If we don't have the mapping, we'll just show a placeholder
-        cardToPlayerMapping.push(null);
-      }
-    }
+    console.log("Active card mapping:", activeMapping);
+    console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`));
     
     return (
       <div className="relative" style={{ 
@@ -502,21 +495,24 @@ export default function GameTable({
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          // Get the player who played this card
-          const player = cardToPlayerMapping[index];
+          // Get the player who played this card from our mapping
+          const playerId = activeMapping[index];
+          const player = playerId ? game.players.find(p => p.id === playerId) : null;
           
-          // If we don't know who played this card, skip it
           if (!player) {
+            // If we don't have a player mapping, fall back to position-based calculation
+            // as a last resort, but log a warning
+            console.warn(`⚠️ No player mapping for card ${index} (${card.rank}${card.suit})`);
             return null;
           }
           
           // Calculate card's visual position relative to current player
           const tablePosition = (4 + (player.position ?? 0) - myPosition) % 4;
           
-          // Check if this is the winning card based on server data
+          // Check if this is the winning card
           let isWinningCard = isTrickComplete && index === winningIndex;
           
-          // If we have server data about the winning card, use that
+          // If we have server data about the winning card, use that instead
           if (isTrickComplete && serverWinningCard) {
             isWinningCard = card.rank === serverWinningCard.rank && card.suit === serverWinningCard.suit;
           }
@@ -535,7 +531,6 @@ export default function GameTable({
                   height={trickCardHeight}
                   className={`rounded-lg shadow-md ${isWinningCard ? 'brightness-110' : ''}`}
                 />
-                {/* Debug label showing which player played this card */}
                 {process.env.NODE_ENV === 'development' && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center">
                     {player.name}
@@ -557,9 +552,10 @@ export default function GameTable({
                 return `Winner: ${winner?.name || 'Unknown'}`;
               }
               
-              // Fallback to calculated winner if we have a winning index
+              // Fallback to the winner based on our card mapping
               if (game.currentTrick[winningIndex]) {
-                const winner = cardToPlayerMapping[winningIndex];
+                const winnerId = activeMapping[winningIndex];
+                const winner = winnerId ? game.players.find(p => p.id === winnerId) : null;
                 return `Winner: ${winner?.name || 'Unknown'}`;
               }
               
