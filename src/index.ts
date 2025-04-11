@@ -788,7 +788,10 @@ io.on('connection', (socket) => {
         // Store completed trick
         game.completedTricks.push([...game.currentTrick]);
         
-        // Clear current trick
+        // Save the current trick for the animation
+        const completedTrick = [...game.currentTrick];
+        
+        // Clear current trick - but delay broadcasting this change
         game.currentTrick = [];
         
         // Set the winning player as the next to play
@@ -979,6 +982,26 @@ io.on('connection', (socket) => {
             }, 10000); // 10 second delay before starting new hand
           }
         }
+        
+        // Update game state in memory with completed trick and scoring
+        games.set(gameId, game);
+        
+        // DELAY: Temporarily overwrite the real game with a delayed version for animation
+        const delayedGame = {...game};
+        delayedGame.currentTrick = completedTrick; // Keep showing the completed trick
+        
+        // Broadcast the game with trick still visible for animation
+        io.to(gameId).emit('game_update', delayedGame);
+        
+        // After delay, broadcast the real game state (with empty trick)
+        setTimeout(() => {
+          // Get the latest game state
+          const currentGame = games.get(gameId);
+          if (currentGame) {
+            // Broadcast the real game state
+            io.to(gameId).emit('game_update', currentGame);
+          }
+        }, 3000); // 3 second delay for animation
       } else {
         console.log('Could not determine trick winner!');
       }
