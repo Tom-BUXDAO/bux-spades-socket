@@ -814,7 +814,10 @@ export default function GameTable({
     // Determine made/bid status color
     const madeCount = player.tricks || 0;
     const bidCount = player.bid !== undefined ? player.bid : 0;
-    const madeStatusColor = madeCount < bidCount ? "text-red-500" : "text-emerald-500";
+    // Replace color-based status with emoji indicators
+    const madeStatus = madeCount >= bidCount 
+      ? "✅" // Checkmark for met or exceeded bid
+      : "❌"; // X for not met bid
     
     // Custom team colors
     const redTeamGradient = "bg-gradient-to-r from-red-700 to-red-500";
@@ -876,12 +879,15 @@ export default function GameTable({
                 {/* Bid/Trick counter with glass morphism effect */}
                 <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1"
                      style={{ width: isMobile ? '50px' : '70px' }}>
-                  <span className={madeStatusColor} style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
+                  <span style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
                     {game.status === "WAITING" ? "0" : madeCount}
                   </span>
                   <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
                   <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
                     {game.status === "WAITING" ? "0" : bidCount}
+                  </span>
+                  <span style={{ fontSize: isMobile ? '10px' : '12px' }} className="ml-1">
+                    {game.status === "WAITING" ? "" : madeStatus}
                   </span>
                 </div>
               </div>
@@ -931,12 +937,15 @@ export default function GameTable({
                 {/* Bid/Trick counter with glass morphism effect */}
                 <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1"
                      style={{ width: isMobile ? '50px' : '70px' }}>
-                  <span className={madeStatusColor} style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
+                  <span style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
                     {game.status === "WAITING" ? "0" : madeCount}
                   </span>
                   <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
                   <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
                     {game.status === "WAITING" ? "0" : bidCount}
+                  </span>
+                  <span style={{ fontSize: isMobile ? '10px' : '12px' }} className="ml-1">
+                    {game.status === "WAITING" ? "" : madeStatus}
                   </span>
                 </div>
               </div>
