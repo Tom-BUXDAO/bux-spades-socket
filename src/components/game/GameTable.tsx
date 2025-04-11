@@ -434,19 +434,6 @@ export default function GameTable({
           
           console.log(`✅ CLIENT DETERMINED: Trick should be won by ${winningPlayer?.name || 'Unknown'} (${winningPlayerId}) with ${winningCard.rank}${winningCard.suit}`);
           
-          // Highlight the winning card and player
-          setWinningCardIndex(winningCardIndex);
-          setWinningPlayerId(winningPlayerId);
-          setShowWinningCardHighlight(true);
-          
-          // Add a delay to show the winning card before the server clears it
-          // This will give players time to see who won the trick
-          setTimeout(() => {
-            setShowWinningCardHighlight(false);
-            setWinningCardIndex(null);
-            setWinningPlayerId(null);
-          }, 2000); // 2 second delay
-          
           // SERVER BUG WORKAROUND: The server incorrectly attributes the winning card to the wrong player
           // This is because the server message is printed with incorrect information. We need to display the correct winner.
           if (game.currentTrick.length === 4) {
@@ -459,6 +446,35 @@ export default function GameTable({
       }
     }
   }, [game.currentTrick, game.players, game.currentPlayer]);
+
+  // Add a dedicated effect to detect completed tricks and highlight the winner
+  useEffect(() => {
+    // Check if we have a complete trick (4 cards)
+    if (game.currentTrick.length === 4) {
+      console.log("COMPLETE TRICK DETECTED:", game.currentTrick);
+      
+      // Calculate the winning card
+      const winningCardIndex = determineWinningCard(game.currentTrick);
+      
+      if (winningCardIndex >= 0 && cardPlayers[winningCardIndex]) {
+        const winningPlayerId = cardPlayers[winningCardIndex];
+        
+        console.log(`Winner determined: Card ${winningCardIndex} wins, played by ${winningPlayerId}`);
+        
+        // Update state to highlight the winning card
+        setWinningCardIndex(winningCardIndex);
+        setWinningPlayerId(winningPlayerId);
+        setShowWinningCardHighlight(true);
+        
+        // Clear highlight after delay
+        setTimeout(() => {
+          setShowWinningCardHighlight(false);
+          setWinningCardIndex(null);
+          setWinningPlayerId(null);
+        }, 2000); // 2 second delay
+      }
+    }
+  }, [game.currentTrick, cardPlayers]);
 
   // When WE play a card, we need to record that immediately
   const handlePlayCard = (card: Card) => {
@@ -571,14 +587,6 @@ export default function GameTable({
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
-          </div>
-        )}
-        
-        {/* Winner indicator */}
-        {showWinningCardHighlight && winningPlayerId && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded animate-pulse"
-               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-            {game.players.find(p => p.id === winningPlayerId)?.name || 'Player'} wins the trick!
           </div>
         )}
       </div>
