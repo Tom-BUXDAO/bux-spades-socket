@@ -344,6 +344,7 @@ export default function GameTable({
         
         // Set a timeout to clear it after 3 seconds
         setTimeout(() => {
+          setShowWinningCardHighlight(false);
           setShowLastTrick(false);
         }, 3000);
       }
@@ -372,6 +373,9 @@ export default function GameTable({
     // Log what we know from the server data
     console.log("RECONSTRUCTING SERVER CARD ORDER:");
     
+    // Store the current trick length to determine if we need to calculate for a completed trick
+    const isTrickComplete = game.currentTrick.length === 4;
+    
     // For each card in the trick
     for (let i = 0; i < game.currentTrick.length; i++) {
       // Calculate the player who played this card based on server data
@@ -393,10 +397,16 @@ export default function GameTable({
       console.log('Updated card players from server data:', updatedCardPlayers);
       
       // ALWAYS use the server's version of truth, overwriting our local mapping
-      setCardPlayers(updatedCardPlayers);
+      // BUT preserve completed trick mappings
+      if (isTrickComplete && Object.keys(cardPlayers).length === 4) {
+        // Don't update the mapping for a completed trick - this prevents position changes
+        console.log("Trick is complete, preserving card positions");
+      } else {
+        setCardPlayers(updatedCardPlayers);
+      }
       
       // If we have a complete trick (4 cards), save it as the last completed trick
-      if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
+      if (isTrickComplete && Object.keys(updatedCardPlayers).length === 4) {
         const winningCardIndex = determineWinningCard(game.currentTrick);
         if (winningCardIndex >= 0 && updatedCardPlayers[winningCardIndex]) {
           const winningPlayerId = updatedCardPlayers[winningCardIndex];
@@ -408,13 +418,13 @@ export default function GameTable({
           // Save the completed trick before it's cleared by the server
           setLastCompletedTrick([...game.currentTrick]);
           setLastTrickWinnerIndex(winningCardIndex);
-          setLastTrickPlayers({...updatedCardPlayers});
+          setLastTrickPlayers({...cardPlayers}); // Use the preserved mapping
           
           // We'll set showLastTrick to true only once the server clears the trick (see above)
         }
       }
     }
-  }, [game.currentTrick, game.players, game.currentPlayer, showLastTrick, lastCompletedTrick]);
+  }, [game.currentTrick, game.players, game.currentPlayer, showLastTrick, lastCompletedTrick, cardPlayers]);
 
   // When playing a card, we now rely solely on server data for tracking
   const handlePlayCard = (card: Card) => {
