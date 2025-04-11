@@ -361,6 +361,9 @@ export default function GameTable({
     // Store the current trick length to determine if we need to calculate for a completed trick
     const isTrickComplete = game.currentTrick.length === 4;
     
+    // Track players that have already been assigned cards to avoid duplicates
+    const assignedPlayers = new Set<string>();
+    
     // For each card in the trick
     for (let i = 0; i < game.currentTrick.length; i++) {
       // Calculate the player who played this card based on server data
@@ -370,11 +373,19 @@ export default function GameTable({
       
       const playerId = orderedPlayerIds[playerPosition];
       
-      if (playerId) {
+      if (playerId && !assignedPlayers.has(playerId)) {
         updatedCardPlayers[i] = playerId;
+        assignedPlayers.add(playerId); // Track this player as assigned
         const player = game.players.find(p => p.id === playerId);
-        console.log(`SERVER DATA: Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) played by ${player?.name || 'Unknown'}`);
+        console.log(`SERVER DATA: Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}`);
+      } else if (playerId && assignedPlayers.has(playerId)) {
+        console.error(`DUPLICATE PLAYER DETECTED: ${playerId} already assigned a card. Skipping this assignment.`);
       }
+    }
+    
+    // If we found any duplicates, log a warning
+    if (game.currentTrick.length !== assignedPlayers.size) {
+      console.warn(`WARNING: Found ${game.currentTrick.length} cards but only ${assignedPlayers.size} unique players. Card positions may not be accurate.`);
     }
     
     // Only update if we have new information AND if the trick is not complete
@@ -388,14 +399,25 @@ export default function GameTable({
       } else {
         // Update card players mapping for in-progress tricks
         setCardPlayers(prevCardPlayers => {
-          // Merge with any existing mappings
-          const mergedPlayers = { ...prevCardPlayers };
+          // Create a new mapping that avoids duplicate players
+          const mergedPlayers: Record<number, string> = {};
+          const seenPlayerIds = new Set<string>();
           
-          // Only add cards that aren't already mapped
-          Object.keys(updatedCardPlayers).forEach(idx => {
-            const index = parseInt(idx, 10);
-            if (!mergedPlayers[index]) {
-              mergedPlayers[index] = updatedCardPlayers[index];
+          // First, include existing mappings
+          Object.entries(prevCardPlayers).forEach(([idx, playerId]) => {
+            if (!seenPlayerIds.has(playerId)) {
+              const index = parseInt(idx, 10);
+              mergedPlayers[index] = playerId;
+              seenPlayerIds.add(playerId);
+            }
+          });
+          
+          // Then add new mappings, only if the player hasn't been seen yet
+          Object.entries(updatedCardPlayers).forEach(([idx, playerId]) => {
+            if (!seenPlayerIds.has(playerId)) {
+              const index = parseInt(idx, 10);
+              mergedPlayers[index] = playerId;
+              seenPlayerIds.add(playerId);
             }
           });
           
@@ -513,14 +535,29 @@ export default function GameTable({
       console.log("Trick is complete, using frozen player mapping");
     }
     
+    // HANDLE DUPLICATE PLAYERS: Create a filtered mapping that ensures each player only appears once
+    // This prevents cards from showing in the wrong positions
+    const seenPlayers = new Set<string>();
+    const filteredCardPlayers: Record<number, string> = {};
+    
+    Object.entries(currentCardPlayers).forEach(([index, playerId]) => {
+      const numIndex = parseInt(index, 10);
+      if (!seenPlayers.has(playerId)) {
+        filteredCardPlayers[numIndex] = playerId;
+        seenPlayers.add(playerId);
+      } else {
+        console.error(`Duplicate player detected: ${playerId} already has a card. Skipping card at index ${index}.`);
+      }
+    });
+    
     return (
       <div className="relative" style={{ 
         width: `${Math.floor(200 * scaleFactor)}px`, 
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          // Get the player who played this card from our tracking
-          const playerId = currentCardPlayers[index];
+          // Get the player who played this card from our filtered mapping
+          const playerId = filteredCardPlayers[index];
           const player = playerId ? game.players.find(p => p.id === playerId) : null;
           
           if (!player) {
@@ -558,10 +595,10 @@ export default function GameTable({
         })}
         
         {/* Winner indicator when trick is complete */}
-        {isTrickComplete && winningIndex >= 0 && currentCardPlayers[winningIndex] && (
+        {isTrickComplete && winningIndex >= 0 && filteredCardPlayers[winningIndex] && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
-            Winner: {game.players.find(p => p.id === currentCardPlayers[winningIndex])?.name || 'Unknown'}
+            Winner: {game.players.find(p => p.id === filteredCardPlayers[winningIndex])?.name || 'Unknown'}
           </div>
         )}
         
