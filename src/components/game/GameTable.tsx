@@ -362,7 +362,7 @@ export default function GameTable({
       console.log("🔄 New trick starting - resetting card players mapping");
       // Save the completed trick mapping before clearing
       setCardPlayers({});
-          setShowWinningCardHighlight(false);
+      setShowWinningCardHighlight(false);
       return;
     }
 
@@ -388,7 +388,20 @@ export default function GameTable({
       const previousPosition = (currentPlayerInfo.position - 1 + 4) % 4;
       const previousPlayer = game.players.find(p => p.position === previousPosition);
       
-      if (previousPlayer) {
+      // Special case: if the most recent card was played by the current user
+      // This happens when we just played a card but the server hasn't updated game.currentPlayer yet
+      const wasPlayedByCurrentUser = (game.currentPlayer === currentPlayerId) && 
+                                     (newCardIndex === game.currentTrick.length - 1) &&
+                                     (Object.keys(cardPlayers).length === newCardIndex);
+      
+      if (wasPlayedByCurrentUser) {
+        // The current user just played this card
+        const updatedMapping = { ...cardPlayers };
+        updatedMapping[newCardIndex] = currentPlayerId || '';
+        
+        console.log(`✅ Card ${newCardIndex} (${game.currentTrick[newCardIndex].rank}${game.currentTrick[newCardIndex].suit}) was played by me (${currentPlayer?.name})`);
+        setCardPlayers(updatedMapping);
+      } else if (previousPlayer) {
         // Create a new mapping with this card
         const updatedMapping = { ...cardPlayers };
         updatedMapping[newCardIndex] = previousPlayer.id;
@@ -400,17 +413,41 @@ export default function GameTable({
     
     // For a complete trick, save the mapping for future reference
     if (game.currentTrick.length === 4) {
+      // Make sure all cards have a player mapped
+      const completeMapping = { ...cardPlayers };
+      
+      // Try to fill in any missing mappings
+      for (let i = 0; i < 4; i++) {
+        if (!completeMapping[i]) {
+          // Get position based on the winner (current player) position
+          const pos = (currentPlayerInfo.position - (4 - i) + 4) % 4;
+          const player = game.players.find(p => p.position === pos);
+          if (player) {
+            completeMapping[i] = player.id;
+            console.log(`📌 Mapped missing card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) to ${player.name}`);
+          }
+        }
+      }
+      
       // The trick is complete, so freeze the card player mapping
-      console.log("🧊 Freezing card player mapping for completed trick:", { ...cardPlayers });
-      completedTrickCardPlayers.current = { ...cardPlayers };
+      console.log("🧊 Freezing card player mapping for completed trick:", completeMapping);
+      completedTrickCardPlayers.current = completeMapping;
+      setCardPlayers(completeMapping);
       
       // Calculate the winning card index
-        const winningCardIndex = determineWinningCard(game.currentTrick);
+      const winningCardIndex = determineWinningCard(game.currentTrick);
       if (winningCardIndex >= 0) {
-        setShowWinningCardHighlight(true);
+        setWinningCardIndex(winningCardIndex);
+        
+        // Find who played the winning card
+        const winningCardPlayerId = completeMapping[winningCardIndex];
+        if (winningCardPlayerId) {
+          setWinningPlayerId(winningCardPlayerId);
+          setShowWinningCardHighlight(true);
+        }
       }
     }
-  }, [game.currentTrick, game.currentPlayer, game.players]);
+  }, [game.currentTrick, game.currentPlayer, game.players, currentPlayerId, currentPlayer]);
 
   // When playing a card, we now rely solely on server data for tracking
   const handlePlayCard = (card: Card) => {
@@ -432,7 +469,11 @@ export default function GameTable({
 
     console.log(`Playing card: ${card.rank}${card.suit} as player ${currentPlayer.name}`);
     
-    // We no longer track card players locally - the server will tell us
+    // Update our local tracking immediately to know that current player played this card
+    // This helps prevent the "Unknown" player issue when we play our own card
+    const updatedMapping = { ...cardPlayers };
+    updatedMapping[game.currentTrick.length] = currentPlayerId;
+    setCardPlayers(updatedMapping);
     
     // Send the play to the server
     socket.emit("play_card", { 
@@ -546,6 +587,15 @@ export default function GameTable({
       }
     }
     
+    // For the last card, if we're the current player and just played it
+    // Make sure we map it to ourselves
+    if (game.currentTrick.length > 0 && !activeMapping[game.currentTrick.length - 1] && 
+        game.currentPlayer === currentPlayerId && isCurrentPlayersTurn) {
+      const lastIndex = game.currentTrick.length - 1;
+      activeMapping = {...activeMapping, [lastIndex]: currentPlayerId || ''};
+      console.log(`Fixed mapping for card ${lastIndex}: ${game.currentTrick[lastIndex].rank}${game.currentTrick[lastIndex].suit} to current player ${currentPlayer?.name}`);
+    }
+    
     return (
       <div className="relative" style={{ 
         width: `${Math.floor(isMobile ? 150 : 200 * scaleFactor)}px`, 
@@ -554,14 +604,35 @@ export default function GameTable({
         {game.currentTrick.map((card, index) => {
           // Get the player who played this card from our mapping
           const playerId = activeMapping[index];
-          const player = playerId ? game.players.find(p => p.id === playerId) : null;
+          let player = playerId ? game.players.find(p => p.id === playerId) : null;
+          
+          // Special handling for the player's own card
+          if (playerId === currentPlayerId) {
+            player = currentPlayer;
+          }
           
           if (!player) {
-            // If we don't have a player mapping, fall back to position-based calculation
-            // as a last resort, but log a warning
-            console.warn(`⚠️ No player mapping for card ${index} (${card.rank}${card.suit})`);
-            return null;
+            // If we don't have a player mapping, look up the player more intelligently
+            // using our getPlayerForCardIndex function
+            player = getPlayerForCardIndex(index, activeMapping);
+            
+            if (!player) {
+              console.warn(`⚠️ No player mapping for card ${index} (${card.rank}${card.suit})`);
+              // For the fourth card, assume it was played by the current player if we can't find it
+              if (index === 3 && game.currentTrick.length === 4 && game.currentPlayer === currentPlayerId) {
+                player = currentPlayer;
+              } else {
+                // As a last resort, calculate the player's position
+                const currentPlayerPos = currentPlayer?.position || 0;
+                // For tricks in progress, calculate who would have played this card
+                // based on the current position in the trick
+                const pos = (currentPlayerPos - (index === 3 ? 4 : index + 1) + 4) % 4;
+                player = game.players.find(p => p.position === pos);
+              }
+            }
           }
+          
+          if (!player) return null;
           
           // Calculate card's visual position relative to current player
           const tablePosition = (4 + (player.position ?? 0) - myPosition) % 4;
