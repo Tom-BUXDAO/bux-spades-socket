@@ -777,6 +777,14 @@ io.on('connection', (socket) => {
         // Increment tricks taken by the winning player
         winningPlayer.tricks += 1;
         
+        // Emit trick_winner event
+        io.to(gameId).emit('trick_winner', {
+          gameId: gameId,
+          winningCard: winningCard,
+          winningPlayerId: winningPlayer.id,
+          playerName: winningPlayer.name
+        });
+        
         // Store completed trick
         game.completedTricks.push([...game.currentTrick]);
         
