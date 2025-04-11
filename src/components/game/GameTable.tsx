@@ -303,11 +303,18 @@ export default function GameTable({
         window.dispatchEvent(new Event('gameStateChanged'));
       }
     } else {
-      // Reset positions when a new trick starts (current trick is empty)
-      setTrickCardPositions({});
-      setLastTrickLength(0);
+      // Only reset positions when a new trick starts (current trick is empty)
+      // IMPORTANT: Don't reset positions if we still have a winner being highlighted
+      // This prevents the cards from moving when a trick is complete
+      if (!showWinningCardHighlight) {
+        console.log("Resetting trick card positions for new trick");
+        setTrickCardPositions({});
+        setLastTrickLength(0);
+      } else {
+        console.log("Keeping trick card positions while winner is highlighted");
+      }
     }
-  }, [game.currentTrick?.length, game.players, game.currentPlayer, currentPlayer?.position]);
+  }, [game.currentTrick?.length, game.players, game.currentPlayer, currentPlayer?.position, showWinningCardHighlight]);
 
   // Use the explicit position property if available, otherwise fall back to array index
   // @ts-ignore - position property might not be on the type yet
@@ -687,14 +694,6 @@ export default function GameTable({
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
-          </div>
-        )}
-        
-        {/* Winner indicator - show when server has determined a winner */}
-        {hasServerWinner && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-yellow-600/80 text-white px-3 py-1 rounded-full animate-pulse"
-               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-            Winner: {game.players.find(p => p.id === serverWinningPlayerId)?.name || 'Unknown'}
           </div>
         )}
       </div>
