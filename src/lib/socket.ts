@@ -316,6 +316,16 @@ export function sendChatMessage(socket: typeof Socket | null, gameId: string, me
 }
 
 // Add a new debug function that logs trick winner information received from server
+interface TrickWinnerData {
+  winningCard?: {
+    rank: number | string;
+    suit: string;
+  };
+  winningPlayerId?: string;
+  playerName?: string;
+  gameId?: string;
+}
+
 export function debugTrickWinner(socket: typeof Socket | null, gameId: string) {
   if (!socket) {
     console.error('Cannot setup debug: socket is null');
@@ -323,7 +333,7 @@ export function debugTrickWinner(socket: typeof Socket | null, gameId: string) {
   }
   
   // Listen for trick winner events
-  socket.on('trick_winner', (data) => {
+  socket.on('trick_winner', (data: TrickWinnerData) => {
     console.log('🎯 DEBUG TRICK WINNER:', data);
     
     if (data.winningCard && data.winningPlayerId) {
