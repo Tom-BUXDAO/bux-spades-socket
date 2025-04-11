@@ -114,17 +114,26 @@ function determineWinningCard(trick: Card[]): number {
 
   const leadSuit = trick[0].suit;
   
+  console.log("DETERMINING WINNING CARD:", trick.map(c => `${c.rank}${c.suit}`));
+  
   // Check if any spades were played - spades always trump other suits
   const spadesPlayed = trick.filter(card => card.suit === 'S');
   
   if (spadesPlayed.length > 0) {
     // Find the highest spade
-    const highestSpade = spadesPlayed.reduce((highest, current) => 
-      getCardValue(String(current.rank)) > getCardValue(String(highest.rank)) ? current : highest, spadesPlayed[0]);
+    const highestSpade = spadesPlayed.reduce((highest, current) => {
+      const currentValue = getCardValue(String(current.rank));
+      const highestValue = getCardValue(String(highest.rank));
+      console.log(`Comparing spades: ${current.rank}${current.suit} (${currentValue}) vs ${highest.rank}${highest.suit} (${highestValue})`);
+      return currentValue > highestValue ? current : highest;
+    }, spadesPlayed[0]);
+    
+    console.log(`Highest spade is ${highestSpade.rank}${highestSpade.suit}`);
     
     // Return the index of the highest spade
     for (let i = 0; i < trick.length; i++) {
       if (trick[i].suit === 'S' && trick[i].rank === highestSpade.rank) {
+        console.log(`Winning card is at position ${i}: ${trick[i].rank}${trick[i].suit}`);
         return i;
       }
     }
@@ -132,12 +141,27 @@ function determineWinningCard(trick: Card[]): number {
   
   // If no spades, find the highest card of the lead suit
   const leadSuitCards = trick.filter(card => card.suit === leadSuit);
-  const highestLeadSuitCard = leadSuitCards.reduce((highest, current) => 
-    getCardValue(String(current.rank)) > getCardValue(String(highest.rank)) ? current : highest, leadSuitCards[0]);
+  
+  console.log(`Lead suit is ${leadSuit}, cards of this suit:`, leadSuitCards.map(c => `${c.rank}${c.suit}`));
+  
+  // Debug each card's numeric value
+  leadSuitCards.forEach(card => {
+    console.log(`Card ${card.rank}${card.suit} has numeric value: ${getCardValue(String(card.rank))}`);
+  });
+  
+  const highestLeadSuitCard = leadSuitCards.reduce((highest, current) => {
+    const currentValue = getCardValue(String(current.rank));
+    const highestValue = getCardValue(String(highest.rank));
+    console.log(`Comparing: ${current.rank}${current.suit} (${currentValue}) vs ${highest.rank}${highest.suit} (${highestValue})`);
+    return currentValue > highestValue ? current : highest;
+  }, leadSuitCards[0]);
+  
+  console.log(`Highest card of lead suit ${leadSuit} is ${highestLeadSuitCard.rank}${highestLeadSuitCard.suit}`);
   
   // Return the index of the highest lead suit card
   for (let i = 0; i < trick.length; i++) {
     if (trick[i].suit === leadSuit && trick[i].rank === highestLeadSuitCard.rank) {
+      console.log(`Winning card is at position ${i}: ${trick[i].rank}${trick[i].suit}`);
       return i;
     }
   }
