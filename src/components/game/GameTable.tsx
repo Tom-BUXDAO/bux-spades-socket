@@ -780,7 +780,7 @@ export default function GameTable({
           // Side seats (left/right) - vertical layout
           <div className="flex flex-col items-center gap-1">
             {/* Avatar in circle with team color border */}
-            <div className={`relative rounded-full p-0.5 ${teamBgColor} ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`}>
+            <div className={`relative rounded-full p-0.5 ${teamBgColor} border-3 ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`} style={{borderWidth: '3px'}}>
               <div className="rounded-full overflow-hidden" style={{ 
                 width: screenSize.width < 640 ? '28px' : '48px', 
                 height: screenSize.width < 640 ? '28px' : '48px' 
@@ -806,7 +806,7 @@ export default function GameTable({
             </div>
             
             {/* Name in team color container */}
-            <div className={`${teamBgColor} text-white text-center px-1 py-0.5 rounded-md text-xs w-full`} style={{ 
+            <div className={`${teamBgColor} text-white text-center px-2 py-1 rounded-md text-xs w-full`} style={{ 
               fontSize: screenSize.width < 640 ? '8px' : '12px',
               maxWidth: screenSize.width < 640 ? '48px' : '70px'
             }}>
@@ -817,13 +817,14 @@ export default function GameTable({
             
             {/* Made/Bid counter in white container with team color border */}
             <div className={`bg-white ${teamBorderColor} border rounded-full px-1.5 py-0.5 text-center`} style={{ 
-              fontSize: screenSize.width < 640 ? '8px' : '12px' 
+              fontSize: screenSize.width < 640 ? '8px' : '12px',
+              borderWidth: '3px'
             }}>
-              <span className={game.status === "WAITING" ? "text-gray-600" : madeStatusColor}>
+              <span className={game.status === "WAITING" ? "text-black" : madeStatusColor}>
                 {game.status === "WAITING" ? "0" : madeCount}
               </span>
               <span className="text-gray-400">{" / "}</span>
-              <span className="text-gray-600">
+              <span className="text-black">
                 {game.status === "WAITING" ? "0" : bidCount}
               </span>
             </div>
@@ -841,7 +842,7 @@ export default function GameTable({
           // Top/bottom seats - horizontal layout
           <div className="flex items-start gap-1.5">
             {/* Avatar in circle with team color border */}
-            <div className={`relative rounded-full p-0.5 ${teamBgColor} ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`}>
+            <div className={`relative rounded-full p-0.5 ${teamBgColor} ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`} style={{borderWidth: '3px'}}>
               <div className="rounded-full overflow-hidden" style={{ 
                 width: screenSize.width < 640 ? '28px' : '48px', 
                 height: screenSize.width < 640 ? '28px' : '48px' 
@@ -869,7 +870,7 @@ export default function GameTable({
             {/* Name and bid in vertical stack */}
             <div className="flex flex-col items-center gap-1">
               {/* Name in team color container */}
-              <div className={`${teamBgColor} text-white text-center px-1.5 py-0.5 rounded-md text-xs w-full`} style={{ 
+              <div className={`${teamBgColor} text-white text-center px-2 py-1 rounded-md text-xs w-full`} style={{ 
                 fontSize: screenSize.width < 640 ? '8px' : '12px',
                 minWidth: screenSize.width < 640 ? '60px' : '80px'
               }}>
@@ -880,13 +881,14 @@ export default function GameTable({
               
               {/* Made/Bid counter in white container with team color border */}
               <div className={`bg-white ${teamBorderColor} border rounded-full px-2 py-0.5 text-center`} style={{ 
-                fontSize: screenSize.width < 640 ? '8px' : '12px' 
+                fontSize: screenSize.width < 640 ? '8px' : '12px',
+                borderWidth: '3px'
               }}>
-                <span className={game.status === "WAITING" ? "text-gray-600" : madeStatusColor}>
+                <span className={game.status === "WAITING" ? "text-black" : madeStatusColor}>
                   {game.status === "WAITING" ? "0" : madeCount}
                 </span>
                 <span className="text-gray-400">{" / "}</span>
-                <span className="text-gray-600">
+                <span className="text-black">
                   {game.status === "WAITING" ? "0" : bidCount}
                 </span>
               </div>
@@ -1150,7 +1152,7 @@ export default function GameTable({
               {/* Leave Table button - inside table in top left corner */}
               <button
                 onClick={handleLeaveTable}
-                className="absolute top-4 left-4 z-10 p-2 bg-red-600/90 text-white rounded-full hover:bg-red-700 transition shadow-lg"
+                className="absolute top-4 left-4 z-10 p-2 bg-gray-800/90 text-white rounded-full hover:bg-gray-700 transition shadow-lg"
                 style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
