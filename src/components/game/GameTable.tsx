@@ -766,9 +766,13 @@ export default function GameTable({
     const madeCount = player.tricks || 0;
     const bidCount = player.bid !== undefined ? player.bid : 0;
     const madeStatusColor = madeCount < bidCount ? "text-red-600" : "text-green-600";
-    const teamColor = player.team === 1 ? 'red' : 'blue';
-    const teamBorderColor = player.team === 1 ? 'border-red-500' : 'border-blue-500';
-    const teamBgColor = player.team === 1 ? 'bg-red-500' : 'bg-blue-500';
+    
+    // Custom team colors
+    const redTeamColor = "#c62a0f";
+    const blueTeamColor = "#212bf2";
+    const teamColor = player.team === 1 ? redTeamColor : blueTeamColor;
+    const teamBorderColor = player.team === 1 ? 'border-[#c62a0f]' : 'border-[#212bf2]';
+    const teamBgColor = player.team === 1 ? 'bg-[#c62a0f]' : 'bg-[#212bf2]';
 
     return (
       <div className={`absolute ${getPositionClasses(position)} ${isActive ? 'z-10' : ''}`}>
