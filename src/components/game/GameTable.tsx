@@ -657,6 +657,7 @@ export default function GameTable({
     
     console.log("RENDERING CURRENT TRICK");
     
+    // Get my position
     const myPosition = currentPlayer?.position ?? 0;
     
     // Calculate winning card index for a complete trick
@@ -678,6 +679,9 @@ export default function GameTable({
       }
     }
     
+    // Debug card players mapping
+    console.log("Card players mapping:", cardPlayers);
+    
     return (
       <div className="relative" style={{ 
         width: `${Math.floor(200 * scaleFactor)}px`, 
@@ -688,11 +692,19 @@ export default function GameTable({
           const playerId = cardPlayers[index];
           const player = playerId ? game.players.find(p => p.id === playerId) : null;
           
-          // Get the player's position (0-3)
-          const playerPosition = player?.position ?? 0;
+          if (!player) {
+            console.log(`Cannot find player for card at index ${index}`);
+            return null;
+          }
           
-          // Calculate the position relative to the current player's view
-          const relativePosition = (playerPosition - myPosition + 4) % 4;
+          // Get the player's position (0-3)
+          const playerPosition = player.position;
+          
+          // Calculate the table position relative to the current player's view
+          // This ensures each card appears in front of the player who played it
+          const tablePosition = (playerPosition - myPosition + 4) % 4;
+          
+          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
           
           // Check if this is the winning card in a complete trick
           const isWinningCard = isCompleteTrick && index === currentWinningIndex;
@@ -700,7 +712,7 @@ export default function GameTable({
           return (
             <div 
               key={`trick-card-${index}`} 
-              className={positionClasses[relativePosition]}
+              className={positionClasses[tablePosition]}
               data-testid={`trick-card-${index}`}
             >
               <div className={`relative transition-all duration-300 ${isWinningCard ? 'transform scale-110 z-10' : ''}`}>
@@ -1000,200 +1012,4 @@ export default function GameTable({
               <div className="relative">
                 <Image
                   src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank}${card.suit}`}
-                  width={cardUIWidth}
-                  height={cardUIHeight}
-                  className={`rounded-lg shadow-[4px_4px_12px_rgba(0,0,0,0.8)] ${
-                    isPlayable ? 'hover:shadow-[8px_8px_16px_rgba(0,0,0,0.9)]' : ''
-                  }`}
-                  style={{ width: 'auto', height: 'auto' }}
-                />
-                {!isPlayable && (
-                  <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  // Add the missing handleHandSummaryClose function
-  const handleHandSummaryClose = () => {
-    setShowHandSummary(false);
-    if (socket && handScores) {
-      socket.emit("update_scores", {
-        gameId: game.id,
-        team1Score: handScores.team1.score,
-        team2Score: handScores.team2.score,
-        startNewHand: true
-      });
-      setHandScores(null);
-    }
-  };
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (showHandSummary) {
-      timeoutId = setTimeout(handleHandSummaryClose, 5000);
-    }
-    return () => clearTimeout(timeoutId);
-  }, [showHandSummary]);
-
-  // Add debug listener for trick winner data - only setup once
-  useEffect(() => {
-    if (socket) {
-      // Setup debug listener for trick winners
-      debugTrickWinner(socket, game.id);
-    }
-  }, [socket, game.id]);
-
-  // Initialize the global variable
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.lastCompletedTrick = null;
-    }
-  }, []);
-
-  return (
-    <>
-      <LandscapePrompt />
-      <div className="flex flex-col h-screen bg-gray-900">
-        {/* Empty div for padding above header */}
-        <div className="h-8"></div>
-        
-        {/* Header */}
-        <div className="bg-gray-800 text-white px-4 py-2 flex justify-between items-center mb-2"
-             style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}>
-          <div className="flex items-center space-x-4">
-            <h2 className="font-bold" style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}>Game #{game.id}</h2>
-            <div className="flex space-x-2">
-              <div>Status: {game.status}</div>
-              <div className="text-red-500">Score: {game.team1Score}</div>
-              <div className="text-blue-500">Score: {game.team2Score}</div>
-            </div>
-          </div>
-          <button
-            onClick={handleLeaveTable}
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
-            style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
-          >
-            Leave Table
-          </button>
-        </div>
-
-        {/* Main content area with added padding */}
-        <div className="flex flex-1 min-h-0 pt-1">
-          {/* Game table area - add padding on top and bottom */}
-          <div className="w-[70%] p-2 flex flex-col">
-            {/* Game table with more space at the top and bottom */}
-            <div className="relative flex-1 mb-3 mt-2" style={{ 
-              background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
-              borderRadius: `${Math.floor(64 * scaleFactor)}px`,
-              border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
-            }}>
-              {/* Players around the table */}
-              {[0, 1, 2, 3].map((position) => (
-                <div key={`player-position-${position}`}>
-                  {renderPlayerPosition(position)}
-                </div>
-              ))}
-
-              {/* Center content */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
-                  <button
-                    onClick={handleStartGame}
-                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
-                    style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
-                  >
-                    Start Game
-                  </button>
-                ) : game.status === "WAITING" && game.players.length < 4 ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Players</div>
-                    <div className="text-sm mt-1">{game.players.length}/4 joined</div>
-                  </div>
-                ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Host</div>
-                    <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
-                  </div>
-                ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
-                  </div>
-                ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
-                  renderTrickCards()
-                ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
-                  <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="text-sm">
-                      Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Bidding interface */}
-              {game.status === "BIDDING" && (
-                <BiddingInterface
-                  onBid={handleBid}
-                  currentBid={orderedPlayers[0]?.bid}
-                  gameId={game.id}
-                  playerId={currentPlayerId || ''}
-                  currentPlayerTurn={game.currentPlayer}
-                />
-              )}
-            </div>
-
-            {/* Cards area with more space */}
-            <div className="bg-gray-800/50 rounded-lg relative mt-2" 
-                 style={{ 
-                   height: `${Math.floor(120 * scaleFactor)}px`, 
-                   clipPath: 'inset(-100% 0 0 0)'
-                 }}>
-              {renderPlayerHand()}
-            </div>
-          </div>
-
-          {/* Chat area - 30% */}
-          <div className="w-[30%] p-2">
-            <Chat 
-              socket={socket}
-              gameId={game.id}
-              userId={currentPlayerId || ''}
-              userName={currentPlayer?.name || 'Unknown'}
-              players={game.players}
-            />
-          </div>
-        </div>
-
-        {/* Hand Summary Modal */}
-        {showHandSummary && handScores && (
-          <HandSummaryModal
-            onClose={handleHandSummaryClose}
-            players={game.players}
-            team1Score={handScores.team1}
-            team2Score={handScores.team2}
-          />
-        )}
-
-        {/* Winner Modal */}
-        {showWinner && handScores && (
-          <WinnerModal
-            isOpen={showWinner}
-            onClose={handleWinnerClose}
-            team1Score={game.team1Score + handScores.team1.score}
-            team2Score={game.team2Score + handScores.team2.score}
-            winningTeam={game.team1Score + handScores.team1.score > game.team2Score + handScores.team2.score ? 1 : 2}
-          />
-        )}
-      </div>
-    </>
-  );
-} 
+                  alt={`${card.rank}${card.suit}`
