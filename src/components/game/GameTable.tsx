@@ -560,11 +560,17 @@ export default function GameTable({
         "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
       ];
       
-      console.log("RENDERING DELAYED TRICK RESULT");
-      console.log("Delayed trick:", delayedTrick.map(c => `${c.rank}${c.suit}`).join(", "));
-      console.log("Winning index:", delayedWinningIndex);
+      console.log("RENDERING COMPLETED TRICK WITH WINNER");
       
       const myPosition = currentPlayer?.position ?? 0;
+      
+      // Figure out who played each card
+      const cardPlayersArray = Object.entries(cardPlayers)
+        .map(([index, playerId]) => ({
+          index: parseInt(index),
+          playerId,
+          player: game.players.find(p => p.id === playerId)
+        }));
       
       return (
         <div className="relative" style={{ 
@@ -572,9 +578,9 @@ export default function GameTable({
           height: `${Math.floor(200 * scaleFactor)}px` 
         }}>
           {delayedTrick.map((card, index) => {
-            // Get the player who played this card from our tracking
-            const playerId = cardPlayers[index];
-            const player = playerId ? game.players.find(p => p.id === playerId) : null;
+            // Get the player who played this card
+            const cardPlayer = cardPlayersArray.find(cp => cp.index === index);
+            const player = cardPlayer?.player;
             
             // Get the player's position (0-3)
             const playerPosition = player?.position ?? 0;
@@ -585,37 +591,29 @@ export default function GameTable({
             // Check if this is the winning card
             const isWinningCard = index === delayedWinningIndex;
             
-            console.log(`Delayed card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'}, winner: ${isWinningCard ? 'YES' : 'no'}`);
-            
             return (
               <div 
                 key={`trick-card-${index}`} 
                 className={positionClasses[relativePosition]}
                 data-testid={`trick-card-${index}`}
-                style={{
-                  zIndex: 10 + index,
-                  transition: 'all 0.3s ease'
-                }}
               >
-                <div className="relative">
+                <div className={`relative transition-all duration-300 ${isWinningCard ? 'transform scale-110' : ''}`}>
                   <Image
                     src={`/cards/${getCardImage(card)}`}
                     alt={`${card.rank}${card.suit}`}
                     width={trickCardWidth}
                     height={trickCardHeight}
-                    className={`rounded-lg shadow-md ${isWinningCard ? 'ring-4 ring-yellow-400' : ''}`}
+                    className="rounded-lg shadow-md"
                   />
                   
-                  {/* Overlay for winning and non-winning cards */}
-                  <div className={`absolute inset-0 rounded-lg ${
-                    isWinningCard 
-                      ? "bg-yellow-300/20 ring-4 ring-yellow-400 shadow-lg" 
-                      : "bg-black/50"
-                  }`}></div>
-                  
-                  {/* Pulsing effect for winning card */}
+                  {/* Highlight for winning card */}
                   {isWinningCard && (
-                    <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
+                    <div className="absolute inset-0 rounded-lg ring-4 ring-yellow-400 animate-pulse z-10"></div>
+                  )}
+                  
+                  {/* Darken non-winning cards */}
+                  {!isWinningCard && (
+                    <div className="absolute inset-0 bg-black/40 rounded-lg"></div>
                   )}
                 </div>
               </div>
@@ -626,107 +624,20 @@ export default function GameTable({
           {delayedWinningIndex !== null && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-center z-30"
                  style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-              <div className="font-bold">
-                {(() => {
-                  const winningCard = delayedTrick[delayedWinningIndex];
-                  const playerId = cardPlayers[delayedWinningIndex];
-                  const player = playerId ? game.players.find(p => p.id === playerId) : null;
-                  return `${player?.name || 'Player'} won with ${winningCard.rank}${winningCard.suit}`;
-                })()}
-              </div>
+              {(() => {
+                const winningCard = delayedTrick[delayedWinningIndex];
+                const playerId = cardPlayers[delayedWinningIndex];
+                const player = playerId ? game.players.find(p => p.id === playerId) : null;
+                return (
+                  <div className="font-bold">
+                    {player?.name || 'Player'} wins with {winningCard.rank}{winningCard.suit}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
       );
-    }
-    
-    // Otherwise, show the current trick normally
-    if (!game.currentTrick || game.currentTrick.length === 0) {
-      // If the current trick is empty but we recently had a trick, show it with winner
-      if (lastCompletedTrick && lastCompletedTrick.length === 4 && showLastTrick) {
-        // Similar rendering as delayed trick but with lastCompletedTrick data
-        const trickCardWidth = Math.floor(60 * scaleFactor);
-        const trickCardHeight = Math.floor(84 * scaleFactor);
-        
-        const positionClasses = [
-          "absolute bottom-0 left-1/2 -translate-x-1/2",
-          "absolute left-0 top-1/2 -translate-y-1/2", 
-          "absolute top-0 left-1/2 -translate-x-1/2",
-          "absolute right-0 top-1/2 -translate-y-1/2"
-        ];
-        
-        console.log("RENDERING LAST COMPLETED TRICK");
-        
-        const myPosition = currentPlayer?.position ?? 0;
-        
-        return (
-          <div className="relative" style={{ 
-            width: `${Math.floor(200 * scaleFactor)}px`, 
-            height: `${Math.floor(200 * scaleFactor)}px` 
-          }}>
-            {lastCompletedTrick.map((card, index) => {
-              // Use lastTrickPlayers instead of cardPlayers
-              const playerId = lastTrickPlayers[index];
-              const player = playerId ? game.players.find(p => p.id === playerId) : null;
-              
-              const playerPosition = player?.position ?? 0;
-              const relativePosition = (playerPosition - myPosition + 4) % 4;
-              
-              const isWinningCard = index === lastTrickWinnerIndex;
-              
-              return (
-                <div 
-                  key={`last-trick-card-${index}`} 
-                  className={positionClasses[relativePosition]}
-                  style={{
-                    zIndex: 10 + index,
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  <div className="relative">
-                    <Image
-                      src={`/cards/${getCardImage(card)}`}
-                      alt={`${card.rank}${card.suit}`}
-                      width={trickCardWidth}
-                      height={trickCardHeight}
-                      className={`rounded-lg shadow-md ${isWinningCard ? 'ring-4 ring-yellow-400' : ''}`}
-                    />
-                    
-                    {/* Overlay for winning and non-winning cards */}
-                    <div className={`absolute inset-0 rounded-lg ${
-                      isWinningCard 
-                        ? "bg-yellow-300/20 ring-4 ring-yellow-400 shadow-lg" 
-                        : "bg-black/50"
-                    }`}></div>
-                    
-                    {/* Pulsing effect for winning card */}
-                    {isWinningCard && (
-                      <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            
-            {/* Add a message showing who won the trick */}
-            {lastTrickWinnerIndex !== null && (
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-center z-30"
-                   style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                <div className="font-bold">
-                  {(() => {
-                    const winningCard = lastCompletedTrick[lastTrickWinnerIndex];
-                    const playerId = lastTrickPlayers[lastTrickWinnerIndex];
-                    const player = playerId ? game.players.find(p => p.id === playerId) : null;
-                    return `${player?.name || 'Player'} won with ${winningCard.rank}${winningCard.suit}`;
-                  })()}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      }
-      
-      return null;
     }
     
     // Otherwise, show the current trick normally
@@ -746,11 +657,9 @@ export default function GameTable({
       "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
     ];
     
-    console.log("RENDERING TRICK CARDS - SERVER DATA");
-    console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`).join(", "));
+    console.log("RENDERING CURRENT TRICK");
     
     const myPosition = currentPlayer?.position ?? 0;
-    console.log("My position:", myPosition);
     
     return (
       <div className="relative" style={{ 
@@ -768,16 +677,11 @@ export default function GameTable({
           // Calculate the position relative to the current player's view
           const relativePosition = (playerPosition - myPosition + 4) % 4;
           
-          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}, showing at position ${relativePosition}`);
-          
           return (
             <div 
               key={`trick-card-${index}`} 
               className={positionClasses[relativePosition]}
               data-testid={`trick-card-${index}`}
-              style={{
-                zIndex: 10 + index
-              }}
             >
               <div className="relative">
                 <Image
