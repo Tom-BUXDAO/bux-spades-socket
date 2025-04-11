@@ -602,14 +602,6 @@ export default function GameTable({
             })()}
           </div>
         )}
-        
-        {/* Leading suit indicator */}
-        {game.currentTrick[0] && !isTrickComplete && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
-               style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
-            Lead: {game.currentTrick[0].suit}
-          </div>
-        )}
       </div>
     );
   };
