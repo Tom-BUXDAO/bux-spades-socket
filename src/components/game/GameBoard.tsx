@@ -39,7 +39,34 @@ export default function GameBoard({ gameId }: GameBoardProps) {
   );
 
   const handlePlayCard = (card: Card) => {
-    if (!session?.user?.id || !game || !socket) return;
+    if (!session?.user?.id || !game || !socket || !currentPlayer) return;
+    
+    // Check if it's the current player's turn
+    if (game.status !== "PLAYING" || game.currentPlayer !== currentPlayer.id) {
+      console.log("Not your turn");
+      return;
+    }
+    
+    // Make sure card is valid to play
+    const hand = currentPlayer.hand || [];
+    const leadSuit = game.currentTrick.length > 0 ? game.currentTrick[0].suit : null;
+    
+    // If we're leading, can play any card
+    if (game.currentTrick.length === 0) {
+      playCardFn(socket, game.id, session.user.id, card);
+      return;
+    }
+    
+    // If following, must follow suit if possible
+    if (leadSuit) {
+      const hasSuit = hand.some(c => c.suit === leadSuit);
+      if (hasSuit && card.suit !== leadSuit) {
+        console.log("Must follow suit");
+        return;
+      }
+    }
+    
+    // Play the card
     playCardFn(socket, game.id, session.user.id, card);
   };
 
@@ -111,7 +138,7 @@ export default function GameBoard({ gameId }: GameBoardProps) {
       )}
 
       {/* Player's hand */}
-      {currentPlayer && currentPlayer.hand.length > 0 && (
+      {currentPlayer && currentPlayer.hand && currentPlayer.hand.length > 0 && (
         <div className="p-4 bg-gray-50 rounded-lg">
           <h3 className="font-medium mb-2">Your Hand</h3>
           <div className="flex flex-wrap gap-2">
