@@ -505,7 +505,12 @@ export default function GameTable({
           const tablePosition = (4 + playerPosition - myPosition) % 4;
           
           // Check if this is the winning card
-          const isWinningCard = isTrickComplete && index === winningIndex;
+          let isWinningCard = isTrickComplete && index === winningIndex;
+          
+          // If we have server data about the winning card, use that instead
+          if (isTrickComplete && serverWinningCard) {
+            isWinningCard = card.rank === serverWinningCard.rank && card.suit === serverWinningCard.suit;
+          }
           
           return (
             <div 
@@ -530,14 +535,23 @@ export default function GameTable({
         {isTrickComplete && winningIndex >= 0 && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
-            {game.currentTrick[winningIndex] ? 
-              (() => {
-                // Calculate which player won the trick
+            {(() => {
+              // Get the winner directly from server data if available
+              if (serverWinningPlayerId) {
+                const winner = game.players.find(p => p.id === serverWinningPlayerId);
+                return `Winner: ${winner?.name || 'Unknown'}`;
+              }
+              
+              // Fallback to calculated winner
+              if (game.currentTrick[winningIndex]) {
                 const stepsBack = game.currentTrick.length - winningIndex;
                 const winnerPosition = (currentPlayerPosition - stepsBack + 4) % 4;
                 const winner = game.players.find(p => p.position === winnerPosition);
                 return `Winner: ${winner?.name || 'Unknown'}`;
-              })() : 'Unknown winner'}
+              }
+              
+              return 'Unknown winner';
+            })()}
           </div>
         )}
         
