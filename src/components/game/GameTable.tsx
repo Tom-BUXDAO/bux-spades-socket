@@ -194,27 +194,6 @@ declare global {
   }
 }
 
-// Custom border flashing animation
-const borderFlashKeyframes = `
-@keyframes border-flash {
-  0%, 100% { border-color: #facc15; } /* yellow-400 */
-  50% { border-color: white; }
-}
-`;
-
-// Add style tag to document for animation
-useEffect(() => {
-  if (typeof document !== "undefined") {
-    const styleElement = document.createElement("style");
-    styleElement.innerHTML = borderFlashKeyframes;
-    document.head.appendChild(styleElement);
-    
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }
-}, []);
-
 export default function GameTable({ 
   game, 
   socket, 
@@ -232,6 +211,28 @@ export default function GameTable({
   const [showWinner, setShowWinner] = useState(false);
   const [showLoser, setShowLoser] = useState(false);
   const [handScores, setHandScores] = useState<ReturnType<typeof calculateHandScore> | null>(null);
+  
+  // Custom border flashing animation style
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const borderFlashKeyframes = `
+        @keyframes border-flash {
+          0%, 100% { border-color: #facc15; } /* yellow-400 */
+          50% { border-color: white; }
+        }
+      `;
+      
+      const styleElement = document.createElement("style");
+      styleElement.innerHTML = borderFlashKeyframes;
+      document.head.appendChild(styleElement);
+      
+      return () => {
+        if (styleElement.parentNode) {
+          document.head.removeChild(styleElement);
+        }
+      };
+    }
+  }, []);
   
   // Game configuration constants
   const WINNING_SCORE = 500; // Score needed to win the game
