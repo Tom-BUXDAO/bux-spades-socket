@@ -326,7 +326,7 @@ interface TrickWinnerData {
   gameId?: string;
 }
 
-export function debugTrickWinner(socket: typeof Socket | null, gameId: string) {
+export function debugTrickWinner(socket: typeof Socket | null, gameId: string, onTrickWinnerDetermined?: (data: TrickWinnerData) => void) {
   if (!socket) {
     console.error('Cannot setup debug: socket is null');
     return;
@@ -340,8 +340,18 @@ export function debugTrickWinner(socket: typeof Socket | null, gameId: string) {
       // Log correct player name to verify server data
       const playerName = data.playerName || 'Unknown player';
       console.log(`✅ Server indicates trick won by ${playerName} (ID: ${data.winningPlayerId}) with card ${data.winningCard.rank}${data.winningCard.suit}`);
+      
+      // Call the callback if provided
+      if (onTrickWinnerDetermined && data.gameId === gameId) {
+        onTrickWinnerDetermined(data);
+      }
     }
   });
+  
+  // Return cleanup function
+  return () => {
+    socket.off('trick_winner');
+  };
 }
 
 export function setupTrickCompletionDelay(

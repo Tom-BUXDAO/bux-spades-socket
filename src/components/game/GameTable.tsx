@@ -618,24 +618,9 @@ export default function GameTable({
     // Get my position
     const myPosition = currentPlayer?.position ?? 0;
     
-    // Calculate winning card index for a complete trick
+    // Check if we have server-determined winning info
     const isCompleteTrick = game.currentTrick.length === 4;
-    const currentWinningIndex = isCompleteTrick ? determineWinningCard(game.currentTrick) : -1;
-    
-    // Set the winning player ID for the +1 animation if needed
-    if (isCompleteTrick && currentWinningIndex >= 0 && cardPlayers[currentWinningIndex]) {
-      const playerId = cardPlayers[currentWinningIndex];
-      if (playerId && winningPlayerId !== playerId) {
-        setWinningPlayerId(playerId);
-        setShowWinningCardHighlight(true);
-        
-        // Clear the animation after a delay
-        setTimeout(() => {
-          setShowWinningCardHighlight(false);
-          setWinningPlayerId(null);
-        }, 2000);
-      }
-    }
+    const hasServerWinner = serverWinningCard !== null && serverWinningPlayerId !== null;
     
     // Debug card players mapping
     console.log("Card players mapping:", cardPlayers);
@@ -663,8 +648,10 @@ export default function GameTable({
           
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
           
-          // Check if this is the winning card in a complete trick
-          const isWinningCard = isCompleteTrick && index === currentWinningIndex;
+          // Check if this is the winning card based on server data
+          const isWinningCard = hasServerWinner && 
+            serverWinningCard?.rank === card.rank && 
+            serverWinningCard?.suit === card.suit;
           
           return (
             <div 
@@ -681,13 +668,13 @@ export default function GameTable({
                   className="rounded-lg shadow-md"
                 />
                 
-                {/* Highlight for winning card */}
+                {/* Highlight for winning card - controlled by server event */}
                 {isWinningCard && (
                   <div className="absolute inset-0 rounded-lg ring-4 ring-yellow-400 animate-pulse z-10"></div>
                 )}
                 
-                {/* Darken non-winning cards */}
-                {isCompleteTrick && !isWinningCard && (
+                {/* Darken non-winning cards - controlled by server event */}
+                {isCompleteTrick && hasServerWinner && !isWinningCard && (
                   <div className="absolute inset-0 bg-black/40 rounded-lg"></div>
                 )}
               </div>
@@ -700,6 +687,14 @@ export default function GameTable({
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
+          </div>
+        )}
+        
+        {/* Winner indicator - show when server has determined a winner */}
+        {hasServerWinner && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-yellow-600/80 text-white px-3 py-1 rounded-full animate-pulse"
+               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+            Winner: {game.players.find(p => p.id === serverWinningPlayerId)?.name || 'Unknown'}
           </div>
         )}
       </div>
@@ -1010,12 +1005,39 @@ export default function GameTable({
     return () => clearTimeout(timeoutId);
   }, [showHandSummary]);
 
-  // Add debug listener for trick winner data - only setup once
+  // Add state to track the server-determined winner
+  const [serverWinningCard, setServerWinningCard] = useState<{rank: number | string, suit: Suit} | null>(null);
+  const [serverWinningPlayerId, setServerWinningPlayerId] = useState<string | null>(null);
+
+  // Use effect to handle the server trick winner determination
   useEffect(() => {
+    let cleanupListener: (() => void) | undefined;
+    
     if (socket) {
-      // Setup debug listener for trick winners
-      debugTrickWinner(socket, game.id);
+      // Set up the trick winner handler with a callback
+      cleanupListener = debugTrickWinner(socket, game.id, (data) => {
+        console.log('✅ CLIENT RECEIVED WINNER:', data);
+        if (data.winningCard && data.winningPlayerId) {
+          // Convert to the correct Card type
+          setServerWinningCard({
+            rank: data.winningCard.rank,
+            suit: data.winningCard.suit as Suit
+          });
+          setServerWinningPlayerId(data.winningPlayerId);
+          
+          // Clear the winner after 3 seconds (when the next trick starts)
+          setTimeout(() => {
+            setServerWinningCard(null);
+            setServerWinningPlayerId(null);
+          }, 3000);
+        }
+      });
     }
+    
+    // Clean up the listener when component unmounts
+    return () => {
+      if (cleanupListener) cleanupListener();
+    };
   }, [socket, game.id]);
 
   // Initialize the global variable
