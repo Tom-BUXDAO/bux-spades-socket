@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import type { GameState, Card, Suit } from "@/types/game";
 import type { Socket } from "socket.io-client";
-import { useSocket, sendChatMessage, debugTrickWinner } from "@/lib/socket";
+import { useSocket, sendChatMessage, debugTrickWinner, setupTrickCompletionDelay } from "@/lib/socket";
 import Chat from './Chat';
 import HandSummaryModal from './HandSummaryModal';
 import WinnerModal from './WinnerModal';
@@ -513,24 +513,41 @@ export default function GameTable({
     });
   };
 
-  // Modify the renderTrickCards function to show either the current trick or the last completed trick
-  const renderTrickCards = () => {
-    // Check if we have a globally saved trick that we should continue showing
-    if (window.lastCompletedTrick && typeof window !== 'undefined') {
-      console.log("RENDERING GLOBALLY SAVED TRICK");
-      
-      // Just render nothing - the DOM manipulation takes care of showing the cards
-      // This is just a placeholder so React doesn't clear the trick
-      return (
-        <div className="relative" style={{ 
-          width: `${Math.floor(200 * scaleFactor)}px`, 
-          height: `${Math.floor(200 * scaleFactor)}px` 
-        }}></div>
-      );
-    }
+  // Inside the GameTable component, add these state variables
+  const [delayedTrick, setDelayedTrick] = useState<Card[] | null>(null);
+  const [delayedWinningIndex, setDelayedWinningIndex] = useState<number | null>(null);
+  const [isShowingTrickResult, setIsShowingTrickResult] = useState(false);
+
+  // Add this useEffect to handle trick completion
+  useEffect(() => {
+    if (!socket) return;
     
-    // If we're showing a saved completed trick from component state
-    if (showLastTrick && lastCompletedTrick && lastCompletedTrick.length === 4 && lastTrickWinnerIndex !== null) {
+    console.log("Setting up trick completion delay handler");
+    
+    // Set up the trick completion delay handler
+    const cleanup = setupTrickCompletionDelay(socket, game.id, ({ trickCards, winningIndex }) => {
+      console.log("Trick completion callback fired:", trickCards, winningIndex);
+      
+      // Save the trick data
+      setDelayedTrick(trickCards);
+      setDelayedWinningIndex(winningIndex);
+      setIsShowingTrickResult(true);
+      
+      // After delay, clear the trick
+      setTimeout(() => {
+        setIsShowingTrickResult(false);
+        setDelayedTrick(null);
+        setDelayedWinningIndex(null);
+      }, 3000);
+    });
+    
+    return cleanup;
+  }, [socket, game.id]);
+
+  // Replace the renderTrickCards function with this simplified version
+  const renderTrickCards = () => {
+    // If we're showing a delayed trick result, render that instead
+    if (isShowingTrickResult && delayedTrick && delayedTrick.length === 4 && delayedWinningIndex !== null) {
       // Scale the card size for the trick
       const trickCardWidth = Math.floor(60 * scaleFactor); 
       const trickCardHeight = Math.floor(84 * scaleFactor);
@@ -543,7 +560,7 @@ export default function GameTable({
         "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
       ];
       
-      console.log("RENDERING SAVED COMPLETED TRICK");
+      console.log("RENDERING DELAYED TRICK RESULT");
       
       const myPosition = currentPlayer?.position ?? 0;
       
@@ -552,9 +569,9 @@ export default function GameTable({
           width: `${Math.floor(200 * scaleFactor)}px`, 
           height: `${Math.floor(200 * scaleFactor)}px` 
         }}>
-          {lastCompletedTrick.map((card, index) => {
-            // Get the player who played this card from our saved tracking
-            const playerId = lastTrickPlayers[index];
+          {delayedTrick.map((card, index) => {
+            // Get the player who played this card from our tracking
+            const playerId = cardPlayers[index];
             const player = playerId ? game.players.find(p => p.id === playerId) : null;
             
             // Get the player's position (0-3)
@@ -564,7 +581,7 @@ export default function GameTable({
             const relativePosition = (playerPosition - myPosition + 4) % 4;
             
             // Check if this is the winning card
-            const isWinningCard = index === lastTrickWinnerIndex;
+            const isWinningCard = index === delayedWinningIndex;
             
             return (
               <div 
@@ -660,7 +677,7 @@ export default function GameTable({
                   alt={`${card.rank}${card.suit}`}
                   width={trickCardWidth}
                   height={trickCardHeight}
-                  className={`rounded-lg shadow-md`}
+                  className="rounded-lg shadow-md"
                 />
               </div>
             </div>
@@ -996,147 +1013,6 @@ export default function GameTable({
       window.lastCompletedTrick = null;
     }
   }, []);
-
-  // Add a useEffect that sets up a global socket event listener for play_card events
-  useEffect(() => {
-    if (!socket) return;
-
-    // Set up a global listener for play_card events
-    socket.on('play_card', (data: any) => {
-      console.log('GLOBAL PLAY CARD EVENT CAPTURED:', data);
-      
-      // We need to extract the current trick from the game state
-      const currentTrick = data.gameState?.currentTrick || [];
-      
-      // Check if this is the 4th card in a trick
-      if (currentTrick.length === 4) {
-        // Determine the winning card ourselves
-        const winningCardIndex = determineWinningCard(currentTrick);
-        console.log('TRICK COMPLETE, WINNER:', winningCardIndex);
-        
-        // Clear any existing timeout
-        if (window.lastCompletedTrick && window.lastCompletedTrick.timeout) {
-          clearTimeout(window.lastCompletedTrick.timeout);
-        }
-        
-        // Delay clearing the table
-        const timeout = setTimeout(() => {
-          window.lastCompletedTrick = null;
-          
-          // Force a manual DOM update for the trick cards
-          const trickCards = document.querySelectorAll('[data-testid^="trick-card-"]');
-          trickCards.forEach(card => {
-            (card as HTMLElement).style.display = 'none';
-          });
-        }, 3000);
-        
-        // Store the trick info globally so we can access it outside of React
-        window.lastCompletedTrick = {
-          cards: [...currentTrick],
-          winnerIndex: winningCardIndex,
-          timeout
-        };
-        
-        // Force a manual DOM update for the trick cards immediately
-        setTimeout(() => {
-          const trickCards = document.querySelectorAll('[data-testid^="trick-card-"]');
-          trickCards.forEach((card, index) => {
-            const element = card as HTMLElement;
-            
-            // Highlight winning card, fade the others
-            if (index === winningCardIndex) {
-              element.style.zIndex = '50';
-              element.style.transform = 'scale(1.1)';
-              
-              // Add a yellow border to the card image
-              const image = element.querySelector('img');
-              if (image) {
-                image.style.boxShadow = '0 0 0 4px #EAB308, 0 0 15px #EAB308';
-                image.style.borderRadius = '8px';
-              }
-            } else {
-              // Fade out other cards
-              element.style.opacity = '0.4';
-              element.style.filter = 'brightness(0.7)';
-            }
-          });
-        }, 0);
-      }
-    });
-    
-    // Also listen for game_update events to handle trick completion
-    socket.on('game_update', (data: any) => {
-      const trick = data.gameState?.currentTrick;
-      
-      // If we have a saved trick and the current trick is now empty,
-      // that means the trick just completed and was cleared
-      if (window.lastCompletedTrick && (!trick || trick.length === 0)) {
-        console.log('TRICK WAS CLEARED BY SERVER');
-        
-        // Don't clear our saved trick yet - allow it to remain visible
-        // for the timeout duration set in the play_card handler
-      }
-    });
-    
-    return () => {
-      socket.off('play_card');
-      socket.off('game_update');
-    };
-  }, [socket]);
-
-  // Add another useEffect to watch for completed tricks in the component state
-  useEffect(() => {
-    // We can only process complete tricks
-    if (!game.currentTrick || game.currentTrick.length !== 4 || !cardPlayers || Object.keys(cardPlayers).length !== 4) return;
-    
-    console.log('COMPLETE TRICK DETECTED IN COMPONENT STATE:', game.currentTrick);
-    
-    // Calculate the winning card
-    const winningCardIndex = determineWinningCard(game.currentTrick);
-    
-    if (winningCardIndex >= 0) {
-      console.log(`COMPONENT STATE: Trick winner index: ${winningCardIndex}`);
-      
-      // If we already have a global saved trick, don't process this one
-      if (window.lastCompletedTrick) return;
-      
-      // Save this trick globally
-      const timeout = setTimeout(() => {
-        window.lastCompletedTrick = null;
-      }, 3000);
-      
-      window.lastCompletedTrick = {
-        cards: [...game.currentTrick],
-        winnerIndex: winningCardIndex,
-        timeout
-      };
-      
-      // Force a manual DOM update for the trick cards immediately
-      setTimeout(() => {
-        const trickCards = document.querySelectorAll('[data-testid^="trick-card-"]');
-        trickCards.forEach((card, index) => {
-          const element = card as HTMLElement;
-          
-          // Highlight winning card, fade the others
-          if (index === winningCardIndex) {
-            element.style.zIndex = '50';
-            element.style.transform = 'scale(1.1)';
-            
-            // Add a yellow border to the card image
-            const image = element.querySelector('img');
-            if (image) {
-              image.style.boxShadow = '0 0 0 4px #EAB308, 0 0 15px #EAB308';
-              image.style.borderRadius = '8px';
-            }
-          } else {
-            // Fade out other cards
-            element.style.opacity = '0.4';
-            element.style.filter = 'brightness(0.7)';
-          }
-        });
-      }, 0);
-    }
-  }, [game.currentTrick, cardPlayers]);
 
   return (
     <>

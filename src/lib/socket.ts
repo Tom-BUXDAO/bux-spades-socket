@@ -342,4 +342,94 @@ export function debugTrickWinner(socket: typeof Socket | null, gameId: string) {
       console.log(`✅ Server indicates trick won by ${playerName} (ID: ${data.winningPlayerId}) with card ${data.winningCard.rank}${data.winningCard.suit}`);
     }
   });
+}
+
+export function setupTrickCompletionDelay(
+  socket: typeof Socket | null, 
+  gameId: string, 
+  onTrickComplete: (data: { trickCards: Card[], winningIndex: number }) => void
+) {
+  if (!socket) return () => {};
+  
+  // Keep track of the most recent trick
+  let lastTrick: Card[] = [];
+  let isDelaying = false;
+  
+  // Listen for play_card events which happen when any player plays a card
+  const handlePlayCard = (data: any) => {
+    console.log('INTERCEPTED play_card event:', data);
+    
+    // Only process events for our game
+    if (data.gameId !== gameId) return;
+    
+    // Get the current trick after this card was played (if available in the data)
+    const currentTrick = data.gameState?.currentTrick || [];
+    
+    // Update our record of the current trick
+    if (currentTrick.length > 0) {
+      lastTrick = [...currentTrick];
+    }
+    
+    // Check if this completed a trick (4 cards)
+    if (lastTrick.length === 4 && !isDelaying) {
+      console.log('COMPLETE TRICK DETECTED IN SOCKET:', lastTrick);
+      
+      // Calculate winning card
+      const determineWinner = (trick: Card[]): number => {
+        if (!trick.length) return -1;
+        
+        const leadSuit = trick[0].suit;
+        
+        // Check if any spades were played - spades always trump other suits
+        const spadesPlayed = trick.filter(card => card.suit === 'S');
+        
+        if (spadesPlayed.length > 0) {
+          // Find highest spade
+          const highestSpade = spadesPlayed.reduce((highest, current) => 
+            current.rank > highest.rank ? current : highest, spadesPlayed[0]);
+          
+          // Return index of highest spade
+          return trick.findIndex(card => 
+            card.suit === 'S' && card.rank === highestSpade.rank);
+        }
+        
+        // If no spades, find highest card of lead suit
+        const leadSuitCards = trick.filter(card => card.suit === leadSuit);
+        const highestLeadSuitCard = leadSuitCards.reduce((highest, current) => 
+          current.rank > highest.rank ? current : highest, leadSuitCards[0]);
+        
+        // Return index of highest lead suit card
+        return trick.findIndex(card => 
+          card.suit === leadSuit && card.rank === highestLeadSuitCard.rank);
+      };
+      
+      // Find winning card
+      const winningIndex = determineWinner(lastTrick);
+      
+      if (winningIndex >= 0) {
+        isDelaying = true;
+        console.log(`Delaying trick completion - winner is card ${winningIndex}`);
+        
+        // Call the callback with the trick data
+        onTrickComplete({ 
+          trickCards: lastTrick, 
+          winningIndex 
+        });
+        
+        // After delay, allow next trick to be delayed
+        setTimeout(() => {
+          isDelaying = false;
+          console.log('Trick delay finished, ready for next trick');
+        }, 3000); // 3 second delay
+      }
+    }
+  };
+  
+  // Listen for the play_card event
+  socket.on('play_card', handlePlayCard);
+  
+  // Return cleanup function
+  return () => {
+    socket.off('play_card', handlePlayCard);
+  };
 } 
