@@ -120,7 +120,7 @@ function determineWinningCard(trick: Card[]): number {
   if (spadesPlayed.length > 0) {
     // Find the highest spade
     const highestSpade = spadesPlayed.reduce((highest, current) => 
-      current.rank > highest.rank ? current : highest, spadesPlayed[0]);
+      getCardValue(String(current.rank)) > getCardValue(String(highest.rank)) ? current : highest, spadesPlayed[0]);
     
     // Return the index of the highest spade
     for (let i = 0; i < trick.length; i++) {
@@ -133,7 +133,7 @@ function determineWinningCard(trick: Card[]): number {
   // If no spades, find the highest card of the lead suit
   const leadSuitCards = trick.filter(card => card.suit === leadSuit);
   const highestLeadSuitCard = leadSuitCards.reduce((highest, current) => 
-    current.rank > highest.rank ? current : highest, leadSuitCards[0]);
+    getCardValue(String(current.rank)) > getCardValue(String(highest.rank)) ? current : highest, leadSuitCards[0]);
   
   // Return the index of the highest lead suit card
   for (let i = 0; i < trick.length; i++) {
@@ -143,6 +143,7 @@ function determineWinningCard(trick: Card[]): number {
   }
   
   // Fallback (should never happen)
+  console.error("Failed to determine winning card - this should never happen", trick);
   return 0;
 }
 
