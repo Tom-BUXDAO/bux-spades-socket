@@ -376,11 +376,30 @@ export default function GameTable({
     console.log('Socket connected:', socket?.connected);
   };
 
-  // Remove all the complex tracking logic and rewrite from scratch
+  // After all the other state declarations at the top of the component
+  // Add these new state variables to store the last completed trick
+  const [lastCompletedTrick, setLastCompletedTrick] = useState<Card[] | null>(null);
+  const [lastTrickWinnerIndex, setLastTrickWinnerIndex] = useState<number | null>(null);
+  const [showLastTrick, setShowLastTrick] = useState(false);
+  const [lastTrickPlayers, setLastTrickPlayers] = useState<Record<number, string>>({});
+
+  // Modify the effect that tracks card players to capture the completed trick
   useEffect(() => {
     // When a new trick starts, reset our tracking
     if (game.currentTrick.length === 0) {
-      setCardPlayers({});
+      // Don't clear card players here, as we want to keep them for displaying the last trick
+      
+      // If we're not already showing the last trick and we have a completed trick stored
+      if (!showLastTrick && lastCompletedTrick && lastCompletedTrick.length === 4) {
+        // Show the last completed trick
+        setShowLastTrick(true);
+        
+        // Set a timeout to clear it after 3 seconds
+        setTimeout(() => {
+          setShowLastTrick(false);
+        }, 3000);
+      }
+      
       return;
     }
 
@@ -424,7 +443,7 @@ export default function GameTable({
       console.log('Updated card players from server data:', updatedCardPlayers);
       setCardPlayers(updatedCardPlayers);
       
-      // If we have a complete trick (4 cards), find who should win the trick
+      // If we have a complete trick (4 cards), save it as the last completed trick
       if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
         const winningCardIndex = determineWinningCard(game.currentTrick);
         if (winningCardIndex >= 0 && updatedCardPlayers[winningCardIndex]) {
@@ -434,61 +453,16 @@ export default function GameTable({
           
           console.log(`✅ CLIENT DETERMINED: Trick should be won by ${winningPlayer?.name || 'Unknown'} (${winningPlayerId}) with ${winningCard.rank}${winningCard.suit}`);
           
-          // SERVER BUG WORKAROUND: The server incorrectly attributes the winning card to the wrong player
-          // This is because the server message is printed with incorrect information. We need to display the correct winner.
-          if (game.currentTrick.length === 4) {
-            const message = `${winningPlayer?.name || 'A player'} won the trick with ${winningCard.rank}${winningCard.suit}`;
-            console.log(`🏆 DISPLAYING CORRECT WINNER: ${message}`);
-            
-            // Could show a toast or some UI notification here with the correct winner
-          }
+          // Save the completed trick before it's cleared by the server
+          setLastCompletedTrick([...game.currentTrick]);
+          setLastTrickWinnerIndex(winningCardIndex);
+          setLastTrickPlayers({...updatedCardPlayers});
+          
+          // We'll set showLastTrick to true only once the server clears the trick (see above)
         }
       }
     }
-  }, [game.currentTrick, game.players, game.currentPlayer]);
-
-  // Add a dedicated effect to detect completed tricks and highlight the winner
-  useEffect(() => {
-    // Check if we have a complete trick (4 cards)
-    if (game.currentTrick.length === 4) {
-      console.log("COMPLETE TRICK DETECTED - FREEZING UI:", game.currentTrick);
-      
-      // Calculate the winning card
-      const winningCardIndex = determineWinningCard(game.currentTrick);
-      
-      if (winningCardIndex >= 0 && cardPlayers[winningCardIndex]) {
-        const winningPlayerId = cardPlayers[winningCardIndex];
-        const winningPlayer = game.players.find(p => p.id === winningPlayerId);
-        
-        console.log(`Winner determined: Card ${winningCardIndex} wins, played by ${winningPlayerId}`);
-        
-        // Force UI to show winner
-        setWinningCardIndex(winningCardIndex);
-        setWinningPlayerId(winningPlayerId);
-        setShowWinningCardHighlight(true);
-        
-        // Display in console for debugging
-        console.log(`🏆 Trick won by ${winningPlayer?.name || 'Unknown'} with ${game.currentTrick[winningCardIndex].rank}${game.currentTrick[winningCardIndex].suit}`);
-        
-        // Force the trick to stay visible for 3 seconds
-        // This is the key part that ensures the UI freezes before clearing
-        const forceDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
-        forceDelayPromise.then(() => {
-          console.log("Trick display delay completed, allowing UI to update");
-          setShowWinningCardHighlight(false);
-          setWinningCardIndex(null);
-          setWinningPlayerId(null);
-        });
-      }
-    } else {
-      // Clear highlight state when trick length changes (but isn't 4)
-      if (showWinningCardHighlight) {
-        setShowWinningCardHighlight(false);
-        setWinningCardIndex(null);
-        setWinningPlayerId(null);
-      }
-    }
-  }, [game.currentTrick, cardPlayers, game.players]);
+  }, [game.currentTrick, game.players, game.currentPlayer, showLastTrick, lastCompletedTrick]);
 
   // When WE play a card, we need to record that immediately
   const handlePlayCard = (card: Card) => {
@@ -528,8 +502,84 @@ export default function GameTable({
     });
   };
 
-  // Completely rewritten renderTrickCards function
+  // Modify the renderTrickCards function to show either the current trick or the last completed trick
   const renderTrickCards = () => {
+    // If we're showing a saved completed trick
+    if (showLastTrick && lastCompletedTrick && lastCompletedTrick.length === 4 && lastTrickWinnerIndex !== null) {
+      // Scale the card size for the trick
+      const trickCardWidth = Math.floor(60 * scaleFactor); 
+      const trickCardHeight = Math.floor(84 * scaleFactor);
+      
+      // Fixed positions for the four visual positions
+      const positionClasses = [
+        "absolute bottom-0 left-1/2 -translate-x-1/2",  // Position 0 (bottom)
+        "absolute left-0 top-1/2 -translate-y-1/2",     // Position 1 (left)  
+        "absolute top-0 left-1/2 -translate-x-1/2",     // Position 2 (top)
+        "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
+      ];
+      
+      console.log("RENDERING SAVED COMPLETED TRICK");
+      
+      const myPosition = currentPlayer?.position ?? 0;
+      
+      return (
+        <div className="relative" style={{ 
+          width: `${Math.floor(200 * scaleFactor)}px`, 
+          height: `${Math.floor(200 * scaleFactor)}px` 
+        }}>
+          {lastCompletedTrick.map((card, index) => {
+            // Get the player who played this card from our saved tracking
+            const playerId = lastTrickPlayers[index];
+            const player = playerId ? game.players.find(p => p.id === playerId) : null;
+            
+            // Get the player's position (0-3)
+            const playerPosition = player?.position ?? 0;
+            
+            // Calculate the position relative to the current player's view
+            const relativePosition = (playerPosition - myPosition + 4) % 4;
+            
+            // Check if this is the winning card
+            const isWinningCard = index === lastTrickWinnerIndex;
+            
+            return (
+              <div 
+                key={`trick-card-${index}`} 
+                className={positionClasses[relativePosition]}
+                data-testid={`trick-card-${index}`}
+                style={{
+                  zIndex: 10 + index,
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <div className="relative">
+                  <Image
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank}${card.suit}`}
+                    width={trickCardWidth}
+                    height={trickCardHeight}
+                    className={`rounded-lg shadow-md`}
+                  />
+                  
+                  {/* Overlay for winning and non-winning cards */}
+                  <div className={`absolute inset-0 rounded-lg ${
+                    isWinningCard 
+                      ? "bg-yellow-300/20 ring-4 ring-yellow-400 shadow-lg" 
+                      : "bg-black/50"
+                  }`}></div>
+                  
+                  {/* Pulsing effect for winning card */}
+                  {isWinningCard && (
+                    <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    
+    // Otherwise, show the current trick normally
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
     }
@@ -568,9 +618,6 @@ export default function GameTable({
           // Calculate the position relative to the current player's view
           const relativePosition = (playerPosition - myPosition + 4) % 4;
           
-          // Check if this is the winning card
-          const isWinningCard = showWinningCardHighlight && winningCardIndex === index;
-          
           console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}, showing at position ${relativePosition}`);
           
           return (
@@ -579,8 +626,7 @@ export default function GameTable({
               className={positionClasses[relativePosition]}
               data-testid={`trick-card-${index}`}
               style={{
-                zIndex: 10 + index,
-                transition: 'all 0.3s ease'
+                zIndex: 10 + index
               }}
             >
               <div className="relative">
@@ -591,27 +637,13 @@ export default function GameTable({
                   height={trickCardHeight}
                   className={`rounded-lg shadow-md`}
                 />
-                
-                {/* Overlay for winning and non-winning cards */}
-                {game.currentTrick.length === 4 && showWinningCardHighlight && (
-                  <div className={`absolute inset-0 rounded-lg ${
-                    isWinningCard 
-                      ? "bg-yellow-300/20 ring-4 ring-yellow-400 shadow-lg" 
-                      : "bg-black/50"
-                  }`}></div>
-                )}
-                
-                {/* Pulsing effect for winning card */}
-                {isWinningCard && showWinningCardHighlight && (
-                  <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
-                )}
               </div>
             </div>
           );
         })}
         
         {/* Leading suit indicator */}
-        {game.currentTrick[0] && game.currentTrick.length < 4 && (
+        {game.currentTrick[0] && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
