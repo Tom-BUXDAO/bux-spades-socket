@@ -354,121 +354,76 @@ export function setupTrickCompletionDelay(
   // Keep track of trick cards and state
   let lastCompleteTrick: Card[] = [];
   let previousTrickCards: Card[] = [];
-  
-  // When a card is played, store it for potential use later
-  const handlePlayCard = (data: any) => {
-    // Only process events for our game
-    if (data.gameId !== gameId) return;
-    
-    // Get the current trick after this card was played
-    const currentTrick = data.gameState?.currentTrick || [];
-    
-    if (currentTrick.length > 0) {
-      // If this is the 4th card of a trick, save it as a completed trick
-      if (currentTrick.length === 4) {
-        lastCompleteTrick = [...currentTrick];
-        console.log('Saved complete trick:', 
-                   lastCompleteTrick.map(c => `${c.rank}${c.suit}`).join(', '));
-      }
-      
-      // Always track the most recent trick
-      previousTrickCards = [...currentTrick];
-    }
-  };
+  let lastWinningData: TrickWinnerData | null = null;
   
   // Handle the trick_winner event from the server
   const handleTrickWinner = (data: TrickWinnerData) => {
     // Only process for our game
     if (data.gameId !== gameId) return;
     
-    console.log('TRICK WINNER EVENT RECEIVED:', data);
+    console.log('🎉 TRICK WINNER EVENT RECEIVED:', data);
     
-    // Create a trick array to show (either the last complete trick or current partial trick)
-    let trickToShow: Card[] = [];
+    // Store the winning data for later use
+    lastWinningData = data;
     
-    // Try using the last complete trick we saved
-    if (lastCompleteTrick.length === 4) {
-      trickToShow = [...lastCompleteTrick];
-      console.log('Using previously saved complete trick:', 
-                 trickToShow.map(c => `${c.rank}${c.suit}`).join(', '));
-    }
-    // Otherwise fall back to the previous trick cards
-    else if (previousTrickCards.length > 0) {
-      trickToShow = [...previousTrickCards];
-      console.log('Using previous trick cards:', 
-                 trickToShow.map(c => `${c.rank}${c.suit}`).join(', '));
-    }
-    // Last resort: create a mock trick with just the winning card
-    else if (data.winningCard) {
-      console.log('Creating mock trick with winning card');
-      trickToShow = [{
-        suit: data.winningCard.suit as Card['suit'],
-        rank: Number(data.winningCard.rank) as Card['rank']
-      }];
-    }
-    else {
-      console.error('Cannot show trick animation - no trick data available');
-      return;
-    }
-    
-    // Find which card in our trick matches the winning card
-    let winningIndex = -1;
-    
-    if (data.winningCard) {
-      winningIndex = trickToShow.findIndex(
-        card => card.rank === data.winningCard?.rank && card.suit === data.winningCard?.suit
-      );
-      
-      if (winningIndex >= 0) {
-        console.log(`Found winning card at index ${winningIndex}:`, 
-                   `${data.winningCard.rank}${data.winningCard.suit}`);
-      }
-      else if (trickToShow.length > 0) {
-        // If we couldn't find the winning card but have trick cards, use the first one
-        winningIndex = 0;
-        console.log('Could not find exact winning card, using first card as winner');
-      }
-    }
-    
-    // If we have a valid trick and winning index, show the animation
-    if (trickToShow.length > 0 && winningIndex >= 0) {
-      console.log(`Trick completed - showing winner card ${winningIndex}`);
-      
-      // Call the callback with the trick data to update UI
-      onTrickComplete({ 
-        trickCards: trickToShow,
-        winningIndex 
-      });
-      
-      // Clear tracking of this trick after animation time
-      setTimeout(() => {
-        if (JSON.stringify(lastCompleteTrick) === JSON.stringify(trickToShow)) {
-          lastCompleteTrick = [];
-        }
-      }, 3500);
-    }
+    // The game state at this point will still have the complete trick
+    // The server is now showing the trick for 5 seconds before clearing it
+    // We don't need to explicitly call onTrickComplete here, as the
+    // game state update will handle showing the completed trick with highlight
   };
-  
-  // Listen for events
-  socket.on('play_card', handlePlayCard);
-  socket.on('trick_winner', handleTrickWinner);
   
   // Also listen for game_update to keep track of tricks
   socket.on('game_update', (data: GameState) => {
     if (data.id !== gameId) return;
     
-    // If we have current trick data with cards, save it
-    if (data.currentTrick && data.currentTrick.length > 0) {
+    // If we have a complete trick (4 cards)
+    if (data.currentTrick && data.currentTrick.length === 4) {
+      console.log('Complete trick in game update:', 
+                data.currentTrick.map(c => `${c.rank}${c.suit}`).join(', '));
+      
+      lastCompleteTrick = [...data.currentTrick];
+      
+      // If we already received a trick_winner event for this trick,
+      // we can update the UI now with the winning card highlighted
+      if (lastWinningData && lastWinningData.winningCard) {
+        const winningIndex = lastCompleteTrick.findIndex(
+          card => card.rank === lastWinningData?.winningCard?.rank && 
+                 card.suit === lastWinningData?.winningCard?.suit
+        );
+        
+        if (winningIndex >= 0) {
+          console.log(`Found winning card at index ${winningIndex}: ${lastWinningData.winningCard.rank}${lastWinningData.winningCard.suit}`);
+          
+          // Use the callback to update UI with the highlight
+          onTrickComplete({
+            trickCards: lastCompleteTrick,
+            winningIndex
+          });
+        }
+      }
+    }
+    else if (data.currentTrick && data.currentTrick.length > 0) {
+      // Save the current in-progress trick
       previousTrickCards = [...data.currentTrick];
-      if (data.currentTrick.length === 4) {
-        lastCompleteTrick = [...data.currentTrick];
+    }
+    else if (data.currentTrick && data.currentTrick.length === 0) {
+      // Trick has been cleared - this happens after the delay
+      // Let existing UI code handle any cleanup if needed
+      console.log('Trick cleared in game state');
+      
+      // Clear our stored data for this completed trick
+      if (lastCompleteTrick.length > 0) {
+        lastCompleteTrick = [];
+        lastWinningData = null;
       }
     }
   });
   
+  // Listen for events
+  socket.on('trick_winner', handleTrickWinner);
+  
   // Return cleanup function
   return () => {
-    socket.off('play_card', handlePlayCard);
     socket.off('trick_winner', handleTrickWinner);
     socket.off('game_update');
   };

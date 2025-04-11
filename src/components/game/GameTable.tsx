@@ -661,6 +661,10 @@ export default function GameTable({
     
     const myPosition = currentPlayer?.position ?? 0;
     
+    // Calculate winning card index for a complete trick
+    const isCompleteTrick = game.currentTrick.length === 4;
+    const currentWinningIndex = isCompleteTrick ? determineWinningCard(game.currentTrick) : -1;
+    
     return (
       <div className="relative" style={{ 
         width: `${Math.floor(200 * scaleFactor)}px`, 
@@ -677,13 +681,16 @@ export default function GameTable({
           // Calculate the position relative to the current player's view
           const relativePosition = (playerPosition - myPosition + 4) % 4;
           
+          // Check if this is the winning card in a complete trick
+          const isWinningCard = isCompleteTrick && index === currentWinningIndex;
+          
           return (
             <div 
               key={`trick-card-${index}`} 
               className={positionClasses[relativePosition]}
               data-testid={`trick-card-${index}`}
             >
-              <div className="relative">
+              <div className={`relative transition-all duration-300 ${isWinningCard ? 'transform scale-110 z-10' : ''}`}>
                 <Image
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank}${card.suit}`}
@@ -691,6 +698,16 @@ export default function GameTable({
                   height={trickCardHeight}
                   className="rounded-lg shadow-md"
                 />
+                
+                {/* Highlight for winning card */}
+                {isWinningCard && (
+                  <div className="absolute inset-0 rounded-lg ring-4 ring-yellow-400 animate-pulse z-10"></div>
+                )}
+                
+                {/* Darken non-winning cards */}
+                {isCompleteTrick && !isWinningCard && (
+                  <div className="absolute inset-0 bg-black/40 rounded-lg"></div>
+                )}
               </div>
             </div>
           );
@@ -701,6 +718,23 @@ export default function GameTable({
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
+          </div>
+        )}
+        
+        {/* Add winning trick indicator */}
+        {isCompleteTrick && currentWinningIndex >= 0 && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-center z-30"
+               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+            {(() => {
+              const winningCard = game.currentTrick[currentWinningIndex];
+              const playerId = cardPlayers[currentWinningIndex];
+              const player = playerId ? game.players.find(p => p.id === playerId) : null;
+              return (
+                <div className="font-bold">
+                  {player?.name || 'Player'} wins with {winningCard.rank}{winningCard.suit}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
