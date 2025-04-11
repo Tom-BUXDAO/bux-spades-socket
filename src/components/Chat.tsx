@@ -161,7 +161,7 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type a message..."
+          placeholder={screenSize.width < 640 ? "Type..." : "Type a message..."}
           className="bg-gray-700 text-white rounded-l px-3 py-1 flex-1 outline-none"
           style={{ fontSize: `${fontSize}px` }}
         />

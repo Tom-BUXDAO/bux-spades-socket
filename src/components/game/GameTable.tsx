@@ -748,7 +748,8 @@ export default function GameTable({
       return BOT_AVATAR;
     };
 
-    const isHorizontal = position === 0 || position === 2;
+    // Determine if this is a left/right seat (position 1 or 3)
+    const isSideSeat = position === 1 || position === 3;
     
     // Calculate font sizes based on scale
     const nameSize = Math.max(14, Math.floor(16 * scaleFactor));
@@ -770,65 +771,134 @@ export default function GameTable({
 
     return (
       <div className={`absolute ${getPositionClasses(position)}`}>
-        <div className={`relative rounded-lg ${
-          player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-        } text-white flex items-center px-2 py-1 ${isActive ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`} style={{
-          minWidth: '120px',
-          maxWidth: '200px'
-        }}>
-          {/* Avatar inside container */}
-          <div className="relative mr-2">
-            <div className="rounded-full overflow-hidden" style={{ 
-              width: screenSize.width < 640 ? '40px' : '50px', 
-              height: screenSize.width < 640 ? '40px' : '50px' 
-            }}>
-              <Image
-                src={getPlayerAvatar(player)}
-                alt="Player avatar"
-                width={screenSize.width < 640 ? 40 : 50}
-                height={screenSize.width < 640 ? 40 : 50}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {player.isDealer && (
-              <div className="absolute -right-2 -bottom-2 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
-                   style={{ 
-                     width: '20px', 
-                     height: '20px', 
-                     fontSize: '10px'
-                   }}>
-                D
+        {isSideSeat ? (
+          // Side seats (left/right) - vertical layout with avatar on top
+          <div className={`flex flex-col items-center ${
+            isActive ? 'ring-2 ring-yellow-400 animate-pulse rounded-lg bg-opacity-70' : ''
+          }`}>
+            {/* Avatar at the top */}
+            <div className="relative mb-1">
+              <div className={`rounded-full overflow-hidden ${player.team === 1 ? 'bg-red-500' : 'bg-blue-500'} p-1`} style={{ 
+                width: screenSize.width < 640 ? '36px' : '60px', 
+                height: screenSize.width < 640 ? '36px' : '60px' 
+              }}>
+                <Image
+                  src={getPlayerAvatar(player)}
+                  alt="Player avatar"
+                  width={screenSize.width < 640 ? 32 : 50}
+                  height={screenSize.width < 640 ? 32 : 50}
+                  className="w-full h-full object-cover rounded-full"
+                />
               </div>
-            )}
-          </div>
-          
-          {/* Player info */}
-          <div className="flex flex-col items-start flex-grow">
-            <div className="font-semibold w-full truncate" style={{ 
-              fontSize: screenSize.width < 640 ? '14px' : '16px' 
-            }}>{player.name}</div>
+              {player.isDealer && (
+                <div className="absolute -right-2 -bottom-2 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
+                    style={{ 
+                      width: screenSize.width < 640 ? '16px' : '20px', 
+                      height: screenSize.width < 640 ? '16px' : '20px', 
+                      fontSize: screenSize.width < 640 ? '8px' : '10px'
+                    }}>
+                  D
+                </div>
+              )}
+            </div>
             
-            {/* Always show the bid/made display - show 0/0 when waiting */}
-            <div className="w-full flex justify-center items-center mt-1" style={{ 
-              fontSize: screenSize.width < 640 ? '14px' : '16px' 
+            {/* Name below avatar */}
+            <div className={`text-center px-2 py-0.5 rounded-lg ${
+              player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
+            } text-white font-semibold w-full`} style={{ 
+              fontSize: screenSize.width < 640 ? '10px' : '14px',
+              maxWidth: screenSize.width < 640 ? '60px' : '80px'
             }}>
-              {/* Made / Bid display */}
-              <div className={`font-bold px-2 py-1 bg-white rounded-full ${
+              <div className="truncate">{player.name}</div>
+            </div>
+            
+            {/* Made/Bid counter below name */}
+            <div className="mt-1">
+              <div className={`font-bold px-2 py-0.5 bg-white rounded-full ${
                 game.status === "WAITING" ? "text-gray-600" : 
                 madeCount < bidCount ? "text-red-600" : "text-green-600"
-              }`}>
+              }`} style={{ 
+                fontSize: screenSize.width < 640 ? '10px' : '14px' 
+              }}>
                 {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
               </div>
               
               {/* Show +1 animation when player wins a trick */}
               {isWinningPlayer && (
-                <div className="text-green-400 font-bold animate-bounce ml-2">
+                <div className="text-green-400 font-bold animate-bounce mt-1 text-center" style={{ 
+                  fontSize: screenSize.width < 640 ? '10px' : '14px' 
+                }}>
                   +1
                 </div>
               )}
             </div>
           </div>
-        </div>
+        ) : (
+          // Top/bottom seats - horizontal layout with avatar on left
+          <div className={`relative rounded-lg ${
+            player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
+          } text-white flex items-center px-2 py-1 ${isActive ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`} style={{
+            minWidth: screenSize.width < 640 ? '100px' : '120px',
+            maxWidth: screenSize.width < 640 ? '120px' : '200px'
+          }}>
+            {/* Avatar inside container */}
+            <div className="relative mr-2">
+              <div className="rounded-full overflow-hidden" style={{ 
+                width: screenSize.width < 640 ? '32px' : '50px', 
+                height: screenSize.width < 640 ? '32px' : '50px' 
+              }}>
+                <Image
+                  src={getPlayerAvatar(player)}
+                  alt="Player avatar"
+                  width={screenSize.width < 640 ? 32 : 50}
+                  height={screenSize.width < 640 ? 32 : 50}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {player.isDealer && (
+                <div className="absolute -right-2 -bottom-2 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
+                    style={{ 
+                      width: screenSize.width < 640 ? '16px' : '20px', 
+                      height: screenSize.width < 640 ? '16px' : '20px', 
+                      fontSize: screenSize.width < 640 ? '8px' : '10px'
+                    }}>
+                  D
+                </div>
+              )}
+            </div>
+            
+            {/* Player info */}
+            <div className="flex flex-col items-start flex-grow">
+              <div className="font-semibold w-full truncate" style={{ 
+                fontSize: screenSize.width < 640 ? '12px' : '16px' 
+              }}>{player.name}</div>
+              
+              {/* Always show the bid/made display - show 0/0 when waiting */}
+              <div className="w-full flex justify-center items-center mt-0.5" style={{ 
+                fontSize: screenSize.width < 640 ? '12px' : '16px' 
+              }}>
+                {/* Made / Bid display */}
+                <div className={`font-bold px-2 py-0.5 bg-white rounded-full ${
+                  game.status === "WAITING" ? "text-gray-600" : 
+                  madeCount < bidCount ? "text-red-600" : "text-green-600"
+                }`} style={{ 
+                  fontSize: screenSize.width < 640 ? '11px' : '14px'
+                }}>
+                  {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
+                </div>
+                
+                {/* Show +1 animation when player wins a trick */}
+                {isWinningPlayer && (
+                  <div className="text-green-400 font-bold animate-bounce ml-2" style={{ 
+                    fontSize: screenSize.width < 640 ? '10px' : '14px' 
+                  }}>
+                    +1
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
