@@ -468,11 +468,12 @@ export default function GameTable({
       return null;
     }
     
-    // Scale the card size for the trick
-    const trickCardWidth = Math.floor(60 * scaleFactor); 
-    const trickCardHeight = Math.floor(84 * scaleFactor);
+    // Scale the card size for the trick - smaller on mobile
+    const isMobile = screenSize.width < 640;
+    const trickCardWidth = Math.floor(isMobile ? 45 : 60 * scaleFactor); 
+    const trickCardHeight = Math.floor(isMobile ? 65 : 84 * scaleFactor);
     
-    // Fixed positions for the four visual positions
+    // Fixed positions for the four visual positions - adjust for mobile
     const positionClasses = [
       "absolute bottom-0 left-1/2 -translate-x-1/2",  // Position 0 (bottom)
       "absolute left-0 top-1/2 -translate-y-1/2",     // Position 1 (left)  
@@ -525,8 +526,8 @@ export default function GameTable({
     
     return (
       <div className="relative" style={{ 
-        width: `${Math.floor(200 * scaleFactor)}px`, 
-        height: `${Math.floor(200 * scaleFactor)}px` 
+        width: `${Math.floor(isMobile ? 150 : 200 * scaleFactor)}px`, 
+        height: `${Math.floor(isMobile ? 150 : 200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
           // Get the player who played this card from our mapping
@@ -562,7 +563,7 @@ export default function GameTable({
               className={positionClasses[tablePosition]}
               data-testid={`trick-card-${index}`}
             >
-              <div className={`relative transition-all duration-300 ${isWinningCard ? 'ring-4 ring-yellow-400 rounded-lg' : ''}`}>
+              <div className={`relative transition-all duration-300 ${isWinningCard ? 'ring-2 ring-yellow-400 rounded-lg' : ''}`}>
                 <Image
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank}${card.suit}`}
@@ -582,8 +583,8 @@ export default function GameTable({
         
         {/* Winner indicator when trick is complete */}
         {isTrickComplete && (serverWinningPlayerId || winningIndex >= 0) && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
-               style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded text-xs"
+               style={{ fontSize: `${Math.floor(isMobile ? 10 : 12 * scaleFactor)}px` }}>
             {(() => {
               // Get the winner directly from server data if available
               if (serverWinningPlayerId) {
@@ -700,10 +701,10 @@ export default function GameTable({
     const getPositionClasses = (pos: number): string => {
       // Base positioning
       const basePositions = [
-        'bottom-2 left-1/2 -translate-x-1/2',  // South (bottom)
-        'left-8 top-1/2 -translate-y-1/2',     // West (left)
-        'top-2 left-1/2 -translate-x-1/2',     // North (top)
-        'right-8 top-1/2 -translate-y-1/2'     // East (right)
+        'bottom-1 left-1/2 -translate-x-1/2',  // South (bottom)
+        'left-4 top-1/2 -translate-y-1/2',     // West (left)
+        'top-1 left-1/2 -translate-x-1/2',     // North (top)
+        'right-4 top-1/2 -translate-y-1/2'     // East (right)
       ];
       
       // Apply responsive adjustments
@@ -711,9 +712,9 @@ export default function GameTable({
         // Tighter positioning for smaller screens
         const mobilePositions = [
           'bottom-1 left-1/2 -translate-x-1/2',  // South
-          'left-2 top-1/2 -translate-y-1/2',     // West
+          'left-1 top-1/2 -translate-y-1/2',     // West
           'top-1 left-1/2 -translate-x-1/2',     // North
-          'right-2 top-1/2 -translate-y-1/2'     // East
+          'right-1 top-1/2 -translate-y-1/2'     // East
         ];
         return mobilePositions[pos];
       }
@@ -756,10 +757,10 @@ export default function GameTable({
     const infoSize = Math.max(12, Math.floor(14 * scaleFactor));
     
     // Smaller sizes for mobile
-    const mobileNameSize = isMobile ? 12 : nameSize;
-    const mobileInfoSize = isMobile ? 10 : infoSize;
-    const mobileAvatarSize = isMobile ? Math.floor(avatarSize * 0.75) : avatarSize;
-    const mobileDealerSize = isMobile ? 16 : Math.floor(24 * scaleFactor);
+    const mobileNameSize = isMobile ? 9 : nameSize;
+    const mobileInfoSize = isMobile ? 8 : infoSize;
+    const mobileAvatarSize = isMobile ? Math.floor(avatarSize * 0.6) : avatarSize;
+    const mobileDealerSize = isMobile ? 12 : Math.floor(24 * scaleFactor);
 
     // Determine made/bid status color
     const madeCount = player.tricks || 0;
@@ -773,31 +774,31 @@ export default function GameTable({
       <div className={`absolute ${getPositionClasses(position)}`}>
         {isSideSeat ? (
           // Side seats (left/right) - container with all elements
-          <div className={`bg-opacity-90 rounded-lg p-1 ${
+          <div className={`bg-opacity-90 rounded-lg p-0.5 ${
             player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-          } ${isActive ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}
-            style={{ width: screenSize.width < 640 ? '70px' : '90px' }}>
+          } ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`}
+            style={{ width: screenSize.width < 640 ? '48px' : '90px' }}>
             {/* Avatar at the top */}
             <div className="flex justify-center">
               <div className="relative">
-                <div className="rounded-full overflow-hidden border-2 border-white" style={{ 
-                  width: screenSize.width < 640 ? '36px' : '50px', 
-                  height: screenSize.width < 640 ? '36px' : '50px' 
+                <div className="rounded-full overflow-hidden border border-white" style={{ 
+                  width: screenSize.width < 640 ? '28px' : '50px', 
+                  height: screenSize.width < 640 ? '28px' : '50px' 
                 }}>
                   <Image
                     src={getPlayerAvatar(player)}
                     alt="Player avatar"
-                    width={screenSize.width < 640 ? 36 : 50}
-                    height={screenSize.width < 640 ? 36 : 50}
+                    width={screenSize.width < 640 ? 28 : 50}
+                    height={screenSize.width < 640 ? 28 : 50}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 {player.isDealer && (
-                  <div className="absolute -right-2 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
+                  <div className="absolute -right-1 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-sm border border-black"
                       style={{ 
-                        width: screenSize.width < 640 ? '16px' : '20px', 
-                        height: screenSize.width < 640 ? '16px' : '20px', 
-                        fontSize: screenSize.width < 640 ? '8px' : '10px'
+                        width: screenSize.width < 640 ? '12px' : '20px', 
+                        height: screenSize.width < 640 ? '12px' : '20px', 
+                        fontSize: screenSize.width < 640 ? '6px' : '10px'
                       }}>
                     D
                   </div>
@@ -806,19 +807,19 @@ export default function GameTable({
             </div>
             
             {/* Name centered below avatar */}
-            <div className="text-center text-white font-semibold truncate mt-1 px-1" style={{ 
-              fontSize: screenSize.width < 640 ? '10px' : '14px'
+            <div className="text-center text-white font-semibold truncate text-xs px-0.5 mt-0.5" style={{ 
+              fontSize: screenSize.width < 640 ? '8px' : '14px'
             }}>
               {player.name}
             </div>
             
             {/* Made/Bid counter centered at bottom */}
-            <div className="flex justify-center mt-1">
-              <div className={`font-bold px-2 py-0.5 bg-white rounded-full ${
+            <div className="flex justify-center mt-0.5">
+              <div className={`font-bold px-1.5 py-0.5 bg-white rounded-full ${
                 game.status === "WAITING" ? "text-gray-600" : 
                 madeCount < bidCount ? "text-red-600" : "text-green-600"
               }`} style={{ 
-                fontSize: screenSize.width < 640 ? '10px' : '14px' 
+                fontSize: screenSize.width < 640 ? '8px' : '14px' 
               }}>
                 {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
               </div>
@@ -826,8 +827,8 @@ export default function GameTable({
             
             {/* Show +1 animation when player wins a trick */}
             {isWinningPlayer && (
-              <div className="text-green-400 font-bold animate-bounce mt-1 text-center" style={{ 
-                fontSize: screenSize.width < 640 ? '10px' : '14px' 
+              <div className="text-green-400 font-bold animate-bounce text-center" style={{ 
+                fontSize: screenSize.width < 640 ? '8px' : '14px' 
               }}>
                 +1
               </div>
@@ -837,30 +838,30 @@ export default function GameTable({
           // Top/bottom seats - horizontal layout with avatar on left
         <div className={`relative rounded-lg ${
           player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-          } text-white flex items-center px-2 py-1 ${isActive ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`} style={{
-            minWidth: screenSize.width < 640 ? '100px' : '120px',
-            maxWidth: screenSize.width < 640 ? '120px' : '200px'
+          } text-white flex items-center px-1.5 py-0.5 ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`} style={{
+            minWidth: screenSize.width < 640 ? '80px' : '120px',
+            maxWidth: screenSize.width < 640 ? '100px' : '200px'
           }}>
             {/* Avatar inside container */}
-            <div className="relative mr-2">
+            <div className="relative mr-1.5">
               <div className="rounded-full overflow-hidden" style={{ 
-                width: screenSize.width < 640 ? '32px' : '50px', 
-                height: screenSize.width < 640 ? '32px' : '50px' 
+                width: screenSize.width < 640 ? '26px' : '50px', 
+                height: screenSize.width < 640 ? '26px' : '50px' 
               }}>
                 <Image
                   src={getPlayerAvatar(player)}
                   alt="Player avatar"
-                  width={screenSize.width < 640 ? 32 : 50}
-                  height={screenSize.width < 640 ? 32 : 50}
+                  width={screenSize.width < 640 ? 26 : 50}
+                  height={screenSize.width < 640 ? 26 : 50}
                   className="w-full h-full object-cover"
                 />
               </div>
               {player.isDealer && (
-                <div className="absolute -right-2 -bottom-2 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-lg border-2 border-black"
+                <div className="absolute -right-1 -bottom-1 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold shadow-sm border border-black"
                     style={{ 
-                      width: screenSize.width < 640 ? '16px' : '20px', 
-                      height: screenSize.width < 640 ? '16px' : '20px', 
-                      fontSize: screenSize.width < 640 ? '8px' : '10px'
+                      width: screenSize.width < 640 ? '12px' : '20px', 
+                      height: screenSize.width < 640 ? '12px' : '20px', 
+                      fontSize: screenSize.width < 640 ? '6px' : '10px'
                     }}>
                   D
                 </div>
@@ -869,28 +870,28 @@ export default function GameTable({
             
             {/* Player info */}
             <div className="flex flex-col items-start flex-grow">
-              <div className="font-semibold w-full truncate" style={{ 
-                fontSize: screenSize.width < 640 ? '12px' : '16px' 
+              <div className="font-semibold w-full truncate text-xs" style={{ 
+                fontSize: screenSize.width < 640 ? '9px' : '16px' 
               }}>{player.name}</div>
               
               {/* Always show the bid/made display - show 0/0 when waiting */}
-              <div className="w-full flex justify-center items-center mt-0.5" style={{ 
-                fontSize: screenSize.width < 640 ? '12px' : '16px' 
+              <div className="w-full flex justify-center items-center" style={{ 
+                fontSize: screenSize.width < 640 ? '9px' : '16px' 
               }}>
                 {/* Made / Bid display */}
-                <div className={`font-bold px-2 py-0.5 bg-white rounded-full ${
+                <div className={`font-bold px-1.5 py-0.5 bg-white rounded-full ${
                   game.status === "WAITING" ? "text-gray-600" : 
                   madeCount < bidCount ? "text-red-600" : "text-green-600"
                 }`} style={{ 
-                  fontSize: screenSize.width < 640 ? '11px' : '14px'
+                  fontSize: screenSize.width < 640 ? '8px' : '14px'
                 }}>
                   {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
                 </div>
               
               {/* Show +1 animation when player wins a trick */}
               {isWinningPlayer && (
-                  <div className="text-green-400 font-bold animate-bounce ml-2" style={{ 
-                    fontSize: screenSize.width < 640 ? '10px' : '14px' 
+                  <div className="text-green-400 font-bold animate-bounce ml-1" style={{ 
+                    fontSize: screenSize.width < 640 ? '8px' : '14px' 
                   }}>
                   +1
                 </div>
@@ -1129,57 +1130,53 @@ export default function GameTable({
   return (
     <>
       <LandscapePrompt />
-      <div className="flex flex-col h-screen bg-gray-900 overflow-hidden">
+      <div className="flex flex-col h-[100vh] bg-gray-900 overflow-hidden">
         {/* Main content area - full height */}
         <div className="flex flex-1 h-full overflow-hidden">
           {/* Game table area - add padding on top and bottom */}
-          <div className="w-[70%] p-2 flex flex-col h-full relative">
-            {/* Leave Table button - absolute positioned in top left corner */}
-            <button
-              onClick={handleLeaveTable}
-              className="absolute top-4 left-4 z-10 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow-lg"
-              style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
-            
-            {/* Scoreboard in top right corner */}
-            <div className="absolute top-4 right-4 z-10 flex items-center space-x-2 px-3 py-2 bg-gray-800/90 rounded-lg shadow-lg">
-              <div className="flex items-center">
-                <div className="bg-red-500 rounded-full w-3 h-3 mr-1"></div>
-                <span className="text-white font-bold mr-1">{game.team1Score}</span>
-                {/* Team 1 Bags */}
-                <div className="flex items-center text-yellow-300" title={`Team 1 Bags: ${game.team1Bags || 0}`}>
-                  <Image src="/bag.svg" width={16} height={16} alt="Bags" className="mr-1" />
-                  <span className="text-xs">{game.team1Bags || 0}</span>
-                </div>
-              </div>
-              <div className="text-gray-400">vs</div>
-              <div className="flex items-center">
-                <div className="bg-blue-500 rounded-full w-3 h-3 mr-1"></div>
-                <span className="text-white font-bold mr-1">{game.team2Score}</span>
-                {/* Team 2 Bags */}
-                <div className="flex items-center text-yellow-300" title={`Team 2 Bags: ${game.team2Bags || 0}`}>
-                  <Image src="/bag.svg" width={16} height={16} alt="Bags" className="mr-1" />
-                  <span className="text-xs">{game.team2Bags || 0}</span>
-                </div>
-              </div>
-              
-              {/* Game ID and Status */}
-              <div className="ml-2 text-xs text-gray-300">
-                <div>#{game.id}</div>
-                <div>{game.status}</div>
-              </div>
-            </div>
-      
+          <div className="w-[70%] p-2 flex flex-col h-full">
             {/* Game table with more space top and bottom */}
-            <div className="relative flex-1 mt-14 mb-3" style={{ 
+            <div className="relative flex-1 mb-3" style={{ 
               background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
               borderRadius: `${Math.floor(64 * scaleFactor)}px`,
               border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
             }}>
+              {/* Leave Table button - inside table in top left corner */}
+              <button
+                onClick={handleLeaveTable}
+                className="absolute top-4 left-4 z-10 p-2 bg-red-600/90 text-white rounded-full hover:bg-red-700 transition shadow-lg"
+                style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+              
+              {/* Scoreboard in top right corner - inside the table */}
+              <div className="absolute top-4 right-4 z-10 flex flex-col items-center px-2 py-1 bg-gray-800/90 rounded-lg shadow-lg">
+                {/* Team 1 (Red) Score and Bags */}
+                <div className="flex items-center mb-1">
+                  <div className="bg-red-500 rounded-full w-2 h-2 mr-1"></div>
+                  <span className="text-white font-bold mr-1 text-sm">{game.team1Score}</span>
+                  {/* Team 1 Bags */}
+                  <div className="flex items-center text-yellow-300" title={`Team 1 Bags: ${game.team1Bags || 0}`}>
+                    <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" />
+                    <span className="text-xs">{game.team1Bags || 0}</span>
+                  </div>
+                </div>
+                
+                {/* Team 2 (Blue) Score and Bags */}
+                <div className="flex items-center">
+                  <div className="bg-blue-500 rounded-full w-2 h-2 mr-1"></div>
+                  <span className="text-white font-bold mr-1 text-sm">{game.team2Score}</span>
+                  {/* Team 2 Bags */}
+                  <div className="flex items-center text-yellow-300" title={`Team 2 Bags: ${game.team2Bags || 0}`}>
+                    <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" />
+                    <span className="text-xs">{game.team2Bags || 0}</span>
+                  </div>
+                </div>
+              </div>
+        
               {/* Players around the table */}
               {[0, 1, 2, 3].map((position) => (
                 <div key={`player-position-${position}`}>
@@ -1239,7 +1236,7 @@ export default function GameTable({
             </div>
 
             {/* Cards area with more space */}
-            <div className="bg-gray-800/50 rounded-lg relative mt-2 mb-1" 
+            <div className="bg-gray-800/50 rounded-lg relative mb-1" 
                  style={{ 
                    height: `${Math.floor(120 * scaleFactor)}px`, 
                    clipPath: 'inset(-100% 0 0 0)'
