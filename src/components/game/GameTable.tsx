@@ -809,12 +809,15 @@ export default function GameTable({
             }}>{player.name}</div>
             
             {/* Always show the bid/made display - show 0/0 when waiting */}
-            <div className="w-full flex justify-between items-center" style={{ 
+            <div className="w-full flex justify-center items-center mt-1" style={{ 
               fontSize: screenSize.width < 640 ? '14px' : '16px' 
             }}>
               {/* Made / Bid display */}
-              <div className={`font-bold ${game.status === "WAITING" ? "text-yellow-200" : madeStatusColor}`}>
-                {game.status === "WAITING" ? "0" : madeCount} <span className="text-white opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
+              <div className={`font-bold px-2 py-1 bg-white rounded-full ${
+                game.status === "WAITING" ? "text-gray-600" : 
+                madeCount < bidCount ? "text-red-600" : "text-green-600"
+              }`}>
+                {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
               </div>
               
               {/* Show +1 animation when player wins a trick */}
