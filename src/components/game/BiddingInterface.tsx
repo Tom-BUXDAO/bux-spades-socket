@@ -81,35 +81,17 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   };
 
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800 p-6 rounded-lg shadow-lg border-2 border-yellow-400 z-50">
-      <div className="text-yellow-400 text-xl mb-4 text-center font-bold">YOUR TURN - Make your bid</div>
-      <div className="flex flex-col gap-2">
-        {/* First row: 1-6 */}
-        <div className="flex gap-2 justify-center">
-          {[1, 2, 3, 4, 5, 6].map((num) => (
+    <div className="absolute bottom-[160px] left-1/2 -translate-x-1/2 bg-gray-800/90 p-4 rounded-lg shadow-lg border-2 border-yellow-400 z-50 max-w-[95vw] mx-auto">
+      <div className="text-yellow-400 text-lg mb-2 text-center font-bold">Make Your Bid</div>
+      <div className="flex flex-col gap-1">
+        {/* Responsive grid of bid options */}
+        <div className="grid grid-cols-6 gap-1 sm:gap-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
             <button
               key={num}
               onClick={() => handleBidSelect(num)}
               disabled={submitting}
-              className={`w-12 h-12 rounded ${
-                selectedBid === num
-                  ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
-                  : 'bg-gray-600 hover:bg-gray-500 text-white'
-              } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {num}
-            </button>
-          ))}
-        </div>
-        
-        {/* Second row: 7-12 */}
-        <div className="flex gap-2 justify-center">
-          {[7, 8, 9, 10, 11, 12].map((num) => (
-            <button
-              key={num}
-              onClick={() => handleBidSelect(num)}
-              disabled={submitting}
-              className={`w-12 h-12 rounded ${
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-md text-sm ${
                 selectedBid === num
                   ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
                   : 'bg-gray-600 hover:bg-gray-500 text-white'
@@ -120,12 +102,12 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
           ))}
         </div>
 
-        {/* Third row: special bids */}
-        <div className="flex gap-2 justify-center mt-2">
+        {/* Special bids and confirm */}
+        <div className="flex gap-1 sm:gap-2 justify-between mt-2">
           <button
             onClick={() => handleBidSelect(0)}
             disabled={submitting}
-            className={`w-24 h-12 rounded ${
+            className={`flex-1 h-10 rounded-md ${
               selectedBid === 0
                 ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
                 : 'bg-gray-600 hover:bg-gray-500 text-white'
@@ -134,15 +116,9 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
             Nil
           </button>
           <button
-            disabled
-            className="w-24 h-12 rounded bg-gray-700 text-gray-500 cursor-not-allowed"
-          >
-            Blind Nil
-          </button>
-          <button
             onClick={handleConfirm}
             disabled={selectedBid === undefined || submitting}
-            className={`w-24 h-12 rounded ${
+            className={`flex-1 h-10 rounded-md ${
               selectedBid !== undefined && !submitting
                 ? 'bg-green-600 hover:bg-green-700 text-white'
                 : 'bg-gray-700 text-gray-500 cursor-not-allowed'

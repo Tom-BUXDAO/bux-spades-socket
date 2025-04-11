@@ -9,6 +9,7 @@ import { useSocket, sendChatMessage, debugTrickWinner, setupTrickCompletionDelay
 import Chat from './Chat';
 import HandSummaryModal from './HandSummaryModal';
 import WinnerModal from './WinnerModal';
+import LoserModal from './LoserModal';
 import BiddingInterface from './BiddingInterface';
 import { calculateHandScore } from '@/lib/scoring';
 import LandscapePrompt from '@/components/LandscapePrompt';
@@ -208,7 +209,12 @@ export default function GameTable({
   const [selectedBid, setSelectedBid] = useState<number | null>(null);
   const [showHandSummary, setShowHandSummary] = useState(false);
   const [showWinner, setShowWinner] = useState(false);
+  const [showLoser, setShowLoser] = useState(false);
   const [handScores, setHandScores] = useState<ReturnType<typeof calculateHandScore> | null>(null);
+  
+  // Game configuration constants
+  const WINNING_SCORE = 500; // Score needed to win the game
+  const MODAL_DISPLAY_TIME = 5000; // Time to show modals in milliseconds
   
   // Add state to directly track which player played which card
   const [cardPlayers, setCardPlayers] = useState<Record<number, string>>({});
@@ -645,14 +651,6 @@ export default function GameTable({
     }
   };
 
-  const handleWinnerClose = () => {
-    setShowWinner(false);
-    setHandScores(null);
-    // Emit event to end game and return to lobby
-    socket?.emit("end_game", { gameId: game.id });
-    onLeaveTable();
-  };
-
   // Add responsive sizing state
   const [screenSize, setScreenSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -893,24 +891,92 @@ export default function GameTable({
   // Add the missing handleHandSummaryClose function
   const handleHandSummaryClose = () => {
     setShowHandSummary(false);
+    
     if (socket && handScores) {
-      socket.emit("update_scores", {
-        gameId: game.id,
-        team1Score: handScores.team1.score,
-        team2Score: handScores.team2.score,
-        startNewHand: true
-      });
+      // Calculate the new scores after this hand
+      const newTeam1Score = game.team1Score + handScores.team1.score;
+      const newTeam2Score = game.team2Score + handScores.team2.score;
+      
+      // Check if the game is over (500 points reached)
+      const team1Won = newTeam1Score >= WINNING_SCORE;
+      const team2Won = newTeam2Score >= WINNING_SCORE;
+      
+      // If both teams reach 500 in the same hand, play continues if tied
+      const isTied = newTeam1Score === newTeam2Score;
+      const gameIsOver = (team1Won || team2Won) && !isTied;
+      
+      if (gameIsOver) {
+        // Determine if the current player is on the winning team
+        const winningTeam = newTeam1Score > newTeam2Score ? 1 : 2;
+        const currentPlayerTeam = currentPlayer?.team;
+        
+        if (currentPlayerTeam === winningTeam) {
+          setShowWinner(true);
+        } else {
+          setShowLoser(true);
+        }
+        
+        // Don't start a new hand, game is over
+      } else {
+        // Game continues, update scores and start new hand
+        socket.emit("update_scores", {
+          gameId: game.id,
+          team1Score: handScores.team1.score,
+          team2Score: handScores.team2.score,
+          startNewHand: true
+        });
+      }
+      
       setHandScores(null);
     }
   };
 
+  const handleWinnerClose = () => {
+    setShowWinner(false);
+    setHandScores(null);
+    // Emit event to end game and return to lobby
+    socket?.emit("end_game", { gameId: game.id });
+    onLeaveTable();
+  };
+  
+  const handleLoserClose = () => {
+    setShowLoser(false);
+    setHandScores(null);
+    // Emit event to end game and return to lobby
+    socket?.emit("end_game", { gameId: game.id });
+    onLeaveTable();
+  };
+
+  // Auto-hide modals after timeout
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+    
     if (showHandSummary) {
-      timeoutId = setTimeout(handleHandSummaryClose, 5000);
+      timeoutId = setTimeout(handleHandSummaryClose, MODAL_DISPLAY_TIME);
     }
+    
     return () => clearTimeout(timeoutId);
   }, [showHandSummary]);
+  
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (showWinner) {
+      timeoutId = setTimeout(handleWinnerClose, MODAL_DISPLAY_TIME);
+    }
+    
+    return () => clearTimeout(timeoutId);
+  }, [showWinner]);
+  
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (showLoser) {
+      timeoutId = setTimeout(handleLoserClose, MODAL_DISPLAY_TIME);
+    }
+    
+    return () => clearTimeout(timeoutId);
+  }, [showLoser]);
 
   // Add state to track the server-determined winner
   const [serverWinningCard, setServerWinningCard] = useState<{rank: number | string, suit: Suit} | null>(null);
@@ -1117,6 +1183,17 @@ export default function GameTable({
           <WinnerModal
             isOpen={showWinner}
             onClose={handleWinnerClose}
+            team1Score={game.team1Score + handScores.team1.score}
+            team2Score={game.team2Score + handScores.team2.score}
+            winningTeam={game.team1Score + handScores.team1.score > game.team2Score + handScores.team2.score ? 1 : 2}
+          />
+        )}
+        
+        {/* Loser Modal */}
+        {showLoser && handScores && (
+          <LoserModal
+            isOpen={showLoser}
+            onClose={handleLoserClose}
             team1Score={game.team1Score + handScores.team1.score}
             team2Score={game.team2Score + handScores.team2.score}
             winningTeam={game.team1Score + handScores.team1.score > game.team2Score + handScores.team2.score ? 1 : 2}
