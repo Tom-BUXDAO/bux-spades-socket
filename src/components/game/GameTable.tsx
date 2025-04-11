@@ -1117,6 +1117,37 @@ export default function GameTable({
     };
   }, [socket, game.id]);
 
+  // Add a useEffect to listen for hand completion and display the hand summary
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for hand completion event
+    const handleHandCompleted = () => {
+      console.log('Hand completed - calculating scores for display');
+      
+      // Calculate scores using the scoring algorithm
+      const calculatedScores = calculateHandScore(game.players);
+      
+      console.log('Hand scores calculated:', calculatedScores);
+      
+      // Set the hand scores and show the modal
+      setHandScores(calculatedScores);
+      setShowHandSummary(true);
+    };
+    
+    // Register event listener for hand completion
+    socket.on('hand_completed', handleHandCompleted);
+    
+    // Handle scoring state change directly in case the server doesn't emit the event
+    if (game.status === "PLAYING" && game.players.every(p => p.hand.length === 0) && !showHandSummary) {
+      handleHandCompleted();
+    }
+    
+    return () => {
+      socket.off('hand_completed', handleHandCompleted);
+    };
+  }, [socket, game.id, game.status, game.players, showHandSummary]);
+
   // Initialize the global variable
   useEffect(() => {
     if (typeof window !== 'undefined') {
