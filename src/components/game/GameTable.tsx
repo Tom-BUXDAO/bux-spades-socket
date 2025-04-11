@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import type { GameState, Card, Suit } from "@/types/game";
@@ -13,6 +13,11 @@ import LoserModal from './LoserModal';
 import BiddingInterface from './BiddingInterface';
 import { calculateHandScore } from '@/lib/scoring';
 import LandscapePrompt from '@/components/LandscapePrompt';
+import { IoExitOutline } from "react-icons/io5";
+import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import useResizeObserver from "@/hooks/useResizeObserver";
+import { useWindowSize } from '../../hooks';
 
 interface GameTableProps {
   game: GameState;
@@ -205,12 +210,21 @@ export default function GameTable({
   user: propUser
 }: GameTableProps) {
   const { data: session } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const regularSocket = !socket ? useSocket("") : { playCard: () => {}, makeBid: () => {} };
   const [selectedBid, setSelectedBid] = useState<number | null>(null);
   const [showHandSummary, setShowHandSummary] = useState(false);
   const [showWinner, setShowWinner] = useState(false);
   const [showLoser, setShowLoser] = useState(false);
   const [handScores, setHandScores] = useState<ReturnType<typeof calculateHandScore> | null>(null);
+  
+  // Use the windowSize hook to get responsive information
+  const windowSize = useWindowSize();
   
   // Custom border flashing animation style
   useEffect(() => {
@@ -530,7 +544,7 @@ export default function GameTable({
   // Fix the renderTrickCards function to show cards at correct positions
   const renderTrickCards = () => {
     // Determine if we're on mobile
-    const isMobile = screenSize.width < 640;
+    const isMobile = windowSize.isMobile;
     
     // Current trick rendering with winning card highlighting
     if (!game.currentTrick || game.currentTrick.length === 0) {
@@ -653,43 +667,43 @@ export default function GameTable({
     }
   };
 
-  // Add responsive sizing state
-  const [screenSize, setScreenSize] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
-    height: typeof window !== 'undefined' ? window.innerHeight : 800
-  });
-
-  // Listen for screen size changes
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const handleResize = () => {
-      setScreenSize({
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  // Calculate scale factor for responsive sizing
+  // Keep the getScaleFactor function
   const getScaleFactor = () => {
     // Base scale on the screen width compared to a reference size
     const referenceWidth = 1200; // Reference width for desktop
-    let scale = Math.min(1, screenSize.width / referenceWidth);
+    let scale = Math.min(1, windowSize.width / referenceWidth);
     
     // Minimum scale to ensure things aren't too small
     return Math.max(0.6, scale);
   };
   
+  // Calculate scaleFactor once based on window size
   const scaleFactor = getScaleFactor();
+  
+  // Update isMobile based on windowSize
+  useEffect(() => {
+    setIsMobile(windowSize.isMobile);
+  }, [windowSize.isMobile]);
   
   // Scale dimensions for card images
   const cardWidth = Math.floor(96 * scaleFactor);
   const cardHeight = Math.floor(144 * scaleFactor);
   const avatarSize = Math.floor(64 * scaleFactor);
+  
+  // Player positions mapping - responsive
+  const playerPositions = useMemo(() => {
+    return isMobile ? {
+      bottom: "bottom-0 left-1/2 transform -translate-x-1/2",
+      left: "left-0 top-1/3 transform -translate-y-1/2",
+      top: "top-0 left-1/2 transform -translate-x-1/2",
+      right: "right-0 top-1/3 transform -translate-y-1/2",
+    } : {
+      bottom: "bottom-3 left-1/2 transform -translate-x-1/2",
+      left: "left-3 top-1/2 transform -translate-y-1/2",
+      top: "top-3 left-1/2 transform -translate-x-1/2",
+      right: "right-3 top-1/2 transform -translate-y-1/2",
+    };
+  }, [isMobile]);
   
   // Add back these missing functions
   const renderPlayerPosition = (position: number) => {
@@ -704,7 +718,8 @@ export default function GameTable({
     const isWinningPlayer = player.id === winningPlayerId && showWinningCardHighlight;
     
     // Determine if we're on mobile
-    const isMobile = screenSize.width < 640;
+    // const isMobile = screenSize.width < 640;
+    // Use the isMobile state which is derived from windowSize
     
     // Adjust positioning for responsive layout
     const getPositionClasses = (pos: number): string => {
@@ -717,7 +732,7 @@ export default function GameTable({
       ];
       
       // Apply responsive adjustments
-      if (screenSize.width < 768) {
+      if (windowSize.width < 768) {
         // Tighter positioning for smaller screens
         const mobilePositions = [
           'bottom-2 left-1/2 -translate-x-1/2',  // South
@@ -786,7 +801,7 @@ export default function GameTable({
           transition-all duration-200
         `}>
           {isSideSeat ? (
-            // Side seats (left/right) - vertical layout
+            // Left/right seats - vertical layout
             <div className="flex flex-col items-center p-1.5 gap-1.5">
               {/* Avatar with glowing active border */}
               <div className={`relative`}>
@@ -818,40 +833,27 @@ export default function GameTable({
                 </div>
               </div>
               
-              {/* Player name with team color gradient background */}
-              <div className={`w-full px-2 py-1 rounded-lg shadow-sm ${teamGradient}`}>
-                <div className="text-white font-medium text-center truncate" 
-                     style={{ fontSize: isMobile ? '9px' : '11px', maxWidth: isMobile ? '50px' : '70px' }}>
-                  {player.name}
-                </div>
-              </div>
-              
-              {/* Bid/Trick counter with glass morphism effect */}
-              <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center gap-1">
-                <span className={madeStatusColor} style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
-                  {game.status === "WAITING" ? "0" : madeCount}
-                </span>
-                <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
-                <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
-                  {game.status === "WAITING" ? "0" : bidCount}
-                </span>
-              </div>
-              
-              {/* Winning animation with improved animation */}
-              {isWinningPlayer && (
-                <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
-                  <div className={`
-                    ${player.team === 1 ? 'text-red-400' : 'text-blue-400'} 
-                    font-bold animate-bounce flex items-center gap-0.5
-                  `} style={{ fontSize: isMobile ? '10px' : '12px' }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" 
-                         className="w-3 h-3 inline-block">
-                      <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 01.919-.53l4.78 1.281a.75.75 0 01.531.919l-1.281 4.78a.75.75 0 01-1.449-.387l.81-3.022a19.407 19.407 0 00-5.594 5.203.75.75 0 01-1.139.093L7 10.06l-4.72 4.72a.75.75 0 01-1.06-1.061l5.25-5.25a.75.75 0 011.06 0l3.074 3.073a20.923 20.923 0 015.545-4.931l-3.042-.815a.75.75 0 01-.53-.919z" clipRule="evenodd" />
-                    </svg>
-                    <span>+1</span>
+              <div className="flex flex-col items-center gap-1">
+                {/* Player name with team color gradient background */}
+                <div className={`w-full px-2 py-1 rounded-lg shadow-sm ${teamGradient}`} style={{ width: isMobile ? '50px' : '70px' }}>
+                  <div className="text-white font-medium truncate text-center"
+                       style={{ fontSize: isMobile ? '9px' : '11px' }}>
+                    {player.name}
                   </div>
                 </div>
-              )}
+                
+                {/* Bid/Trick counter with glass morphism effect */}
+                <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1"
+                     style={{ width: isMobile ? '50px' : '70px' }}>
+                  <span className={madeStatusColor} style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
+                    {game.status === "WAITING" ? "0" : madeCount}
+                  </span>
+                  <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
+                  <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
+                    {game.status === "WAITING" ? "0" : bidCount}
+                  </span>
+                </div>
+              </div>
             </div>
           ) : (
             // Top/bottom seats - horizontal layout
@@ -886,17 +888,18 @@ export default function GameTable({
                 </div>
               </div>
               
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 items-center">
                 {/* Player name with team color gradient background */}
-                <div className={`px-2 py-1 rounded-lg shadow-sm ${teamGradient}`}>
-                  <div className="text-white font-medium truncate"
-                       style={{ fontSize: isMobile ? '9px' : '11px', minWidth: isMobile ? '60px' : '80px', maxWidth: isMobile ? '60px' : '130px' }}>
+                <div className={`w-full px-2 py-1 rounded-lg shadow-sm ${teamGradient}`} style={{ width: isMobile ? '50px' : '70px' }}>
+                  <div className="text-white font-medium truncate text-center"
+                       style={{ fontSize: isMobile ? '9px' : '11px' }}>
                     {player.name}
                   </div>
                 </div>
                 
                 {/* Bid/Trick counter with glass morphism effect */}
-                <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1">
+                <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1"
+                     style={{ width: isMobile ? '50px' : '70px' }}>
                   <span className={madeStatusColor} style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
                     {game.status === "WAITING" ? "0" : madeCount}
                   </span>
@@ -943,7 +946,7 @@ export default function GameTable({
       [];
       
     // Calculate card width based on screen size
-    const isMobile = screenSize.width < 640;
+    const isMobile = windowSize.isMobile;
     const cardUIWidth = Math.floor(isMobile ? 70 : 84 * scaleFactor);
     const cardUIHeight = Math.floor(isMobile ? 100 : 120 * scaleFactor);
     const overlapOffset = Math.floor(isMobile ? -40 : -32 * scaleFactor); // How much cards overlap
