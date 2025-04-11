@@ -447,7 +447,15 @@ export default function GameTable({
     }
   }, [game.currentTrick, game.players, game.currentPlayer]);
 
-  // Add a dedicated effect to detect completed tricks and highlight the winner
+  // Add state for trick completion UI effect
+  const [isShowingCompletedTrick, setIsShowingCompletedTrick] = useState(false);
+  const [completedTrickData, setCompletedTrickData] = useState<{
+    trick: Card[];
+    winnerIndex: number;
+    winningPlayerId: string;
+  } | null>(null);
+
+  // Modify the effect that detects completed tricks to implement the delay
   useEffect(() => {
     // Check if we have a complete trick (4 cards)
     if (game.currentTrick.length === 4) {
@@ -466,12 +474,28 @@ export default function GameTable({
         setWinningPlayerId(winningPlayerId);
         setShowWinningCardHighlight(true);
         
-        // Clear highlight after delay
+        // Store a copy of the trick data for display
+        setCompletedTrickData({
+          trick: [...game.currentTrick],
+          winnerIndex: winningCardIndex,
+          winningPlayerId: winningPlayerId
+        });
+        
+        // Show the completed trick UI
+        setIsShowingCompletedTrick(true);
+        
+        // Clear highlight after delay (longer delay for better visibility)
         setTimeout(() => {
           setShowWinningCardHighlight(false);
           setWinningCardIndex(null);
           setWinningPlayerId(null);
-        }, 2000); // 2 second delay
+        }, 2000);
+        
+        // Clear the completed trick display after a delay
+        setTimeout(() => {
+          setIsShowingCompletedTrick(false);
+          setCompletedTrickData(null);
+        }, 3000); // Give players 3 seconds to see the result
       }
     }
   }, [game.currentTrick, cardPlayers]);
@@ -514,8 +538,84 @@ export default function GameTable({
     });
   };
 
-  // Completely rewritten renderTrickCards function
+  // Modify the renderTrickCards function to show the frozen trick state
   const renderTrickCards = () => {
+    // If we're showing a completed trick, render that instead of the current trick
+    if (isShowingCompletedTrick && completedTrickData) {
+      // Scale the card size for the trick
+      const trickCardWidth = Math.floor(60 * scaleFactor); 
+      const trickCardHeight = Math.floor(84 * scaleFactor);
+      
+      // Fixed positions for the four visual positions
+      const positionClasses = [
+        "absolute bottom-0 left-1/2 -translate-x-1/2",  // Position 0 (bottom)
+        "absolute left-0 top-1/2 -translate-y-1/2",     // Position 1 (left)  
+        "absolute top-0 left-1/2 -translate-x-1/2",     // Position 2 (top)
+        "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
+      ];
+      
+      const myPosition = currentPlayer?.position ?? 0;
+      
+      return (
+        <div className="relative" style={{ 
+          width: `${Math.floor(200 * scaleFactor)}px`, 
+          height: `${Math.floor(200 * scaleFactor)}px` 
+        }}>
+          {completedTrickData.trick.map((card, index) => {
+            // Get the player who played this card from our tracking
+            const playerId = cardPlayers[index];
+            const player = playerId ? game.players.find(p => p.id === playerId) : null;
+            
+            // Get the player's position (0-3)
+            const playerPosition = player?.position ?? 0;
+            
+            // Calculate the position relative to the current player's view
+            const relativePosition = (playerPosition - myPosition + 4) % 4;
+            
+            // Check if this is the winning card
+            const isWinningCard = index === completedTrickData.winnerIndex;
+            
+            return (
+              <div 
+                key={`trick-card-${index}`} 
+                className={positionClasses[relativePosition]}
+                data-testid={`trick-card-${index}`}
+                style={{
+                  zIndex: 10 + index,
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <Image
+                  src={`/cards/${getCardImage(card)}`}
+                  alt={`${card.rank}${card.suit}`}
+                  width={trickCardWidth}
+                  height={trickCardHeight}
+                  className={`rounded-lg transition-all duration-500 ${
+                    isWinningCard 
+                      ? 'ring-4 ring-yellow-400 shadow-xl scale-110 z-20' 
+                      : 'shadow-md opacity-40'
+                  }`}
+                  style={{
+                    transform: isWinningCard ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                />
+                {isWinningCard && (
+                  <div className="absolute inset-0 animate-pulse rounded-lg ring-2 ring-yellow-300 opacity-70 z-20"></div>
+                )}
+              </div>
+            );
+          })}
+          
+          {/* Trick winner indicator */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-lg animate-pulse"
+               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+            {game.players.find(p => p.id === completedTrickData.winningPlayerId)?.name} wins the trick!
+          </div>
+        </div>
+      );
+    }
+    
+    // Normal render for active trick
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
     }
