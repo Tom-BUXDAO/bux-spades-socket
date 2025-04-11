@@ -791,10 +791,11 @@ io.on('connection', (socket) => {
         // Save the current trick for the animation
         const completedTrick = [...game.currentTrick];
         
-        // Clear current trick - but delay broadcasting this change
-        game.currentTrick = [];
+        // IMPORTANT: Don't clear the trick yet - keep it visible
+        // We'll create a delayed version of the game state that will clear it later
         
         // Set the winning player as the next to play
+        const originalCurrentPlayer = game.currentPlayer;
         game.currentPlayer = winningPlayer.id;
         
         // Check if hand is complete (each player has played all 13 cards)
@@ -983,25 +984,24 @@ io.on('connection', (socket) => {
           }
         }
         
-        // Update game state in memory with completed trick and scoring
-        games.set(gameId, game);
+        // First broadcast the current game state WITH the completed trick still visible
+        io.to(gameId).emit('game_update', game);
         
-        // DELAY: Temporarily overwrite the real game with a delayed version for animation
-        const delayedGame = {...game};
-        delayedGame.currentTrick = completedTrick; // Keep showing the completed trick
-        
-        // Broadcast the game with trick still visible for animation
-        io.to(gameId).emit('game_update', delayedGame);
-        
-        // After delay, broadcast the real game state (with empty trick)
+        // After delay, clear the trick and broadcast the updated game state
         setTimeout(() => {
           // Get the latest game state
           const currentGame = games.get(gameId);
           if (currentGame) {
-            // Broadcast the real game state
+            // NOW clear the current trick
+            currentGame.currentTrick = [];
+            
+            // Update the game in memory
+            games.set(gameId, currentGame);
+            
+            // Broadcast the real game state with empty trick
             io.to(gameId).emit('game_update', currentGame);
           }
-        }, 3000); // 3 second delay for animation
+        }, 5000); // 5 second delay for animation
       } else {
         console.log('Could not determine trick winner!');
       }
