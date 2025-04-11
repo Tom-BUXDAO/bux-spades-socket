@@ -333,9 +333,6 @@ export default function GameTable({
     if (game.currentTrick.length === 0) {
       console.log("🔄 New trick starting - resetting card players mapping");
       // Save the completed trick mapping before clearing
-      if (Object.keys(cardPlayers).length === 4) {
-        completedTrickCardPlayers.current = { ...cardPlayers };
-      }
       setCardPlayers({});
       setShowWinningCardHighlight(false);
       return;
@@ -373,9 +370,12 @@ export default function GameTable({
       }
     }
     
-    // For a complete trick, if server sends us the trick winner and winning card,
-    // use that information to highlight the winning card
+    // For a complete trick, save the mapping for future reference
     if (game.currentTrick.length === 4) {
+      // The trick is complete, so freeze the card player mapping
+      console.log("🧊 Freezing card player mapping for completed trick:", { ...cardPlayers });
+      completedTrickCardPlayers.current = { ...cardPlayers };
+      
       // Calculate the winning card index
       const winningCardIndex = determineWinningCard(game.currentTrick);
       if (winningCardIndex >= 0) {
@@ -481,12 +481,17 @@ export default function GameTable({
     const isTrickComplete = game.currentTrick.length === 4;
     const winningIndex = isTrickComplete ? determineWinningCard(game.currentTrick) : -1;
 
-    // Choose the appropriate card-player mapping based on trick state
-    const activeMapping = isTrickComplete && Object.keys(completedTrickCardPlayers.current).length === 4 
-                         ? completedTrickCardPlayers.current 
-                         : cardPlayers;
+    // Choose the appropriate card-player mapping
+    let activeMapping = cardPlayers;
     
-    console.log("Active card mapping:", activeMapping);
+    // If trick is complete and we have a saved mapping, use it
+    if (isTrickComplete && Object.keys(completedTrickCardPlayers.current).length === 4) {
+      activeMapping = completedTrickCardPlayers.current;
+      console.log("🎮 Using FROZEN card mapping for completed trick:", activeMapping);
+    } else {
+      console.log("🎮 Using CURRENT card mapping for in-progress trick:", activeMapping);
+    }
+    
     console.log("Current trick:", game.currentTrick.map(c => `${c.rank}${c.suit}`));
     
     return (
