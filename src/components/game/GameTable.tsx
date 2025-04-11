@@ -329,6 +329,7 @@ export default function GameTable({
     // When a new trick starts, reset our tracking
     if (game.currentTrick.length === 0) {
       // Only reset card players mapping when a new trick starts
+      console.log("🔄 New trick starting - resetting card players mapping");
       setCardPlayers({});
       
       // Also reset any state related to last trick
@@ -341,7 +342,10 @@ export default function GameTable({
     // and use the server-verified player positions to determine who played each card
     const leadingPlayer = game.players.find(p => p.id === game.currentPlayer);
     
-    if (!leadingPlayer || leadingPlayer.position === undefined) return;
+    if (!leadingPlayer || leadingPlayer.position === undefined) {
+      console.warn("⚠️ Cannot determine leading player or position is undefined");
+      return;
+    }
     
     // Get all playerIds in position order (not the rotated order)
     const orderedPlayerIds: (string | undefined)[] = [];
@@ -356,7 +360,9 @@ export default function GameTable({
     const updatedCardPlayers: Record<number, string> = {};
     
     // Log what we know from the server data
-    console.log("RECONSTRUCTING SERVER CARD ORDER:");
+    console.log("🧩 RECONSTRUCTING SERVER CARD ORDER:");
+    console.log(`Current player: ${game.currentPlayer}, lead player position: ${leadingPlayer.position}`);
+    console.log(`Ordered player IDs by position: ${JSON.stringify(orderedPlayerIds)}`);
     
     // Store the current trick length to determine if we need to calculate for a completed trick
     const isTrickComplete = game.currentTrick.length === 4;
@@ -377,28 +383,32 @@ export default function GameTable({
         updatedCardPlayers[i] = playerId;
         assignedPlayers.add(playerId); // Track this player as assigned
         const player = game.players.find(p => p.id === playerId);
-        console.log(`SERVER DATA: Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}`);
+        console.log(`🎮 SERVER DATA: Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) played by ${player?.name || 'Unknown'} at position ${playerPosition}`);
       } else if (playerId && assignedPlayers.has(playerId)) {
-        console.error(`DUPLICATE PLAYER DETECTED: ${playerId} already assigned a card. Skipping this assignment.`);
+        console.error(`❌ DUPLICATE PLAYER DETECTED: ${playerId} already assigned a card. Skipping this assignment.`);
+      } else {
+        console.error(`❓ MISSING PLAYER: No player found at position ${playerPosition}`);
       }
     }
     
     // If we found any duplicates, log a warning
     if (game.currentTrick.length !== assignedPlayers.size) {
-      console.warn(`WARNING: Found ${game.currentTrick.length} cards but only ${assignedPlayers.size} unique players. Card positions may not be accurate.`);
+      console.warn(`⚠️ WARNING: Found ${game.currentTrick.length} cards but only ${assignedPlayers.size} unique players. Card positions may not be accurate.`);
     }
     
     // Only update if we have new information AND if the trick is not complete
     if (Object.keys(updatedCardPlayers).length > 0) {
-      console.log('Updated card players from server data:', updatedCardPlayers);
+      console.log('📊 Updated card players from server data:', updatedCardPlayers);
       
       // Do not update card players mapping for completed tricks to avoid position shifts
       if (isTrickComplete && Object.keys(cardPlayers).length === 4) {
         // Don't update the mapping for a completed trick - this prevents position changes
-        console.log("Trick is complete, preserving card positions");
+        console.log("🔒 Trick is complete, preserving card positions");
       } else {
         // Update card players mapping for in-progress tricks
         setCardPlayers(prevCardPlayers => {
+          console.log("🔄 Updating card players. Previous:", prevCardPlayers);
+          
           // Create a new mapping that avoids duplicate players
           const mergedPlayers: Record<number, string> = {};
           const seenPlayerIds = new Set<string>();
@@ -409,6 +419,9 @@ export default function GameTable({
               const index = parseInt(idx, 10);
               mergedPlayers[index] = playerId;
               seenPlayerIds.add(playerId);
+              console.log(`➡️ Preserving existing mapping: Card ${idx} -> Player ${playerId}`);
+            } else {
+              console.log(`⚠️ Skipping duplicate player ${playerId} from previous mapping`);
             }
           });
           
@@ -418,9 +431,13 @@ export default function GameTable({
               const index = parseInt(idx, 10);
               mergedPlayers[index] = playerId;
               seenPlayerIds.add(playerId);
+              console.log(`✅ Adding new mapping: Card ${idx} -> Player ${playerId}`);
+            } else {
+              console.log(`⚠️ Skipping duplicate player ${playerId} from updated mapping`);
             }
           });
           
+          console.log("📊 Final merged mapping:", mergedPlayers);
           return mergedPlayers;
         });
       }
@@ -517,10 +534,11 @@ export default function GameTable({
       "absolute right-0 top-1/2 -translate-y-1/2"     // Position 3 (right)
     ];
     
-    console.log("RENDERING CURRENT TRICK");
-    
     // Get my position
     const myPosition = currentPlayer?.position ?? 0;
+    
+    console.log("🃏 RENDERING CURRENT TRICK", game.currentTrick.map(c => `${c.rank}${c.suit}`));
+    console.log(`🎭 Current player: ${currentPlayer?.name} (ID: ${currentPlayerId}) at position ${myPosition}`);
     
     // Calculate winning card when trick is complete
     const isTrickComplete = game.currentTrick.length === 4;
@@ -529,9 +547,11 @@ export default function GameTable({
     // For complete tricks, use a direct position-based approach instead of relying on cardPlayers mapping
     // This ensures all cards are shown and positioned correctly
     if (isTrickComplete) {
-      console.log("Trick is complete, using position-based approach");
-      // Find the player who led the trick - it's the player after the current player
-      const currentPlayerIndex = game.players.findIndex(p => p.id === game.currentPlayer);
+      console.log("🔒 Trick is complete, using position-based approach");
+      
+      // Use the cardPlayers mapping from the server directly
+      const currentCardPlayers = { ...cardPlayers };
+      console.log("🗺️ Using server card mapping:", currentCardPlayers);
       
       return (
         <div className="relative" style={{ 
@@ -539,17 +559,17 @@ export default function GameTable({
           height: `${Math.floor(200 * scaleFactor)}px` 
         }}>
           {game.currentTrick.map((card, index) => {
-            // For completed tricks, calculate player positions directly based on game state
-            // Start with the player who led the trick and go clockwise
-            // The trick leader is -4 positions from current player
-            const leadPlayerPosition = (currentPlayerIndex - 4 + game.players.length) % game.players.length;
-            const playerPosition = (leadPlayerPosition + index) % game.players.length;
-            const player = game.players[playerPosition];
+            // Get the player who played this card from our server data
+            const playerId = currentCardPlayers[index];
+            const player = playerId ? game.players.find(p => p.id === playerId) : null;
             
             if (!player) {
-              console.error(`Cannot find player at position ${playerPosition}`);
+              console.error(`❌ Cannot find player for card at index ${index}`);
               return null;
             }
+            
+            // Get the player's position
+            const playerPosition = player.position ?? 0;
             
             // Calculate card's visual position relative to current player
             const tablePosition = (4 + playerPosition - myPosition) % 4;
@@ -557,7 +577,7 @@ export default function GameTable({
             // Check if this is the winning card
             const isWinningCard = index === winningIndex;
             
-            console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
+            console.log(`🎯 Card ${index} (${card.rank}${card.suit}) played by ${player.name} (ID: ${player.id}) at position ${playerPosition}, showing at table position ${tablePosition}`);
             
             return (
               <div 
@@ -582,14 +602,10 @@ export default function GameTable({
           {winningIndex >= 0 && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-yellow-300 px-2 py-1 rounded"
                  style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
-              Winner: {game.currentTrick[winningIndex] ? 
-                // Find the player who played the winning card
+              Winner: {game.currentTrick[winningIndex] && currentCardPlayers[winningIndex] ? 
                 (() => {
-                  // The player who led the trick is -4 positions from current player
-                  const currentPlayerIndex = game.players.findIndex(p => p.id === game.currentPlayer);
-                  const leadPlayerPosition = (currentPlayerIndex - 4 + game.players.length) % game.players.length;
-                  const winnerPosition = (leadPlayerPosition + winningIndex) % game.players.length;
-                  const winner = game.players[winnerPosition];
+                  const winnerId = currentCardPlayers[winningIndex];
+                  const winner = game.players.find(p => p.id === winnerId);
                   return winner?.name || 'Unknown Player';
                 })() : 
                 'Unknown'}
@@ -601,6 +617,7 @@ export default function GameTable({
     
     // For in-progress tricks, use the cardPlayers mapping
     const currentCardPlayers = { ...cardPlayers };
+    console.log("🗺️ Current card players mapping:", currentCardPlayers);
     
     // Filter out duplicate players from the mapping
     const seenPlayers = new Set<string>();
@@ -612,9 +629,11 @@ export default function GameTable({
         filteredCardPlayers[numIndex] = playerId;
         seenPlayers.add(playerId);
       } else {
-        console.error(`Duplicate player detected: ${playerId} already has a card. Skipping card at index ${index}.`);
+        console.error(`❌ Duplicate player detected: ${playerId} already has a card. Skipping card at index ${index}.`);
       }
     });
+    
+    console.log("🗺️ Filtered card players mapping:", filteredCardPlayers);
     
     return (
       <div className="relative" style={{ 
@@ -627,7 +646,7 @@ export default function GameTable({
           const player = playerId ? game.players.find(p => p.id === playerId) : null;
           
           if (!player) {
-            console.log(`Cannot find player for card at index ${index}`);
+            console.log(`❓ Cannot find player for card at index ${index}`);
             return null;
           }
           
@@ -636,7 +655,7 @@ export default function GameTable({
           // The relative position from current player's view
           const tablePosition = (4 + playerPosition - myPosition) % 4;
           
-          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
+          console.log(`🎮 Card ${index} (${card.rank}${card.suit}) played by ${player.name} (ID: ${player.id}) at position ${playerPosition}, showing at table position ${tablePosition}`);
           
           return (
             <div 
