@@ -105,6 +105,44 @@ function createDeck(): Card[] {
   return deck;
 }
 
+// Helper function to determine which player played which card in a trick
+function mapTrickToPlayers(game: Game, trick: Card[]): { playerId: string, player: Player, card: Card }[] {
+  // If the trick is empty or incomplete, return an empty array
+  if (!trick.length) return [];
+  
+  // Initialize the result array
+  const result: { playerId: string, player: Player, card: Card }[] = [];
+  
+  // Find the player whose turn it is (the one who would play next)
+  const currentPlayerIdx = game.players.findIndex(p => p.id === game.currentPlayer);
+  if (currentPlayerIdx === -1) return [];
+  
+  const currentPlayer = game.players[currentPlayerIdx];
+  
+  // Calculate the position of the player who led the trick
+  // For a 4-card trick, it would be 4 positions before the current player
+  // For a trick in progress, it's (trick.length) positions before the current player
+  const positionsBack = trick.length;
+  const leadPosition = (currentPlayer.position - positionsBack + 4) % 4;
+  
+  // Map each card to the player who played it
+  for (let i = 0; i < trick.length; i++) {
+    // Calculate the position of the player who played this card
+    const playerPosition = (leadPosition + i) % 4;
+    const player = game.players.find(p => p.position === playerPosition);
+    
+    if (player) {
+      result.push({
+        playerId: player.id,
+        player: player,
+        card: trick[i]
+      });
+    }
+  }
+  
+  return result;
+}
+
 // Helper function to shuffle an array
 function shuffleArray<T>(array: T[]): T[] {
   const newArray = [...array]; // Create a copy to avoid modifying the original
@@ -681,42 +719,59 @@ io.on('connection', (socket) => {
     
     console.log(`Player ${player.name} played ${card.rank} of ${card.suit}`);
     
+    // Determine the next player
+    const nextPosition = (player.position + 1) % 4;
+    const nextPlayer = game.players.find(p => p.position === nextPosition);
+    
+    if (nextPlayer) {
+      console.log(`Next player is ${nextPlayer.name} at position ${nextPosition}`);
+      game.currentPlayer = nextPlayer.id;
+    }
+    
     // Determine if the trick is complete
     if (game.currentTrick.length === 4) {
+      // Use our helper to map cards to players
+      const trickMapping = mapTrickToPlayers(game, game.currentTrick);
+      
+      // Debug output
+      trickMapping.forEach((item, idx) => {
+        console.log(`Card ${idx} (${item.card.rank}${item.card.suit}) was played by ${item.player.name}`);
+      });
+      
       // Determine the winner of the trick
       const leadSuit = game.currentTrick[0].suit;
-      let winningCard = game.currentTrick[0];
-      let winningPosition = game.players.find(p => p.id === game.currentPlayer)?.position || 0;
+      let winningCardIndex = 0;
       
       // Find the highest card of the leading suit, or highest spade if spades were played
       let highestSpade: Card | null = null;
+      let highestSpadeIndex = -1;
       
       game.currentTrick.forEach((playedCard, index) => {
-        const cardPosition = (winningPosition + index) % 4;
-        
         // Check if it's a spade (trumps all non-spades)
         if (playedCard.suit === 'S') {
           if (!highestSpade || playedCard.rank > highestSpade.rank) {
             highestSpade = playedCard;
-            winningPosition = cardPosition;
+            highestSpadeIndex = index;
           }
         } 
         // If no spades yet and card follows lead suit
         else if (!highestSpade && playedCard.suit === leadSuit) {
-          if (playedCard.rank > winningCard.rank) {
-            winningCard = playedCard;
-            winningPosition = cardPosition;
+          if (playedCard.rank > game.currentTrick[winningCardIndex].rank) {
+            winningCardIndex = index;
           }
         }
       });
       
       // Use the highest spade if found, otherwise use the highest card of lead suit
-      winningCard = highestSpade || winningCard;
+      const finalWinningCardIndex = highestSpade ? highestSpadeIndex : winningCardIndex;
+      const winningCard = game.currentTrick[finalWinningCardIndex];
       
-      // Find the player at the winning position
-      const winningPlayer = game.players.find(p => p.position === winningPosition);
+      // Get the player who played the winning card
+      const winningPlayerInfo = trickMapping[finalWinningCardIndex];
       
-      if (winningPlayer) {
+      if (winningPlayerInfo) {
+        const winningPlayer = winningPlayerInfo.player;
+        
         console.log(`Trick won by ${winningPlayer.name} with ${winningCard.rank} of ${winningCard.suit}`);
         
         // Increment tricks taken by the winning player
