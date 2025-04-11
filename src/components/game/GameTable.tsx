@@ -572,6 +572,21 @@ export default function GameTable({
           player: game.players.find(p => p.id === playerId)
         }));
       
+      // Set the winning player ID for the +1 animation
+      if (delayedWinningIndex !== null && cardPlayers[delayedWinningIndex]) {
+        const playerId = cardPlayers[delayedWinningIndex];
+        if (playerId && winningPlayerId !== playerId) {
+          setWinningPlayerId(playerId);
+          setShowWinningCardHighlight(true);
+          
+          // Clear the animation after a delay
+          setTimeout(() => {
+            setShowWinningCardHighlight(false);
+            setWinningPlayerId(null);
+          }, 2000);
+        }
+      }
+      
       return (
         <div className="relative" style={{ 
           width: `${Math.floor(200 * scaleFactor)}px`, 
@@ -619,28 +634,11 @@ export default function GameTable({
               </div>
             );
           })}
-          
-          {/* Add a message showing who won the trick */}
-          {delayedWinningIndex !== null && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-center z-30"
-                 style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-              {(() => {
-                const winningCard = delayedTrick[delayedWinningIndex];
-                const playerId = cardPlayers[delayedWinningIndex];
-                const player = playerId ? game.players.find(p => p.id === playerId) : null;
-                return (
-                  <div className="font-bold">
-                    {player?.name || 'Player'} wins with {winningCard.rank}{winningCard.suit}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
         </div>
       );
     }
     
-    // Otherwise, show the current trick normally
+    // Current trick rendering with winning card highlighting
     if (!game.currentTrick || game.currentTrick.length === 0) {
       return null;
     }
@@ -664,6 +662,21 @@ export default function GameTable({
     // Calculate winning card index for a complete trick
     const isCompleteTrick = game.currentTrick.length === 4;
     const currentWinningIndex = isCompleteTrick ? determineWinningCard(game.currentTrick) : -1;
+    
+    // Set the winning player ID for the +1 animation if needed
+    if (isCompleteTrick && currentWinningIndex >= 0 && cardPlayers[currentWinningIndex]) {
+      const playerId = cardPlayers[currentWinningIndex];
+      if (playerId && winningPlayerId !== playerId) {
+        setWinningPlayerId(playerId);
+        setShowWinningCardHighlight(true);
+        
+        // Clear the animation after a delay
+        setTimeout(() => {
+          setShowWinningCardHighlight(false);
+          setWinningPlayerId(null);
+        }, 2000);
+      }
+    }
     
     return (
       <div className="relative" style={{ 
@@ -718,23 +731,6 @@ export default function GameTable({
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white px-2 py-1 rounded"
                style={{ fontSize: `${Math.floor(12 * scaleFactor)}px` }}>
             Lead: {game.currentTrick[0].suit}
-          </div>
-        )}
-        
-        {/* Add winning trick indicator */}
-        {isCompleteTrick && currentWinningIndex >= 0 && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-center z-30"
-               style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-            {(() => {
-              const winningCard = game.currentTrick[currentWinningIndex];
-              const playerId = cardPlayers[currentWinningIndex];
-              const player = playerId ? game.players.find(p => p.id === playerId) : null;
-              return (
-                <div className="font-bold">
-                  {player?.name || 'Player'} wins with {winningCard.rank}{winningCard.suit}
-                </div>
-              );
-            })()}
           </div>
         )}
       </div>
@@ -930,7 +926,7 @@ export default function GameTable({
             </div>
           )}
         </div>
-        <div className={`rounded-lg ${
+        <div className={`relative rounded-lg ${
           player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
         } text-white text-center`} style={{
           padding: screenSize.width < 640 ? '2px 6px' : '4px 12px'
