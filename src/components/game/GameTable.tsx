@@ -194,6 +194,27 @@ declare global {
   }
 }
 
+// Custom border flashing animation
+const borderFlashKeyframes = `
+@keyframes border-flash {
+  0%, 100% { border-color: #facc15; } /* yellow-400 */
+  50% { border-color: white; }
+}
+`;
+
+// Add style tag to document for animation
+useEffect(() => {
+  if (typeof document !== "undefined") {
+    const styleElement = document.createElement("style");
+    styleElement.innerHTML = borderFlashKeyframes;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }
+}, []);
+
 export default function GameTable({ 
   game, 
   socket, 
@@ -780,7 +801,7 @@ export default function GameTable({
           // Side seats (left/right) - vertical layout
           <div className="flex flex-col items-center gap-1">
             {/* Avatar in circle with team color border */}
-            <div className={`relative rounded-full p-0.5 ${teamBgColor} border-3 ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`} style={{borderWidth: '3px'}}>
+            <div className={`relative rounded-full ${isActive ? 'border-yellow-400 animate-[border-flash_0.6s_ease-in-out_infinite]' : teamBorderColor} border-[3px]`}>
               <div className="rounded-full overflow-hidden" style={{ 
                 width: screenSize.width < 640 ? '28px' : '48px', 
                 height: screenSize.width < 640 ? '28px' : '48px' 
@@ -810,21 +831,20 @@ export default function GameTable({
               fontSize: screenSize.width < 640 ? '8px' : '12px',
               maxWidth: screenSize.width < 640 ? '48px' : '70px'
             }}>
-              <div className="truncate">
+              <div className="truncate font-bold">
                 {player.name}
               </div>
             </div>
             
             {/* Made/Bid counter in white container with team color border */}
-            <div className={`bg-white ${teamBorderColor} border rounded-full px-1.5 py-0.5 text-center`} style={{ 
-              fontSize: screenSize.width < 640 ? '8px' : '12px',
-              borderWidth: '3px'
+            <div className={`bg-white ${teamBorderColor} border-[3px] rounded-full px-1.5 py-0.5 text-center`} style={{ 
+              fontSize: screenSize.width < 640 ? '8px' : '12px'
             }}>
-              <span className={game.status === "WAITING" ? "text-black" : madeStatusColor}>
+              <span className={`${game.status === "WAITING" ? "text-black" : madeStatusColor} font-bold`}>
                 {game.status === "WAITING" ? "0" : madeCount}
               </span>
               <span className="text-gray-400">{" / "}</span>
-              <span className="text-black">
+              <span className="text-black font-bold">
                 {game.status === "WAITING" ? "0" : bidCount}
               </span>
             </div>
@@ -842,7 +862,7 @@ export default function GameTable({
           // Top/bottom seats - horizontal layout
           <div className="flex items-start gap-1.5">
             {/* Avatar in circle with team color border */}
-            <div className={`relative rounded-full p-0.5 ${teamBgColor} ${isActive ? 'ring-1 ring-yellow-400 animate-pulse' : ''}`} style={{borderWidth: '3px'}}>
+            <div className={`relative rounded-full ${isActive ? 'border-yellow-400 animate-[border-flash_0.6s_ease-in-out_infinite]' : teamBorderColor} border-[3px]`}>
               <div className="rounded-full overflow-hidden" style={{ 
                 width: screenSize.width < 640 ? '28px' : '48px', 
                 height: screenSize.width < 640 ? '28px' : '48px' 
@@ -874,21 +894,20 @@ export default function GameTable({
                 fontSize: screenSize.width < 640 ? '8px' : '12px',
                 minWidth: screenSize.width < 640 ? '60px' : '80px'
               }}>
-                <div className="truncate">
+                <div className="truncate font-bold">
                   {player.name}
                 </div>
               </div>
               
               {/* Made/Bid counter in white container with team color border */}
-              <div className={`bg-white ${teamBorderColor} border rounded-full px-2 py-0.5 text-center`} style={{ 
-                fontSize: screenSize.width < 640 ? '8px' : '12px',
-                borderWidth: '3px'
+              <div className={`bg-white ${teamBorderColor} border-[3px] rounded-full px-2 py-0.5 text-center`} style={{ 
+                fontSize: screenSize.width < 640 ? '8px' : '12px'
               }}>
-                <span className={game.status === "WAITING" ? "text-black" : madeStatusColor}>
+                <span className={`${game.status === "WAITING" ? "text-black" : madeStatusColor} font-bold`}>
                   {game.status === "WAITING" ? "0" : madeCount}
                 </span>
                 <span className="text-gray-400">{" / "}</span>
-                <span className="text-black">
+                <span className="text-black font-bold">
                   {game.status === "WAITING" ? "0" : bidCount}
                 </span>
               </div>
