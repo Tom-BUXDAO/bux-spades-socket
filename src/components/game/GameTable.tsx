@@ -247,53 +247,6 @@ export default function GameTable({
     }
   }, [game.currentPlayer, lastCurrentPlayer, currentPlayerId]);
 
-  // Add effect to force re-render when current trick changes
-  useEffect(() => {
-    // Force UI update when cards are played
-    if (game.currentTrick && game.currentTrick.length > 0) {
-      console.log(`Current trick updated: ${game.currentTrick.length} cards played`);
-
-      // Only update positions for NEW cards
-      if (lastTrickLength < game.currentTrick.length) {
-        // Create a copy of existing positions
-        const updatedPositions = { ...trickCardPositions };
-        
-        // Only process newly added cards
-        for (let i = lastTrickLength; i < game.currentTrick.length; i++) {
-          // Skip if this card already has a position (should NEVER happen)
-          if (updatedPositions[i] !== undefined) continue;
-          
-          // Get the player who played this card
-          const playerId = cardPlayers[i];
-          const player = playerId ? game.players.find(p => p.id === playerId) : null;
-          
-          if (player && currentPlayer) {
-            // Calculate fixed table position
-            const playerPosition = player.position ?? 0;
-            const myPosition = currentPlayer.position ?? 0;
-            const tablePosition = (playerPosition - myPosition + 4) % 4;
-            
-            // Save this position permanently
-            updatedPositions[i] = tablePosition;
-            
-            console.log(`FIXED POSITION: Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) played by ${player.name} at position ${playerPosition}, fixed at table position ${tablePosition}`);
-          }
-        }
-        
-        // Update state with new positions
-        setTrickCardPositions(updatedPositions);
-      }
-      
-      // Update the last trick length
-      setLastTrickLength(game.currentTrick.length);
-    } else if (game.currentTrick?.length === 0) {
-      // Only reset positions when a new trick starts (current trick is empty)
-      console.log("New trick starting - clearing fixed positions");
-      setTrickCardPositions({});
-      setLastTrickLength(0);
-    }
-  }, [game.currentTrick, game.players, currentPlayer, cardPlayers]);
-
   // Use the explicit position property if available, otherwise fall back to array index
   // @ts-ignore - position property might not be on the type yet
   const currentPlayerPosition = currentPlayer?.position !== undefined ? currentPlayer.position : game.players.findIndex(p => p.id === currentPlayerId);
@@ -577,7 +530,7 @@ export default function GameTable({
     return game.players.find(p => p.id === playerId) || null;
   };
   
-  // Update the renderTrickCards function
+  // Fix the renderTrickCards function to show cards at correct positions
   const renderTrickCards = () => {
     // Current trick rendering with winning card highlighting
     if (!game.currentTrick || game.currentTrick.length === 0) {
@@ -601,9 +554,6 @@ export default function GameTable({
     // Get my position
     const myPosition = currentPlayer?.position ?? 0;
     
-    // Calculate winning card index for a complete trick
-    const isCompleteTrick = game.currentTrick.length === 4;
-    
     // Debug card players mapping
     console.log("Card players mapping:", cardPlayers);
     
@@ -622,11 +572,12 @@ export default function GameTable({
             return null;
           }
           
-          // Use the original table position from our trickCardPositions state
-          // This ensures positions NEVER change during a trick
-          const tablePosition = trickCardPositions[index] || 0;
+          // Calculate the fixed table position for this card
+          const playerPosition = player.position ?? 0;
+          // The relative position from current player's view
+          const tablePosition = (4 + playerPosition - myPosition) % 4;
           
-          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${player.position}, showing at table position ${tablePosition}`);
+          console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}, showing at table position ${tablePosition}`);
           
           return (
             <div 
