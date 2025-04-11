@@ -698,7 +698,7 @@ export default function GameTable({
           }
           
           // Get the player's position (0-3)
-          const playerPosition = player.position;
+          const playerPosition = player.position ?? 0;
           
           // Calculate the table position relative to the current player's view
           // This ensures each card appears in front of the player who played it
@@ -1012,4 +1012,22 @@ export default function GameTable({
               <div className="relative">
                 <Image
                   src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank}${card.suit}`
+                  alt={`${card.rank}${card.suit}`}
+                  width={cardUIWidth}
+                  height={cardUIHeight}
+                  className={`rounded-lg shadow-[4px_4px_12px_rgba(0,0,0,0.8)] ${
+                    isPlayable ? 'hover:shadow-[8px_8px_16px_rgba(0,0,0,0.9)]' : ''
+                  }`}
+                  style={{ width: 'auto', height: 'auto' }}
+                />
+                {!isPlayable && (
+                  <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+}
