@@ -477,10 +477,24 @@ export default function GameTable({
     const isTrickComplete = game.currentTrick.length === 4;
     const winningIndex = isTrickComplete ? determineWinningCard(game.currentTrick) : -1;
 
-    // ULTRA SIMPLE APPROACH:
-    // Directly calculate which player played each card based on the current player
-    // and how many cards have been played in the trick
-    const currentPlayerPosition = game.players.find(p => p.id === game.currentPlayer)?.position ?? 0;
+    // Create a mapping of each card to the player who played it
+    // This uses the actual logs to create a reliable mapping
+    const cardToPlayerMapping: (typeof game.players[0] | null)[] = [];
+    
+    // For each card, find the player who played it
+    for (let i = 0; i < game.currentTrick.length; i++) {
+      // Get the player ID from our tracking
+      const playerId = cardPlayers[i];
+      const player = playerId ? game.players.find(p => p.id === playerId) : null;
+      
+      // If we have the player in our mapping, use it
+      if (player) {
+        cardToPlayerMapping.push(player);
+      } else {
+        // If we don't have the mapping, we'll just show a placeholder
+        cardToPlayerMapping.push(null);
+      }
+    }
     
     return (
       <div className="relative" style={{ 
@@ -488,26 +502,21 @@ export default function GameTable({
         height: `${Math.floor(200 * scaleFactor)}px` 
       }}>
         {game.currentTrick.map((card, index) => {
-          // Calculate who played this card: 
-          // The player before the current player played the most recent card
-          const stepsBack = game.currentTrick.length - index;
-          const playerPosition = (currentPlayerPosition - stepsBack + 4) % 4;
+          // Get the player who played this card
+          const player = cardToPlayerMapping[index];
           
-          // Find the player at this position
-          const player = game.players.find(p => p.position === playerPosition);
-          
+          // If we don't know who played this card, skip it
           if (!player) {
-            // Skip if player not found (should never happen)
             return null;
           }
           
           // Calculate card's visual position relative to current player
-          const tablePosition = (4 + playerPosition - myPosition) % 4;
+          const tablePosition = (4 + (player.position ?? 0) - myPosition) % 4;
           
-          // Check if this is the winning card
+          // Check if this is the winning card based on server data
           let isWinningCard = isTrickComplete && index === winningIndex;
           
-          // If we have server data about the winning card, use that instead
+          // If we have server data about the winning card, use that
           if (isTrickComplete && serverWinningCard) {
             isWinningCard = card.rank === serverWinningCard.rank && card.suit === serverWinningCard.suit;
           }
@@ -526,6 +535,12 @@ export default function GameTable({
                   height={trickCardHeight}
                   className={`rounded-lg shadow-md ${isWinningCard ? 'brightness-110' : ''}`}
                 />
+                {/* Debug label showing which player played this card */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center">
+                    {player.name}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -542,11 +557,9 @@ export default function GameTable({
                 return `Winner: ${winner?.name || 'Unknown'}`;
               }
               
-              // Fallback to calculated winner
+              // Fallback to calculated winner if we have a winning index
               if (game.currentTrick[winningIndex]) {
-                const stepsBack = game.currentTrick.length - winningIndex;
-                const winnerPosition = (currentPlayerPosition - stepsBack + 4) % 4;
-                const winner = game.players.find(p => p.position === winnerPosition);
+                const winner = cardToPlayerMapping[winningIndex];
                 return `Winner: ${winner?.name || 'Unknown'}`;
               }
               
