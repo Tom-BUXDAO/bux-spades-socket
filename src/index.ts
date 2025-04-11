@@ -802,42 +802,117 @@ io.on('connection', (socket) => {
           let team2Tricks = 0;
           let team1Bid = 0;
           let team2Bid = 0;
+          let team1NilSuccessCount = 0;
+          let team2NilSuccessCount = 0;
+          let team1NilFailCount = 0;
+          let team2NilFailCount = 0;
           
+          // First, calculate the total tricks for each team
           game.players.forEach(p => {
             if (p.team === 1) {
               team1Tricks += p.tricks;
-              team1Bid += p.bid || 0;
             } else {
               team2Tricks += p.tricks;
-              team2Bid += p.bid || 0;
             }
           });
           
-          // Check if teams made their bids
+          // Then check for nil bids and calculate total bid
+          game.players.forEach(p => {
+            // Handle nil bids (bid of 0)
+            if (p.bid === 0) {
+              if (p.tricks === 0) {
+                // Successful nil bid
+                if (p.team === 1) {
+                  team1NilSuccessCount++;
+                } else {
+                  team2NilSuccessCount++;
+                }
+              } else {
+                // Failed nil bid
+                if (p.team === 1) {
+                  team1NilFailCount++;
+                } else {
+                  team2NilFailCount++;
+                }
+              }
+            } else {
+              // Add to team bid total for non-nil bids
+              if (p.team === 1) {
+                team1Bid += p.bid || 0;
+              } else {
+                team2Bid += p.bid || 0;
+              }
+            }
+          });
+          
+          // Check if teams made their contract bids (excluding nil bids)
           team1Made = team1Tricks >= team1Bid;
           team2Made = team2Tricks >= team2Bid;
           
-          // Award points
+          // Calculate and award points
+          let team1RoundScore = 0;
+          let team2RoundScore = 0;
+          
+          // Team 1 scoring
           if (team1Made) {
-            const basePoints = team1Bid * 10;
+            // Made contract
+            team1RoundScore += team1Bid * 10;
+            
+            // Add bags (overtricks)
             const bagPoints = team1Tricks - team1Bid;
-            game.team1Score += basePoints;
+            team1RoundScore += bagPoints;
             game.team1Bags += bagPoints;
+            
+            console.log(`Team 1 made contract: ${team1Bid} bid, ${team1Tricks} tricks, ${bagPoints} bags`);
           } else {
-            game.team1Score -= team1Bid * 10;
+            // Failed contract
+            team1RoundScore -= team1Bid * 10;
+            console.log(`Team 1 failed contract: ${team1Bid} bid, ${team1Tricks} tricks`);
           }
           
+          // Add nil bonuses/penalties for team 1
+          if (team1NilSuccessCount > 0) {
+            team1RoundScore += team1NilSuccessCount * 100;
+            console.log(`Team 1 successful nil bids: ${team1NilSuccessCount} x 100 = ${team1NilSuccessCount * 100}`);
+          }
+          if (team1NilFailCount > 0) {
+            team1RoundScore -= team1NilFailCount * 100;
+            console.log(`Team 1 failed nil bids: ${team1NilFailCount} x -100 = ${team1NilFailCount * -100}`);
+          }
+          
+          // Team 2 scoring
           if (team2Made) {
-            const basePoints = team2Bid * 10;
+            // Made contract
+            team2RoundScore += team2Bid * 10;
+            
+            // Add bags (overtricks)
             const bagPoints = team2Tricks - team2Bid;
-            game.team2Score += basePoints;
+            team2RoundScore += bagPoints;
             game.team2Bags += bagPoints;
+            
+            console.log(`Team 2 made contract: ${team2Bid} bid, ${team2Tricks} tricks, ${bagPoints} bags`);
           } else {
-            game.team2Score -= team2Bid * 10;
+            // Failed contract
+            team2RoundScore -= team2Bid * 10;
+            console.log(`Team 2 failed contract: ${team2Bid} bid, ${team2Tricks} tricks`);
           }
           
-          console.log(`Team 1: Bid ${team1Bid}, Tricks ${team1Tricks}, Made: ${team1Made}, Score ${game.team1Score}`);
-          console.log(`Team 2: Bid ${team2Bid}, Tricks ${team2Tricks}, Made: ${team2Made}, Score ${game.team2Score}`);
+          // Add nil bonuses/penalties for team 2
+          if (team2NilSuccessCount > 0) {
+            team2RoundScore += team2NilSuccessCount * 100;
+            console.log(`Team 2 successful nil bids: ${team2NilSuccessCount} x 100 = ${team2NilSuccessCount * 100}`);
+          }
+          if (team2NilFailCount > 0) {
+            team2RoundScore -= team2NilFailCount * 100;
+            console.log(`Team 2 failed nil bids: ${team2NilFailCount} x -100 = ${team2NilFailCount * -100}`);
+          }
+          
+          // Update total scores
+          game.team1Score += team1RoundScore;
+          game.team2Score += team2RoundScore;
+          
+          console.log(`Team 1: Round Score ${team1RoundScore}, Total Score ${game.team1Score}, Bags ${game.team1Bags}`);
+          console.log(`Team 2: Round Score ${team2RoundScore}, Total Score ${game.team2Score}, Bags ${game.team2Bags}`);
           
           // Check for set penalties (10 bags = -100 points)
           if (game.team1Bags >= 10) {
