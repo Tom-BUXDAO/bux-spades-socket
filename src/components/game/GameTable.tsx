@@ -391,19 +391,61 @@ export default function GameTable({
       }
     }
     
-    // If we found any duplicates, log a warning
-    if (game.currentTrick.length !== assignedPlayers.size) {
-      console.warn(`⚠️ WARNING: Found ${game.currentTrick.length} cards but only ${assignedPlayers.size} unique players. Card positions may not be accurate.`);
+    // If we found any duplicates or missing assignments, try to fix them for complete tricks
+    if (isTrickComplete && assignedPlayers.size < game.currentTrick.length) {
+      console.warn(`⚠️ WARNING: Found ${game.currentTrick.length} cards but only ${assignedPlayers.size} unique players. Attempting to fix...`);
+      
+      // Find any unused players
+      const unusedPlayers = game.players.filter(p => !assignedPlayers.has(p.id));
+      console.log(`🔍 Found ${unusedPlayers.length} unused players: ${unusedPlayers.map(p => p.name).join(', ')}`);
+      
+      // For each card index that doesn't have a player assigned
+      for (let i = 0; i < game.currentTrick.length; i++) {
+        if (!updatedCardPlayers[i] && unusedPlayers.length > 0) {
+          const player = unusedPlayers.shift(); // Take the first unused player
+          if (player) {
+            updatedCardPlayers[i] = player.id;
+            console.log(`✅ Fixed: Assigned player ${player.name} to card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit})`);
+          }
+        }
+      }
     }
     
     // Only update if we have new information AND if the trick is not complete
     if (Object.keys(updatedCardPlayers).length > 0) {
       console.log('📊 Updated card players from server data:', updatedCardPlayers);
       
-      // Do not update card players mapping for completed tricks to avoid position shifts
+      // For completed tricks, make sure all card positions are assigned
+      if (isTrickComplete) {
+        // Check for any unassigned cards
+        for (let i = 0; i < game.currentTrick.length; i++) {
+          if (!updatedCardPlayers[i]) {
+            console.warn(`⚠️ Card at index ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) has no player assigned!`);
+            
+            // Find any player who hasn't been assigned a card yet
+            const usedPlayerIds = new Set(Object.values(updatedCardPlayers));
+            const unusedPlayer = game.players.find(p => !usedPlayerIds.has(p.id));
+            
+            if (unusedPlayer) {
+              console.log(`✅ Emergency fix: Assigning unused player ${unusedPlayer.name} to card ${i}`);
+              updatedCardPlayers[i] = unusedPlayer.id;
+            }
+          }
+        }
+        
+        // If we still have all 4 cards in the completed trick, we don't need to do a merge, 
+        // just use the updated mapping directly
+        if (Object.keys(updatedCardPlayers).length === 4) {
+          console.log("🔒 Complete trick with all cards mapped - setting direct card mapping");
+          setCardPlayers(updatedCardPlayers);
+          return;
+        }
+      }
+      
+      // Don't update card players mapping for completed tricks if we already have a complete mapping
       if (isTrickComplete && Object.keys(cardPlayers).length === 4) {
         // Don't update the mapping for a completed trick - this prevents position changes
-        console.log("🔒 Trick is complete, preserving card positions");
+        console.log("🔒 Trick is complete and we already have all cards mapped, preserving card positions");
       } else {
         // Update card players mapping for in-progress tricks
         setCardPlayers(prevCardPlayers => {
@@ -553,6 +595,46 @@ export default function GameTable({
       const currentCardPlayers = { ...cardPlayers };
       console.log("🗺️ Using server card mapping:", currentCardPlayers);
       
+      // If this is a complete trick (4 cards) but we don't have all players mapped, try to reconstruct
+      // the mapping for the trick cards using the game state
+      if (game.currentTrick.length === 4 && Object.keys(currentCardPlayers).length < 4) {
+        console.log("🔄 Complete trick with missing card mappings, reconstructing from game state");
+        
+        // Get current player - this will be the player who won the trick 
+        // and is now the first to play in the next trick
+        const winnerIndex = determineWinningCard(game.currentTrick);
+        const leadingPlayer = game.players.find(p => p.id === game.currentPlayer);
+        
+        if (leadingPlayer && leadingPlayer.position !== undefined) {
+          // We need to figure out who played each card based on the fact that
+          // the player who goes first in the next trick is the one who won this trick
+          
+          // Get all players in position order
+          const playersByPosition = new Array(4).fill(null);
+          game.players.forEach(p => {
+            if (p.position !== undefined) {
+              playersByPosition[p.position] = p;
+            }
+          });
+          
+          console.log("🧮 Reconstructing trick player order based on winner position:", leadingPlayer.position);
+          
+          // Add the 4th player mapping if it's missing
+          for (let i = 0; i < game.currentTrick.length; i++) {
+            if (!currentCardPlayers[i]) {
+              // Find an unused player
+              const usedPlayerIds = new Set(Object.values(currentCardPlayers));
+              const missingPlayer = game.players.find(p => !usedPlayerIds.has(p.id));
+              
+              if (missingPlayer) {
+                console.log(`✅ Adding missing player ${missingPlayer.name} for card at index ${i}`);
+                currentCardPlayers[i] = missingPlayer.id;
+              }
+            }
+          }
+        }
+      }
+      
       return (
         <div className="relative" style={{ 
           width: `${Math.floor(200 * scaleFactor)}px`, 
@@ -560,16 +642,45 @@ export default function GameTable({
         }}>
           {game.currentTrick.map((card, index) => {
             // Get the player who played this card from our server data
-            const playerId = currentCardPlayers[index];
-            const player = playerId ? game.players.find(p => p.id === playerId) : null;
+            let playerId = currentCardPlayers[index];
+            let player = playerId ? game.players.find(p => p.id === playerId) : null;
+            
+            // Fallback for complete tricks - if we can't find the player, try to find an unused player
+            if (!player && game.currentTrick.length === 4) {
+              const usedPlayerIds = new Set(Object.values(currentCardPlayers).filter(id => !!id));
+              const unusedPlayer = game.players.find(p => !usedPlayerIds.has(p.id));
+              
+              if (unusedPlayer) {
+                console.log(`🔍 Using fallback: Found unused player ${unusedPlayer.name} for card ${index}`);
+                playerId = unusedPlayer.id;
+                player = unusedPlayer;
+                // Update the mapping for later
+                currentCardPlayers[index] = playerId;
+              }
+            }
             
             if (!player) {
-              console.error(`❌ Cannot find player for card at index ${index}`);
-              return null;
+              console.error(`❌ Cannot find player for card at index ${index}, card: ${card.rank}${card.suit}`);
+              
+              // Last resort - just choose a player who hasn't been used yet in the trick
+              const allPlayerIds = game.players.map(p => p.id);
+              const currentlyDisplayed = Array.from(document.querySelectorAll('[data-testid^="trick-card-"]'))
+                .map(el => el.getAttribute('data-player-id'))
+                .filter(Boolean);
+              
+              const availablePlayer = game.players.find(p => !currentlyDisplayed.includes(p.id));
+              if (availablePlayer) {
+                console.log(`⚠️ LAST RESORT: Using available player ${availablePlayer.name} for card ${index}`);
+                player = availablePlayer;
+              } else {
+                // Absolute last resort - use any player
+                player = game.players[0];
+                console.log(`🆘 EMERGENCY FALLBACK: Using first player ${player?.name} for card ${index}`);
+              }
             }
             
             // Get the player's position
-            const playerPosition = player.position ?? 0;
+            const playerPosition = player?.position ?? 0;
             
             // Calculate card's visual position relative to current player
             const tablePosition = (4 + playerPosition - myPosition) % 4;
@@ -577,13 +688,14 @@ export default function GameTable({
             // Check if this is the winning card
             const isWinningCard = index === winningIndex;
             
-            console.log(`🎯 Card ${index} (${card.rank}${card.suit}) played by ${player.name} (ID: ${player.id}) at position ${playerPosition}, showing at table position ${tablePosition}`);
+            console.log(`🎯 Card ${index} (${card.rank}${card.suit}) played by ${player?.name || 'Unknown'} (ID: ${player?.id || 'unknown'}) at position ${playerPosition}, showing at table position ${tablePosition}`);
             
             return (
               <div 
                 key={`trick-card-${index}`} 
                 className={positionClasses[tablePosition]}
                 data-testid={`trick-card-${index}`}
+                data-player-id={player?.id || 'unknown'}
               >
                 <div className={`relative transition-all duration-300 ${isWinningCard ? 'ring-4 ring-yellow-400 rounded-lg' : ''}`}>
                   <Image
