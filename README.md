@@ -1,4 +1,4 @@
-# Bux Spades
+# Bux Spades!
 
 A multiplayer Spades card game with real-time gameplay, chat, and social features.
 
