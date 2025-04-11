@@ -772,21 +772,24 @@ export default function GameTable({
     return (
       <div className={`absolute ${getPositionClasses(position)}`}>
         {isSideSeat ? (
-          // Side seats (left/right) - vertical layout with avatar on top
+          // Side seats (left/right) - unified container with avatar on top
           <div className={`flex flex-col items-center ${
-            isActive ? 'ring-2 ring-yellow-400 animate-pulse rounded-lg bg-opacity-70' : ''
-          }`}>
+            player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
+          } rounded-lg p-1 ${isActive ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}
+          style={{
+            width: screenSize.width < 640 ? '60px' : '75px'
+          }}>
             {/* Avatar at the top */}
             <div className="relative mb-1">
-              <div className={`rounded-full overflow-hidden ${player.team === 1 ? 'bg-red-500' : 'bg-blue-500'} p-1`} style={{ 
-                width: screenSize.width < 640 ? '36px' : '60px', 
-                height: screenSize.width < 640 ? '36px' : '60px' 
+              <div className="rounded-full overflow-hidden bg-gray-800/30 p-0.5" style={{ 
+                width: screenSize.width < 640 ? '36px' : '48px', 
+                height: screenSize.width < 640 ? '36px' : '48px' 
               }}>
                 <Image
                   src={getPlayerAvatar(player)}
                   alt="Player avatar"
-                  width={screenSize.width < 640 ? 32 : 50}
-                  height={screenSize.width < 640 ? 32 : 50}
+                  width={screenSize.width < 640 ? 32 : 44}
+                  height={screenSize.width < 640 ? 32 : 44}
                   className="w-full h-full object-cover rounded-full"
                 />
               </div>
@@ -803,35 +806,30 @@ export default function GameTable({
             </div>
             
             {/* Name below avatar */}
-            <div className={`text-center px-2 py-0.5 rounded-lg ${
-              player.team === 1 ? 'bg-red-500' : 'bg-blue-500'
-            } text-white font-semibold w-full`} style={{ 
-              fontSize: screenSize.width < 640 ? '10px' : '14px',
-              maxWidth: screenSize.width < 640 ? '60px' : '80px'
+            <div className="text-center text-white font-semibold w-full" style={{ 
+              fontSize: screenSize.width < 640 ? '10px' : '12px',
             }}>
               <div className="truncate">{player.name}</div>
             </div>
             
             {/* Made/Bid counter below name */}
-            <div className="mt-1">
-              <div className={`font-bold px-2 py-0.5 bg-white rounded-full ${
-                game.status === "WAITING" ? "text-gray-600" : 
-                madeCount < bidCount ? "text-red-600" : "text-green-600"
-              }`} style={{ 
+            <div className={`font-bold px-2 py-0.5 bg-white rounded-full ${
+              game.status === "WAITING" ? "text-gray-600" : 
+              madeCount < bidCount ? "text-red-600" : "text-green-600"
+            } mt-1`} style={{ 
+              fontSize: screenSize.width < 640 ? '10px' : '12px' 
+            }}>
+              {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
+            </div>
+            
+            {/* Show +1 animation when player wins a trick */}
+            {isWinningPlayer && (
+              <div className="text-green-400 font-bold animate-bounce mt-1 text-center" style={{ 
                 fontSize: screenSize.width < 640 ? '10px' : '14px' 
               }}>
-                {game.status === "WAITING" ? "0" : madeCount} <span className="opacity-60">/</span> {game.status === "WAITING" ? "0" : bidCount}
+                +1
               </div>
-              
-              {/* Show +1 animation when player wins a trick */}
-              {isWinningPlayer && (
-                <div className="text-green-400 font-bold animate-bounce mt-1 text-center" style={{ 
-                  fontSize: screenSize.width < 640 ? '10px' : '14px' 
-                }}>
-                  +1
-                </div>
-              )}
-            </div>
+            )}
           </div>
         ) : (
           // Top/bottom seats - horizontal layout with avatar on left
@@ -843,16 +841,16 @@ export default function GameTable({
           }}>
             {/* Avatar inside container */}
             <div className="relative mr-2">
-              <div className="rounded-full overflow-hidden" style={{ 
+              <div className="rounded-full overflow-hidden bg-gray-800/30 p-0.5" style={{ 
                 width: screenSize.width < 640 ? '32px' : '50px', 
                 height: screenSize.width < 640 ? '32px' : '50px' 
               }}>
                 <Image
                   src={getPlayerAvatar(player)}
                   alt="Player avatar"
-                  width={screenSize.width < 640 ? 32 : 50}
-                  height={screenSize.width < 640 ? 32 : 50}
-                  className="w-full h-full object-cover"
+                  width={screenSize.width < 640 ? 28 : 46}
+                  height={screenSize.width < 640 ? 28 : 46}
+                  className="w-full h-full object-cover rounded-full"
                 />
               </div>
               {player.isDealer && (
@@ -992,6 +990,12 @@ export default function GameTable({
         }
         
         // Don't start a new hand, game is over
+      socket.emit("update_scores", {
+        gameId: game.id,
+        team1Score: handScores.team1.score,
+        team2Score: handScores.team2.score,
+        startNewHand: true
+      });
       } else {
         // Game continues, update scores and start new hand
       socket.emit("update_scores", {
@@ -1129,118 +1133,130 @@ export default function GameTable({
   return (
     <>
       <LandscapePrompt />
-      <div className="flex flex-col h-screen bg-gray-900">
-        {/* Empty div for padding above header */}
-        <div className="h-8"></div>
-        
-        {/* Header */}
-        <div className="bg-gray-800 text-white px-4 py-2 flex justify-between items-center mb-2"
-             style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}>
-          <div className="flex items-center space-x-4">
-            <h2 className="font-bold" style={{ fontSize: `${Math.floor(18 * scaleFactor)}px` }}>Game #{game.id}</h2>
-            <div className="flex space-x-2">
-              <div>Status: {game.status}</div>
-              <div className="text-red-500">Score: {game.team1Score}</div>
-              <div className="text-blue-500">Score: {game.team2Score}</div>
-            </div>
-          </div>
-          <button
-            onClick={handleLeaveTable}
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
-            style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
-          >
-            Leave Table
-          </button>
-        </div>
-
-        {/* Main content area with added padding */}
-        <div className="flex flex-1 min-h-0 pt-1">
-          {/* Game table area - add padding on top and bottom */}
-          <div className="w-[70%] p-2 flex flex-col">
-            {/* Game table with more space at the top and bottom */}
-            <div className="relative flex-1 mb-3 mt-2" style={{ 
-              background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
-              borderRadius: `${Math.floor(64 * scaleFactor)}px`,
-              border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
-            }}>
-              {/* Players around the table */}
-              {[0, 1, 2, 3].map((position) => (
-                <div key={`player-position-${position}`}>
-                  {renderPlayerPosition(position)}
-                </div>
-              ))}
-
-              {/* Center content */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
-                  <button
-                    onClick={handleStartGame}
-                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
-                    style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
-                  >
-                    Start Game
-                  </button>
-                ) : game.status === "WAITING" && game.players.length < 4 ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Players</div>
-                    <div className="text-sm mt-1">{game.players.length}/4 joined</div>
+      <div className="flex h-screen bg-gray-900">
+        {/* Game table area - 70% */}
+        <div className="w-[70%] h-full p-2 flex flex-col">
+          {/* Game table with more vertical space */}
+          <div className="relative flex-1 overflow-hidden" style={{ 
+            background: 'radial-gradient(circle at center, #316785 0%, #1a3346 100%)',
+            borderRadius: `${Math.floor(64 * scaleFactor)}px`,
+            border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
+          }}>
+            {/* Leave table button in top left corner */}
+            <button
+              onClick={handleLeaveTable}
+              className="absolute top-3 left-3 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full z-10 shadow-lg"
+              title="Leave Table"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+            
+            {/* Scoreboard in top right corner */}
+            <div className="absolute top-3 right-3 flex gap-4 bg-gray-800/80 p-2 rounded-lg z-10 shadow-lg">
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-red-500 mr-1"></div>
+                <div className="text-white font-bold">{game.team1Score}</div>
+                {game.team1Bags > 0 && (
+                  <div className="ml-1 flex items-center" title={`${game.team1Bags} bags`}>
+                    <Image src="/bag.svg" alt="Bags" width={16} height={16} />
+                    <span className="text-xs text-yellow-300 ml-0.5">{game.team1Bags}</span>
                   </div>
-                ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Host</div>
-                    <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
-                  </div>
-                ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
-                  </div>
-                ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
-                  renderTrickCards()
-                ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
-                  <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="text-sm">
-                      Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
-                    </div>
-                  </div>
-                ) : null}
+                )}
               </div>
-
-              {/* Bidding interface */}
-              {game.status === "BIDDING" && (
-                <BiddingInterface
-                  onBid={handleBid}
-                  currentBid={orderedPlayers[0]?.bid}
-                  gameId={game.id}
-                  playerId={currentPlayerId || ''}
-                  currentPlayerTurn={game.currentPlayer}
-                />
-              )}
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-blue-500 mr-1"></div>
+                <div className="text-white font-bold">{game.team2Score}</div>
+                {game.team2Bags > 0 && (
+                  <div className="ml-1 flex items-center" title={`${game.team2Bags} bags`}>
+                    <Image src="/bag.svg" alt="Bags" width={16} height={16} />
+                    <span className="text-xs text-yellow-300 ml-0.5">{game.team2Bags}</span>
+                  </div>
+                )}
+              </div>
+              <div className="text-white text-xs bg-gray-700 px-2 py-0.5 rounded">
+                {game.status}
+              </div>
             </div>
 
-            {/* Cards area with more space */}
-            <div className="bg-gray-800/50 rounded-lg relative mt-2" 
-                 style={{ 
-                   height: `${Math.floor(120 * scaleFactor)}px`, 
-                   clipPath: 'inset(-100% 0 0 0)'
-                 }}>
+            {/* Players around the table */}
+            {[0, 1, 2, 3].map((position) => (
+              <div key={`player-position-${position}`}>
+                {renderPlayerPosition(position)}
+              </div>
+            ))}
+
+            {/* Center content */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
+                <button
+                  onClick={handleStartGame}
+                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
+                  style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
+                >
+                  Start Game
+                </button>
+              ) : game.status === "WAITING" && game.players.length < 4 ? (
+                <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="font-bold">Waiting for Players</div>
+                  <div className="text-sm mt-1">{game.players.length}/4 joined</div>
+                </div>
+              ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
+                <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="font-bold">Waiting for Host</div>
+                  <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
+                </div>
+              ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
+                <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
+                </div>
+              ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
+                renderTrickCards()
+              ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
+                <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="text-sm">
+                    Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Bidding interface */}
+            {game.status === "BIDDING" && (
+              <BiddingInterface
+                onBid={handleBid}
+                currentBid={orderedPlayers[0]?.bid}
+                gameId={game.id}
+                playerId={currentPlayerId || ''}
+                currentPlayerTurn={game.currentPlayer}
+              />
+            )}
+            
+            {/* Cards area moved inside the game board for more space */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full" 
+                style={{ 
+                  height: `${Math.floor(130 * scaleFactor)}px`, 
+                  clipPath: 'inset(-100% 0 0 0)'
+                }}>
               {renderPlayerHand()}
             </div>
           </div>
+        </div>
 
-          {/* Chat area - 30% */}
-          <div className="w-[30%] p-2">
-            <Chat 
-              socket={socket}
-              gameId={game.id}
-              userId={currentPlayerId || ''}
-              userName={currentPlayer?.name || 'Unknown'}
-              players={game.players}
-            />
-          </div>
+        {/* Chat area - 30% */}
+        <div className="w-[30%] h-full p-2">
+          <Chat 
+            socket={socket}
+            gameId={game.id}
+            userId={currentPlayerId || ''}
+            userName={currentPlayer?.name || 'Unknown'}
+            players={game.players}
+          />
         </div>
 
         {/* Hand Summary Modal */}

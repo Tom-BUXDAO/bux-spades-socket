@@ -116,20 +116,8 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
 
   return (
     <div className="flex flex-col h-full bg-gray-800 rounded-lg overflow-hidden">
-      {/* Chat header */}
-      <div className="bg-gray-900 p-2">
-        <h3 className="text-white font-bold" style={{ fontSize: `${headerFontSize}px` }}>Game Chat</h3>
-      </div>
-      
-      {/* Game status notifications */}
-      <div className="bg-red-900 text-white p-2 text-center" style={{ fontSize: `${fontSize}px` }}>
-        {socket?.connected ? 
-          (userId === gameId ? "Connected to game chat" : "Connected to game chat") : 
-          "Connecting to game..."}
-      </div>
-
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: `calc(100% - ${Math.floor(90 * scaleFactor)}px)` }}>
+      <div className="flex-1 overflow-y-auto p-3" style={{ backgroundColor: '#1a202c' }}>
         {messages.length === 0 ? (
           <div className="text-gray-400 text-center" style={{ fontSize: `${fontSize}px` }}>
             No messages yet. Start the conversation!

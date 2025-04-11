@@ -288,13 +288,8 @@ export default function Chat({ socket, gameId, userId, userName, players }: Chat
 
   return (
     <div className="flex flex-col h-full bg-gray-800 rounded-lg overflow-hidden border border-gray-600 shadow-lg">
-      {/* Chat header */}
-      <div className="bg-gray-900 p-2 border-b border-gray-600">
-        <h3 className="text-white font-bold" style={{ fontSize: `${mobileHeaderFontSize}px` }}>Game Chat</h3>
-      </div>
-      
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto p-3 bg-gray-850" style={{ maxHeight: `calc(100% - ${Math.floor(90 * scaleFactor)}px)`, backgroundColor: '#1a202c' }}>
+      <div className="flex-1 overflow-y-auto p-3 bg-gray-850" style={{ backgroundColor: '#1a202c' }}>
         {messages.length === 0 ? (
           <div className="text-gray-400 text-center" style={{ fontSize: `${mobileFontSize}px` }}>
             No messages yet. Start the conversation!
