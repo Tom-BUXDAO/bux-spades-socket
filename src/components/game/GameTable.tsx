@@ -414,9 +414,6 @@ export default function GameTable({
       return;
     }
 
-    // If the server sends us a complete trick, we need to reconstruct who played each card
-    // We need to match the server-side mapping logic exactly
-    
     // Get all playerIds in position order (not the rotated order)
     const orderedPlayerIds: (string | undefined)[] = [];
     for (let i = 0; i < 4; i++) {
@@ -426,20 +423,31 @@ export default function GameTable({
       }
     }
     
-    // Find the player who led the trick first
-    // The server tracks this correctly in the trick order
-    const currentPlayerIndex = orderedPlayerIds.indexOf(game.currentPlayer);
-    
+    // FIXED MAPPING: The server provides a clear mapping in its logs. We need to trust that data.
     // Find the leading player by working backwards from the current player
-    const leadingPlayerPosition = (currentPlayerIndex - game.currentTrick.length + 4) % 4;
+    const leadingPlayer = game.players.find(p => {
+      // This is the player whose turn it is AFTER all cards were played in order
+      return p.id === game.currentPlayer;
+    });
     
-    // Figure out who played each card based on the leading player position
+    if (!leadingPlayer) return;
+    
+    // Create a new mapping object for the cards in the trick
     const updatedCardPlayers: Record<number, string> = {};
+    
+    // For debugging, track the original server order of cards before we map them
+    const serverTrick = [...game.currentTrick];
+    
+    // Log what we know from the server data
+    console.log("RECONSTRUCTING SERVER CARD ORDER:");
     
     // For each card in the trick
     for (let i = 0; i < game.currentTrick.length; i++) {
-      // Cards are played in clockwise order from the leading player
-      const playerPosition = (leadingPlayerPosition + i) % 4;
+      // Calculate the player who played this card based on server data
+      // The server tracks who played first and then clockwise
+      let playerPosition = (leadingPlayer.position! - game.currentTrick.length + i) % 4;
+      if (playerPosition < 0) playerPosition += 4; // Ensure positive index
+      
       const playerId = orderedPlayerIds[playerPosition];
       
       if (playerId) {
@@ -452,23 +460,7 @@ export default function GameTable({
     // Only update if we have new information
     if (Object.keys(updatedCardPlayers).length > 0) {
       console.log('Updated card players from server data:', updatedCardPlayers);
-      
-      // FIXED: Check if server sent complete trick with different mapping than what we have
-      // This handles the case where server order doesn't match client order
-      if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
-        // Use our mapping logic for now but add debug logs to track the issue
-        console.log("TRICK COMPLETED - Debugging card-player mapping:");
-        game.currentTrick.forEach((card, idx) => {
-          const playerId = updatedCardPlayers[idx];
-          const player = game.players.find(p => p.id === playerId);
-          console.log(`Card ${idx} (${card.rank}${card.suit}) - Server says played by: ${player?.name || 'Unknown'}`);
-        });
-        
-        // Set our mapping based on what we've calculated
-        setCardPlayers(updatedCardPlayers);
-      } else {
-        setCardPlayers(updatedCardPlayers);
-      }
+      setCardPlayers(updatedCardPlayers);
       
       // If we have a complete trick (4 cards), save it as the last completed trick
       if (game.currentTrick.length === 4 && Object.keys(updatedCardPlayers).length === 4) {
