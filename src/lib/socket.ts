@@ -365,16 +365,16 @@ export function setupTrickCompletionDelay(
     // Update our record of the current trick
     if (currentTrick.length > 0) {
       lastTrick = [...currentTrick];
-      console.log('Updated lastTrick:', lastTrick.map(c => `${c.rank}${c.suit}`).join(', '));
+      console.log('Updated trick cards:', lastTrick.map(c => `${c.rank}${c.suit}`).join(', '));
     }
   };
   
-  // Listen for trick_winner events which give us the winning card directly
+  // Listen for trick_winner events directly from the server
   const handleTrickWinner = (data: TrickWinnerData) => {
     // Only process for our game
     if (data.gameId !== gameId) return;
     
-    console.log('TRICK WINNER EVENT:', data);
+    console.log('TRICK WINNER EVENT RECEIVED:', data);
     
     // Make sure we have a trick with cards
     if (lastTrick.length === 0) {
@@ -398,11 +398,49 @@ export function setupTrickCompletionDelay(
     if (winningIndex >= 0) {
       console.log(`Trick completed - winner is card ${winningIndex}`);
       
-      // Call the callback with the trick data
+      // Call the callback with the trick data to update UI
       onTrickComplete({ 
         trickCards: [...lastTrick], // Clone to avoid reference issues
         winningIndex 
       });
+      
+      // Prevent the game_update event from clearing the trick immediately
+      // This gives us time to show the winning animation
+      const handleGameUpdate = (gameData: any) => {
+        if (gameData.id !== gameId) return;
+        
+        // If this update would clear the trick (currentTrick is empty),
+        // we delay it to show the winning animation
+        if (gameData.currentTrick && gameData.currentTrick.length === 0) {
+          // Temporarily modify the game data to keep showing our completed trick
+          const modifiedData = {
+            ...gameData,
+            // Keep showing our trick cards for animation
+            currentTrick: lastTrick
+          };
+          
+          // Stop the default event
+          socket.removeListener('game_update', handleGameUpdate);
+          
+          // After our delay, broadcast the real data
+          setTimeout(() => {
+            socket.emit('game_update', gameData);
+          }, 3000);
+          
+          // Emit our modified version instead
+          return modifiedData;
+        }
+        
+        return gameData;
+      };
+      
+      // Listen for the game_update that would clear the trick
+      socket.on('game_update', handleGameUpdate);
+      
+      // Remove our listener after delay
+      setTimeout(() => {
+        socket.removeListener('game_update', handleGameUpdate);
+      }, 3500);
     }
   };
   
