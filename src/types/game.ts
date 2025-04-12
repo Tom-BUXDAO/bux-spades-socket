@@ -16,6 +16,7 @@ export interface Player {
   browserSessionId?: string;
   isDealer?: boolean;
   position?: number;
+  image?: string;
 }
 
 export type GameStatus = "WAITING" | "BIDDING" | "PLAYING" | "FINISHED";

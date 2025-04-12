@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import type { GameState, Card, Suit } from "@/types/game";
+import type { GameState, Card, Suit, Player } from "@/types/game";
 import type { Socket } from "socket.io-client";
 import { useSocket, sendChatMessage, debugTrickWinner, setupTrickCompletionDelay } from "@/lib/socket";
 import Chat from './Chat';
@@ -36,6 +36,7 @@ const BOT_AVATAR = "/guest-avatar.png";
 
 // Helper function to get card image filename
 function getCardImage(card: Card): string {
+  if (!card) return 'back.png';
   const rankMap: Record<number, string> = {
     2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
     11: 'J', 12: 'Q', 13: 'K', 14: 'A'
@@ -795,30 +796,9 @@ export default function GameTable({
     };
 
     // Get player avatar
-    const getPlayerAvatar = (player: any): string => {
-      // If player has their own image property, use that first
-      if (player.image) {
-        return player.image;
-      }
-      
-      // If player matches the current user and we have their image
-      if (player.id === currentPlayerId && propUser?.image) {
-        return propUser.image;
-      }
-      
-      // Discord user ID (numeric string)
-      if (player.id && /^\d+$/.test(player.id)) {
-        // For Discord users without an avatar hash or with invalid avatar, use the default Discord avatar
-        return `https://cdn.discordapp.com/embed/avatars/${parseInt(player.id) % 5}.png`;
-      }
-      
-      // Guest user, use default avatar
-      if (player.id && player.id.startsWith('guest_')) {
-        return GUEST_AVATAR;
-      }
-      
-      // Fallback to bot avatar
-      return BOT_AVATAR;
+    const getPlayerAvatar = (player: Player | null) => {
+      if (!player) return '/guest-avatar.png';
+      return player.image || `/guest-avatar.png`;
     };
 
     // Determine if this is a left/right seat (position 1 or 3)
@@ -862,26 +842,27 @@ export default function GameTable({
                     `bg-gradient-to-r ${teamAccentColor} to-white/80`}
                 `}>
                   <div className="bg-gray-900 rounded-full p-0.5">
-            <Image
-              src={getPlayerAvatar(player)}
+                    <Image
+                      src={getPlayerAvatar(player)}
                       alt={player.name || "Player"}
                       width={avatarWidth}
                       height={avatarHeight}
                       className="rounded-full object-cover"
-            />
-          </div>
+                      priority={true}
+                    />
+                  </div>
                   
                   {/* Dealer chip with premium styling */}
-          {player.isDealer && (
+                  {player.isDealer && (
                     <div className="absolute -bottom-1 -right-1">
                       <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-md">
                         <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center">
                           <span className="text-[8px] font-bold text-yellow-200">D</span>
                         </div>
                       </div>
-            </div>
-          )}
-        </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex flex-col items-center gap-1">
@@ -926,6 +907,7 @@ export default function GameTable({
                       width={avatarWidth}
                       height={avatarHeight}
                       className="rounded-full object-cover"
+                      priority={true}
                     />
                   </div>
                   
@@ -1036,10 +1018,11 @@ export default function GameTable({
                   alt={`${card.rank}${card.suit}`}
                   width={cardUIWidth}
                   height={cardUIHeight}
-                    className={`rounded-lg shadow-md ${
-                      isPlayable ? 'hover:shadow-lg' : ''
+                  className={`rounded-lg shadow-md ${
+                    isPlayable ? 'hover:shadow-lg' : ''
                   }`}
                   style={{ width: 'auto', height: 'auto' }}
+                  priority={true}
                 />
                 {!isPlayable && (
                   <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
@@ -1280,7 +1263,7 @@ export default function GameTable({
                   <span className="text-white font-bold mr-1 text-sm">{game.team1Score}</span>
                   {/* Team 1 Bags */}
                   <div className="flex items-center text-yellow-300" title={`Team 1 Bags: ${game.team1Bags || 0}`}>
-                    <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" />
+                    <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" priority={true} />
                     <span className="text-xs">{game.team1Bags || 0}</span>
                   </div>
         </div>
@@ -1291,7 +1274,7 @@ export default function GameTable({
                   <span className="text-white font-bold mr-1 text-sm">{game.team2Score}</span>
                   {/* Team 2 Bags */}
                   <div className="flex items-center text-yellow-300" title={`Team 2 Bags: ${game.team2Bags || 0}`}>
-                    <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" />
+                    <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" priority={true} />
                     <span className="text-xs">{game.team2Bags || 0}</span>
                   </div>
                 </div>
