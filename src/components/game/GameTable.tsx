@@ -565,7 +565,7 @@ export default function GameTable({
           {/* Center column container */}
           <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
             {/* North card container */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
               {game.currentTrick.map((card, index) => (
                 cardPositions[index] === 2 && (
                   <Image
@@ -581,7 +581,7 @@ export default function GameTable({
             </div>
 
             {/* South card container */}
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
               {game.currentTrick.map((card, index) => (
                 cardPositions[index] === 0 && (
                   <Image
@@ -598,7 +598,7 @@ export default function GameTable({
           </div>
 
           {/* Left column - positioned 50% of its width left of center */}
-          <div className="absolute left-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
+          <div className="absolute left-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] w-[33.33%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => (
               cardPositions[index] === 1 && (
                 <Image
@@ -614,7 +614,7 @@ export default function GameTable({
           </div>
 
           {/* Right column - positioned 50% of its width right of center */}
-          <div className="absolute right-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
+          <div className="absolute right-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] w-[33.33%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => (
               cardPositions[index] === 3 && (
                 <Image
@@ -1266,10 +1266,10 @@ export default function GameTable({
                   {/* Center column container */}
                   <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
                     {/* North card container */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
                     </div>
                     {/* South card container */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
                     </div>
                   </div>
 
