@@ -391,10 +391,16 @@ export default function GameTable({
       if (isFirstTrickOfHand) {
         // For the first trick, the lead is left of dealer
         const dealer = game.players.find(p => p.isDealer);
-        // @ts-ignore - position property might not be on the type yet
-        const dealerPosition = dealer?.position ?? 0;
-        leadPosition = (dealerPosition + 1) % 4;
-        console.log(`First trick of hand - Lead is left of dealer (${dealer?.name}) at position ${leadPosition}`);
+        if (!dealer) {
+          console.error('Could not find dealer for first trick');
+          // Fallback to first player
+          leadPosition = 0;
+        } else {
+          // @ts-ignore - position property might not be on the type yet
+          const dealerPosition = dealer.position ?? game.players.indexOf(dealer);
+          leadPosition = (dealerPosition + 1) % 4;
+          console.log(`First trick of hand - Lead is left of dealer ${dealer.name} (pos ${dealerPosition}) -> lead pos ${leadPosition}`);
+        }
       } else {
         // For subsequent tricks, the lead is the winner of the previous trick
         const leadPlayer = game.players.find(p => p.id === game.currentPlayer);
@@ -578,10 +584,16 @@ export default function GameTable({
       if (isFirstTrickOfHand) {
         // For the first trick, the lead is left of dealer
         const dealer = game.players.find(p => p.isDealer);
-        // @ts-ignore - position property might not be on the type yet
-        const dealerPosition = dealer?.position ?? 0;
-        leadPosition = (dealerPosition + 1) % 4;
-        console.log(`First trick of hand - Lead is left of dealer (${dealer?.name}) at position ${leadPosition}`);
+        if (!dealer) {
+          console.error('Could not find dealer for first trick');
+          // Fallback to first player
+          leadPosition = 0;
+        } else {
+          // @ts-ignore - position property might not be on the type yet
+          const dealerPosition = dealer.position ?? game.players.indexOf(dealer);
+          leadPosition = (dealerPosition + 1) % 4;
+          console.log(`First trick of hand - Lead is left of dealer ${dealer.name} (pos ${dealerPosition}) -> lead pos ${leadPosition}`);
+        }
       } else {
         // For subsequent tricks, the lead is the winner of the previous trick
         const leadPlayer = game.players.find(p => p.id === game.currentPlayer);
