@@ -372,7 +372,7 @@ export default function GameTable({
   // Add a function to determine lead position
   const getLeadPosition = () => {
     // For the first trick of a hand, lead is left of dealer
-    const isFirstTrickOfHand = game.completedTricks.length === 0;
+    const isFirstTrickOfHand = game.completedTricks.length === 0 && game.currentTrick.length === 0;
     
     if (isFirstTrickOfHand) {
       const dealer = game.players.find(p => p.isDealer);
@@ -389,17 +389,17 @@ export default function GameTable({
     
     // For continuing tricks, if first card is played, use that player's position
     if (game.currentTrick.length > 0) {
-      const firstCardPlayerId = cardPlayers[0];
-      const firstCardPlayer = game.players.find(p => p.id === firstCardPlayerId);
+      // Find the player who played the first card of the trick
+      const firstCardPlayer = game.players.find(p => p.id === game.currentPlayer);
       if (firstCardPlayer) {
         // @ts-ignore - position property might not be on the type yet
         const pos = firstCardPlayer.position ?? game.players.indexOf(firstCardPlayer);
-        console.log(`Continuing trick - Lead player is ${firstCardPlayer.name} at position ${pos}`);
+        console.log(`Current trick - First card played by ${firstCardPlayer.name} at position ${pos}`);
         return pos;
       }
     }
     
-    // For new tricks after first trick, lead is the winner of previous trick
+    // For new tricks, lead is the current player (who is about to play)
     const leadPlayer = game.players.find(p => p.id === game.currentPlayer);
     if (leadPlayer) {
       // @ts-ignore - position property might not be on the type yet
