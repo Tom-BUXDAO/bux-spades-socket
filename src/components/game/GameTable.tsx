@@ -607,8 +607,8 @@ export default function GameTable({
       
       // Calculate the relative position from current player's viewpoint
       // This transforms the absolute table position to a relative view position
-      // We subtract from 4 and take modulo 4 to rotate clockwise
-      const relativePosition = (4 - ((4 + playerPosition - currentPlayerPosition) % 4)) % 4;
+      // We need to rotate clockwise from the current player's position
+      const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
       
       console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}, played by ${cardPlayers[index] || 'unknown'}`);
       
