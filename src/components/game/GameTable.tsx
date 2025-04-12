@@ -1271,23 +1271,82 @@ export default function GameTable({
               <div className="absolute inset-0 flex items-center justify-center">
                 {/* Play area container - always visible */}
                 <div className="relative w-[calc(100%-140px)] h-[calc(100%-160px)] mx-auto border-2 border-white/30">
-                  {/* Center column container */}
-                  <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
-                    {/* North card container */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
-                    </div>
-                    {/* South card container */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
-                    </div>
-                  </div>
+                  {(() => {
+                    const cardPositions = [0, 1, 2, 3]; // [South, West, North, East]
+                    return (
+                      <>
+                        {/* Center column container */}
+                        <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
+                          {/* North card container */}
+                          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+                            {game.currentTrick.map((card, index) => (
+                              cardPositions[index] === 2 && (
+                                <Image
+                                  key={`${card.suit}-${card.rank}`}
+                                  src={`/cards/${card.rank}_of_${card.suit}.svg`}
+                                  alt={`${card.rank} of ${card.suit}`}
+                                  width={84}
+                                  height={120}
+                                  quality={100}
+                                  priority={true}
+                                />
+                              )
+                            ))}
+                          </div>
+                          {/* South card container */}
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+                            {game.currentTrick.map((card, index) => (
+                              cardPositions[index] === 0 && (
+                                <Image
+                                  key={`${card.suit}-${card.rank}`}
+                                  src={`/cards/${card.rank}_of_${card.suit}.svg`}
+                                  alt={`${card.rank} of ${card.suit}`}
+                                  width={84}
+                                  height={120}
+                                  quality={100}
+                                  priority={true}
+                                />
+                              )
+                            ))}
+                          </div>
+                        </div>
 
-                  {/* Left column - 20px gap from center */}
-                  <div className="absolute left-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 -translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center border border-white/30">
-                  </div>
+                        {/* West card container */}
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] w-[33.33%] flex items-center justify-center border border-white/30">
+                          {game.currentTrick.map((card, index) => (
+                            cardPositions[index] === 1 && (
+                              <Image
+                                key={`${card.suit}-${card.rank}`}
+                                src={`/cards/${card.rank}_of_${card.suit}.svg`}
+                                alt={`${card.rank} of ${card.suit}`}
+                                width={84}
+                                height={120}
+                                quality={100}
+                                priority={true}
+                              />
+                            )
+                          ))}
+                        </div>
 
-                  {/* Right column - 20px gap from center */}
-                  <div className="absolute right-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center border border-white/30">
-                  </div>
+                        {/* East card container */}
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] w-[33.33%] flex items-center justify-center border border-white/30">
+                          {game.currentTrick.map((card, index) => (
+                            cardPositions[index] === 3 && (
+                              <Image
+                                key={`${card.suit}-${card.rank}`}
+                                src={`/cards/${card.rank}_of_${card.suit}.svg`}
+                                alt={`${card.rank} of ${card.suit}`}
+                                width={84}
+                                height={120}
+                                quality={100}
+                                priority={true}
+                              />
+                            )
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
