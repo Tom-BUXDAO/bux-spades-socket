@@ -808,7 +808,55 @@ export default function GameTable({
           transition-all duration-200 relative
         `}>
           {/* Player info and avatar */}
-          {/* ... existing player info code ... */}
+          <div className={`
+            flex items-center gap-2 p-2
+            ${position === 1 ? 'flex-row' : 
+              position === 3 ? 'flex-row-reverse' : 
+              position === 0 ? 'flex-col' : 'flex-col-reverse'}
+          `}>
+            {/* Avatar */}
+            <div className={`
+              relative rounded-full overflow-hidden
+              ${isMobile ? 
+                (position === 0 || position === 2 ? 'w-[26px] h-[26px]' : 'w-[28px] h-[28px]') : 
+                'w-[32px] h-[32px]'}
+            `}>
+              <Image
+                src={player.avatar || '/default-avatar.png'}
+                alt={`${player.name}'s avatar`}
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+              />
+              {isActive && (
+                <div className="absolute inset-0 ring-2 ring-yellow-400 rounded-full animate-pulse" />
+              )}
+            </div>
+
+            {/* Player name and bid/tricks */}
+            <div className={`
+              flex
+              ${position === 1 ? 'flex-col items-start' :
+                position === 3 ? 'flex-col items-end' :
+                'items-center'}
+            `}>
+              <span className={`
+                font-medium truncate
+                ${isMobile ? 'text-[9px]' : 'text-sm'}
+                ${player.team === 1 ? 'text-red-400' : 'text-blue-400'}
+              `}>
+                {player.name}
+              </span>
+              <span className={`
+                ${isMobile ? 'text-[8px]' : 'text-xs'}
+                text-gray-300
+              `}>
+                {game.status === "BIDDING" ? 
+                  (player.bid !== undefined ? `Bid: ${player.bid}` : "Bidding...") :
+                  (player.tricks !== undefined ? `Tricks: ${player.tricks}` : "0")}
+              </span>
+            </div>
+          </div>
 
           {/* Trick card */}
           {playedCard && (
