@@ -1243,13 +1243,15 @@ export default function GameTable({
                     <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
                   </div>
                 ) : game.status === "BIDDING" && game.currentPlayer === currentPlayerId ? (
-                  <BiddingInterface
-                    onBid={handleBid}
-                    currentBid={orderedPlayers[0]?.bid}
-                    gameId={game.id}
-                    playerId={currentPlayerId}
-                    currentPlayerTurn={game.currentPlayer}
-                  />
+                  <div className="flex items-center justify-center w-full h-full">
+                    <BiddingInterface
+                      onBid={handleBid}
+                      currentBid={orderedPlayers[0]?.bid}
+                      gameId={game.id}
+                      playerId={currentPlayerId}
+                      currentPlayerTurn={game.currentPlayer}
+                    />
+                  </div>
                 ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
                   <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
                        style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>

@@ -9,8 +9,8 @@ interface BiddingProps {
 }
 
 export default function BiddingInterface({ onBid, currentBid, gameId, playerId, currentPlayerTurn }: BiddingProps) {
-  const [selectedBid, setSelectedBid] = useState<number | undefined>(undefined);
-  const [submitting, setSubmitting] = useState(false);
+  const [selectedBid, setSelectedBid] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isMyTurn = playerId === currentPlayerTurn;
 
   // Add debugging for turn changes
@@ -18,7 +18,7 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
     console.log(`BiddingInterface: Turn check - My ID: ${playerId}, Current Turn: ${currentPlayerTurn}, Is My Turn: ${isMyTurn}`);
     if (isMyTurn) {
       console.log(`BiddingInterface: It's my turn to bid`);
-      setSubmitting(false);
+      setIsSubmitting(false);
     } else {
       console.log(`BiddingInterface: Not my turn to bid, hiding interface`);
     }
@@ -33,7 +33,7 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
       if (!stillMyTurn && isMyTurn) {
         console.log(`BiddingInterface: Turn changed, forcing hide`);
         // Force a re-render by updating state
-        setSubmitting(true);
+        setIsSubmitting(true);
       }
     };
     
@@ -53,81 +53,62 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   const currentlyMyTurn = playerId === currentPlayerTurn;
   
   // Extra safeguard - hide if not my turn or if we're submitting
-  if (!currentlyMyTurn || submitting) {
-    console.log(`BiddingInterface: Hiding - currentlyMyTurn: ${currentlyMyTurn}, submitting: ${submitting}`);
+  if (!currentlyMyTurn || isSubmitting) {
+    console.log(`BiddingInterface: Hiding - currentlyMyTurn: ${currentlyMyTurn}, submitting: ${isSubmitting}`);
     return null;
   }
 
-  const handleBidSelect = (bid: number) => {
+  const handleBidClick = (bid: number) => {
     setSelectedBid(bid);
   };
 
-  const handleConfirm = () => {
-    if (selectedBid !== undefined) {
-      setSubmitting(true);
-      // Submit the bid
-      onBid(selectedBid);
-      
-      // Force hide the bidding interface immediately after submitting
-      // This is a workaround in case the game state doesn't update fast enough
-      setTimeout(() => {
-        if (playerId === currentPlayerTurn) {
-          console.log("Forcing bidding interface to hide - turn should have changed");
-          // Force the component to return null by emulating a turn change
-          setSubmitting(true);
-        }
-      }, 500);
-    }
+  const handleSubmit = () => {
+    if (selectedBid === null) return;
+    setIsSubmitting(true);
+    onBid(selectedBid);
   };
 
-  return (
-    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800/90 p-4 rounded-lg shadow-lg border-2 border-yellow-400 z-50 w-[90%] max-w-sm mx-auto">
-      <div className="text-yellow-400 text-lg mb-2 text-center font-bold">Make Your Bid</div>
-      <div className="flex flex-col gap-1">
-        {/* Responsive grid of bid options */}
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
-            <button
-              key={num}
-              onClick={() => handleBidSelect(num)}
-              disabled={submitting}
-              className={`w-12 h-12 rounded-md text-lg ${
-                selectedBid === num
-                  ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
-                  : 'bg-gray-600 hover:bg-gray-500 text-white'
-              } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {num}
-            </button>
-          ))}
-        </div>
+  // Calculate available bids (0-13)
+  const availableBids = Array.from({ length: 14 }, (_, i) => i);
 
-        {/* Special bids and confirm */}
-        <div className="flex gap-2 justify-between mt-2">
-          <button
-            onClick={() => handleBidSelect(0)}
-            disabled={submitting}
-            className={`flex-1 h-12 rounded-md text-lg ${
-              selectedBid === 0
-                ? 'bg-blue-600 text-white ring-2 ring-yellow-400'
-                : 'bg-gray-600 hover:bg-gray-500 text-white'
-            } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            Nil
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={selectedBid === undefined || submitting}
-            className={`flex-1 h-12 rounded-md text-lg ${
-              selectedBid !== undefined && !submitting
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {submitting ? 'Submitting...' : 'Confirm'}
-          </button>
-        </div>
+  return (
+    <div className="w-[60%] h-[60%] bg-gray-800/95 backdrop-blur-sm rounded-xl p-4 shadow-xl flex flex-col">
+      <div className="text-center mb-4">
+        <h2 className="text-xl font-bold text-white mb-2">Make Your Bid</h2>
+        {currentBid !== undefined && (
+          <p className="text-gray-300 text-sm">Current bid: {currentBid}</p>
+        )}
       </div>
+
+      <div className="flex-1 grid grid-cols-4 gap-2 mb-4">
+        {availableBids.map((bid) => (
+          <button
+            key={bid}
+            onClick={() => handleBidClick(bid)}
+            className={`
+              rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105
+              ${selectedBid === bid 
+                ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
+                : 'bg-gray-700 text-white hover:bg-gray-600'}
+            `}
+          >
+            {bid}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={handleSubmit}
+        disabled={selectedBid === null || isSubmitting}
+        className={`
+          w-full py-3 rounded-lg text-lg font-bold transition-all
+          ${selectedBid !== null && !isSubmitting
+            ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105'
+            : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
+        `}
+      >
+        {isSubmitting ? 'Submitting...' : 'Confirm Bid'}
+      </button>
     </div>
   );
 } 
