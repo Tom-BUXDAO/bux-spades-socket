@@ -565,32 +565,36 @@ export default function GameTable({
           {/* Center column container */}
           <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
             {/* North card container */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center">
               {game.currentTrick.map((card, index) => (
                 cardPositions[index] === 2 && (
                   <Image
                     key={`${card.rank}${card.suit}`}
                     src={`/cards/${getCardImage(card)}`}
                     alt={`${card.rank}${card.suit}`}
-                    width={60}
-                    height={84}
+                    width={84}
+                    height={120}
                     className="h-full w-auto object-contain"
+                    quality={100}
+                    priority={true}
                   />
                 )
               ))}
             </div>
 
             {/* South card container */}
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center">
               {game.currentTrick.map((card, index) => (
                 cardPositions[index] === 0 && (
                   <Image
                     key={`${card.rank}${card.suit}`}
                     src={`/cards/${getCardImage(card)}`}
                     alt={`${card.rank}${card.suit}`}
-                    width={60}
-                    height={84}
+                    width={84}
+                    height={120}
                     className="h-full w-auto object-contain"
+                    quality={100}
+                    priority={true}
                   />
                 )
               ))}
@@ -598,32 +602,36 @@ export default function GameTable({
           </div>
 
           {/* Left column - positioned 50% of its width left of center */}
-          <div className="absolute left-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] w-[33.33%] flex items-center justify-center">
+          <div className="absolute left-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] w-[33.33%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => (
               cardPositions[index] === 1 && (
                 <Image
                   key={`${card.rank}${card.suit}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank}${card.suit}`}
-                  width={60}
-                  height={84}
+                  width={84}
+                  height={120}
                   className="h-full w-auto object-contain"
+                  quality={100}
+                  priority={true}
                 />
               )
             ))}
           </div>
 
           {/* Right column - positioned 50% of its width right of center */}
-          <div className="absolute right-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] w-[33.33%] flex items-center justify-center">
+          <div className="absolute right-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] w-[33.33%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => (
               cardPositions[index] === 3 && (
                 <Image
                   key={`${card.rank}${card.suit}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank}${card.suit}`}
-                  width={60}
-                  height={84}
+                  width={84}
+                  height={120}
                   className="h-full w-auto object-contain"
+                  quality={100}
+                  priority={true}
                 />
               )
             ))}
@@ -1266,10 +1274,10 @@ export default function GameTable({
                   {/* Center column container */}
                   <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
                     {/* North card container */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center">
                     </div>
                     {/* South card container */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] flex items-center justify-center">
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center">
                     </div>
                   </div>
 
