@@ -381,78 +381,56 @@ export default function GameTable({
       return;
     }
 
-    // We need the lead player for this trick (the one who played the first card)
-    // This lead player is determined by the last trick winner, or dealer+1 for the first trick
-    // @ts-ignore - leadPosition and dealerPosition might not be on the type yet
-    const leadPosition = game.leadPosition !== undefined 
-      ? game.leadPosition 
-      // @ts-ignore - dealerPosition might not be on the type yet
-      : game.dealerPosition !== undefined 
-        ? (game.dealerPosition + 1) % 4 
-        : 0;
-
-    console.log(`Determining players for trick - lead position: ${leadPosition}`);
+    // Get the lead player's position for this trick
+    let leadPosition: number;
     
-    // Find the lead player who started this trick
-    const leadPlayer = game.players.find(p => {
+    if (game.currentTrick.length === 0) {
+      // For a new trick, the lead player is the winner of the previous trick
+      const leadPlayer = game.players.find(p => p.id === game.currentPlayer);
       // @ts-ignore - position property might not be on the type yet
-      return p.position === leadPosition;
-    });
-    
-    if (!leadPlayer) {
-      console.warn(`⚠️ Could not find lead player at position ${leadPosition}`);
-      return;
+      leadPosition = leadPlayer?.position ?? 0;
+      console.log(`New trick - Lead player is ${leadPlayer?.name} at position ${leadPosition}`);
+    } else {
+      // For a continuing trick, use the player who played the first card
+      const firstCardPlayerId = cardPlayers[0];
+      const firstCardPlayer = game.players.find(p => p.id === firstCardPlayerId);
+      // @ts-ignore - position property might not be on the type yet
+      leadPosition = firstCardPlayer?.position ?? 0;
+      console.log(`Continuing trick - Lead player is ${firstCardPlayer?.name} at position ${leadPosition}`);
     }
+
+    console.log(`Lead position for trick: ${leadPosition}`);
     
-    console.log(`📌 Lead player for this trick: ${leadPlayer.name} (position ${leadPosition})`);
+    // Initialize array to store card positions
+    const cardPositions: number[] = [];
     
-    // The player order follows clockwise from the lead player
-    const updatedCardPlayers: Record<number, string> = {};
-    
-    // Map each card to the player who played it based on turn order
+    // Map each card to its relative position
     game.currentTrick.forEach((card, index) => {
-      // Calculate which position played this card (leadPosition + index) % 4
+      // Calculate which position played this card based on lead position
       const playerPosition = (leadPosition + index) % 4;
-      
-      // Find the player at this position
       const player = game.players.find(p => {
         // @ts-ignore - position property might not be on the type yet
         return p.position === playerPosition;
       });
       
-      if (player) {
-        updatedCardPlayers[index] = player.id;
-        console.log(`🃏 Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerPosition}`);
-      } else {
-        console.warn(`⚠️ Could not find player at position ${playerPosition} for card ${index}`);
+      if (!player) {
+        console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
+        return;
       }
-    });
-    
-    // Only update the state if we have new information
-    if (Object.keys(updatedCardPlayers).length > Object.keys(cardPlayers).length) {
-      console.log("📊 Updating card players mapping:", updatedCardPlayers);
-        setCardPlayers(updatedCardPlayers);
-      }
+
+      // @ts-ignore - position property might not be on the type yet
+      const absolutePosition = player.position ?? game.players.indexOf(player);
       
-    // For a complete trick, process the winner
-    if (game.currentTrick.length === 4) {
-        const winningCardIndex = determineWinningCard(game.currentTrick);
-      if (winningCardIndex !== null && winningCardIndex !== undefined) {
-          const winningPlayerId = updatedCardPlayers[winningCardIndex];
-          const winningPlayer = game.players.find(p => p.id === winningPlayerId);
-        
-        if (winningPlayer) {
-          console.log(`🏆 Winner determined: ${winningPlayer.name} with card ${winningCardIndex} (${game.currentTrick[winningCardIndex].rank}${game.currentTrick[winningCardIndex].suit})`);
-          setWinningCardIndex(winningCardIndex);
-          setWinningPlayerId(winningPlayerId);
-          setShowWinningCardHighlight(true);
-          completedTrickCardPlayers.current = updatedCardPlayers;
-        }
-      }
-    }
-  }, [game.currentTrick, game.players, 
-    // @ts-ignore - leadPosition and dealerPosition might not be on the type yet
-    game.leadPosition, game.dealerPosition, cardPlayers]);
+      // Calculate relative position from current player's view
+      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
+      
+      console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
+      
+      cardPositions[index] = relativePosition;
+    });
+
+    console.log('Final card positions relative to current player:', cardPositions);
+  }, [game.currentTrick, game.players, cardPlayers, currentPlayerPosition]);
 
   // When playing a card, we now rely solely on server data for tracking
   const handlePlayCard = (card: Card) => {
@@ -579,34 +557,36 @@ export default function GameTable({
     const cardPositions: number[] = [];
     
     // Get the lead player's position for this trick
-    // @ts-ignore - leadPosition might not be on the type yet
-    const leadPosition = game.leadPosition !== undefined 
-      ? game.leadPosition 
-      // @ts-ignore - dealerPosition might not be on the type yet
-      : game.dealerPosition !== undefined 
-        ? (game.dealerPosition + 1) % 4 
-        : 0;
+    let leadPosition: number;
+    
+    if (game.currentTrick.length === 0) {
+      // For a new trick, the lead player is the winner of the previous trick
+      const leadPlayer = game.players.find(p => p.id === game.currentPlayer);
+      // @ts-ignore - position property might not be on the type yet
+      leadPosition = leadPlayer?.position ?? 0;
+      console.log(`New trick - Lead player is ${leadPlayer?.name} at position ${leadPosition}`);
+    } else {
+      // For a continuing trick, use the player who played the first card
+      const firstCardPlayerId = cardPlayers[0];
+      const firstCardPlayer = game.players.find(p => p.id === firstCardPlayerId);
+      // @ts-ignore - position property might not be on the type yet
+      leadPosition = firstCardPlayer?.position ?? 0;
+      console.log(`Continuing trick - Lead player is ${firstCardPlayer?.name} at position ${leadPosition}`);
+    }
 
-    console.log("Lead position for trick:", leadPosition);
+    console.log(`Lead position for trick: ${leadPosition}`);
     
     // Map each card to its relative position
     game.currentTrick.forEach((card, index) => {
-      // First try to get the player from cardPlayers mapping
-      const playerId = cardPlayers[index];
-      let player = playerId ? game.players.find(p => p.id === playerId) : null;
-
-      // If we couldn't find the player from cardPlayers, calculate based on turn order
-      if (!player) {
-        // Calculate which position played this card based on lead position
-        const playerPosition = (leadPosition + index) % 4;
-        player = game.players.find(p => {
-          // @ts-ignore - position property might not be on the type yet
-          return p.position === playerPosition;
-        });
-      }
+      // Calculate which position played this card based on lead position
+      const playerPosition = (leadPosition + index) % 4;
+      const player = game.players.find(p => {
+        // @ts-ignore - position property might not be on the type yet
+        return p.position === playerPosition;
+      });
       
       if (!player) {
-        console.warn(`Could not find player for card ${index} - skipping position calculation`);
+        console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
         return;
       }
 
