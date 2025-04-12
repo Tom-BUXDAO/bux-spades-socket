@@ -560,8 +560,8 @@ export default function GameTable({
     }
 
     // Card dimensions for the trick
-    const trickCardWidth = isMobile ? 35 : 60;  // Reduced from 45 to 35 for mobile
-    const trickCardHeight = isMobile ? 50 : 84; // Reduced from 65 to 50 for mobile
+    const trickCardWidth = isMobile ? 35 : 60;
+    const trickCardHeight = isMobile ? 50 : 84;
     
     // Check if the trick is complete (all 4 cards played)
     const isTrickComplete = game.currentTrick.length === 4;
@@ -574,10 +574,10 @@ export default function GameTable({
 
     // Define base positions for each card in the trick (NESW order)
     const basePositions = [
-      { top: '65%', left: '50%', transform: 'translate(-50%, 0)', label: 'South' },   // Bottom
-      { top: '50%', left: '15%', transform: 'translate(0, -50%)', label: 'West' },    // Left
-      { top: '35%', left: '50%', transform: 'translate(-50%, 0)', label: 'North' },   // Top
-      { top: '50%', left: '85%', transform: 'translate(0, -50%)', label: 'East' },    // Right
+      { top: 'calc(100% - 80px)', left: '50%', transform: 'translate(-50%, 0)', label: 'South' },   // Bottom
+      { top: '50%', left: '20px', transform: 'translate(0, -50%)', label: 'West' },    // Left
+      { top: '80px', left: '50%', transform: 'translate(-50%, 0)', label: 'North' },   // Top
+      { top: '50%', left: 'calc(100% - 20px)', transform: 'translate(-100%, -50%)', label: 'East' },    // Right
     ];
 
     // Get the lead position using our consolidated function
@@ -615,8 +615,8 @@ export default function GameTable({
     console.log('Final card positions relative to current player:', cardPositions);
 
     return (
-      <div className={`absolute inset-0 flex items-center justify-center`}>
-        <div className="relative w-full h-full">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative w-full h-full max-w-[600px] max-h-[400px] mx-auto">
           {game.currentTrick.map((card, index) => {
             // Determine if this is the winning card
             const isWinningCard = isTrickComplete && (index === winningIndex);
