@@ -560,8 +560,8 @@ export default function GameTable({
     }
 
     // Card dimensions for the trick
-    const trickCardWidth = isMobile ? 45 : 60;
-    const trickCardHeight = isMobile ? 65 : 84;
+    const trickCardWidth = isMobile ? 35 : 60;  // Reduced from 45 to 35 for mobile
+    const trickCardHeight = isMobile ? 50 : 84; // Reduced from 65 to 50 for mobile
     
     // Check if the trick is complete (all 4 cards played)
     const isTrickComplete = game.currentTrick.length === 4;
@@ -574,10 +574,10 @@ export default function GameTable({
 
     // Define base positions for each card in the trick (NESW order)
     const basePositions = [
-      { top: '50%', left: '50%', transform: 'translate(-50%, 50%)', label: 'South' },   // Bottom (0)
-      { top: '50%', left: '50%', transform: 'translate(-150%, -50%)', label: 'West' },  // Left (1)
-      { top: '50%', left: '50%', transform: 'translate(-50%, -150%)', label: 'North' }, // Top (2)
-      { top: '50%', left: '50%', transform: 'translate(50%, -50%)', label: 'East' },    // Right (3)
+      { top: '65%', left: '50%', transform: 'translate(-50%, 0)', label: 'South' },   // Bottom
+      { top: '50%', left: '15%', transform: 'translate(0, -50%)', label: 'West' },    // Left
+      { top: '35%', left: '50%', transform: 'translate(-50%, 0)', label: 'North' },   // Top
+      { top: '50%', left: '85%', transform: 'translate(0, -50%)', label: 'East' },    // Right
     ];
 
     // Get the lead position using our consolidated function
@@ -616,7 +616,7 @@ export default function GameTable({
 
     return (
       <div className={`absolute inset-0 flex items-center justify-center`}>
-        <div className={`w-[${isMobile ? 150 : 200}px] h-[${isMobile ? 150 : 200}px] rounded-lg relative`}>
+        <div className="relative w-full h-full">
           {game.currentTrick.map((card, index) => {
             // Determine if this is the winning card
             const isWinningCard = isTrickComplete && (index === winningIndex);
@@ -625,8 +625,8 @@ export default function GameTable({
             const positionIndex = cardPositions[index];
             const position = basePositions[positionIndex];
           
-          return (
-            <div 
+            return (
+              <div 
                 key={`${card.suit}-${card.rank}-${index}`}
                 className={`absolute ${isWinningCard ? (isMobile ? 'ring-2' : 'ring-4') : ''} ring-yellow-500 rounded-md`}
                 style={{
@@ -643,20 +643,20 @@ export default function GameTable({
                   className="rounded-md"
                   style={{ 
                     width: `${trickCardWidth}px`,
-                    height: `${trickCardHeight}px` 
+                    height: `${trickCardHeight}px`,
                   }}
                 />
                 
                 {/* Winner indicator - only show if trick is complete */}
                 {isWinningCard && isTrickComplete && winningPlayer && (
-                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black text-center px-1 rounded-sm whitespace-nowrap" style={{ fontSize: isMobile ? '10px' : '12px' }}>
+                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black text-center px-1 rounded-sm whitespace-nowrap" style={{ fontSize: isMobile ? '8px' : '12px' }}>
                     Winner: {winningPlayer.name}
-              </div>
+                  </div>
                 )}
-            </div>
-          );
-        })}
-          </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
