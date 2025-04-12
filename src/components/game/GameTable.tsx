@@ -565,8 +565,15 @@ export default function GameTable({
           {/* North player trick card */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-              return playerPosition === 2 && (
+              // Find who played this card
+              const cardPlayer = game.players[index];
+              if (!cardPlayer) return null;
+              
+              // Calculate their position relative to the viewing player
+              const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+              const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+              
+              return relativePosition === 2 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${card.rank}_of_${card.suit}.svg`}
@@ -583,8 +590,13 @@ export default function GameTable({
           {/* South player trick card */}
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-              return playerPosition === 0 && (
+              const cardPlayer = game.players[index];
+              if (!cardPlayer) return null;
+              
+              const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+              const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+              
+              return relativePosition === 0 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${card.rank}_of_${card.suit}.svg`}
@@ -601,8 +613,13 @@ export default function GameTable({
           {/* West player trick card */}
           <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-              return playerPosition === 1 && (
+              const cardPlayer = game.players[index];
+              if (!cardPlayer) return null;
+              
+              const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+              const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+              
+              return relativePosition === 1 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${card.rank}_of_${card.suit}.svg`}
@@ -619,8 +636,13 @@ export default function GameTable({
           {/* East player trick card */}
           <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-              return playerPosition === 3 && (
+              const cardPlayer = game.players[index];
+              if (!cardPlayer) return null;
+              
+              const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+              const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+              
+              return relativePosition === 3 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${card.rank}_of_${card.suit}.svg`}
@@ -1271,8 +1293,15 @@ export default function GameTable({
                   {/* North player trick card */}
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-                      return playerPosition === 2 && (
+                      // Find who played this card
+                      const cardPlayer = game.players[index];
+                      if (!cardPlayer) return null;
+                      
+                      // Calculate their position relative to the viewing player
+                      const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+                      const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+                      
+                      return relativePosition === 2 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${card.rank}_of_${card.suit}.svg`}
@@ -1289,8 +1318,13 @@ export default function GameTable({
                   {/* South player trick card */}
                   <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-                      return playerPosition === 0 && (
+                      const cardPlayer = game.players[index];
+                      if (!cardPlayer) return null;
+                      
+                      const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+                      const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+                      
+                      return relativePosition === 0 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${card.rank}_of_${card.suit}.svg`}
@@ -1307,8 +1341,13 @@ export default function GameTable({
                   {/* West player trick card */}
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-                      return playerPosition === 1 && (
+                      const cardPlayer = game.players[index];
+                      if (!cardPlayer) return null;
+                      
+                      const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+                      const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+                      
+                      return relativePosition === 1 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${card.rank}_of_${card.suit}.svg`}
@@ -1325,8 +1364,13 @@ export default function GameTable({
                   {/* East player trick card */}
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const playerPosition = (4 + game.players.findIndex(p => p.id === game.currentPlayer) - index) % 4;
-                      return playerPosition === 3 && (
+                      const cardPlayer = game.players[index];
+                      if (!cardPlayer) return null;
+                      
+                      const viewerIndex = game.players.findIndex(p => p.id === currentPlayerId);
+                      const relativePosition = (4 + game.players.indexOf(cardPlayer) - viewerIndex) % 4;
+                      
+                      return relativePosition === 3 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${card.rank}_of_${card.suit}.svg`}
