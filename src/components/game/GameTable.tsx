@@ -578,32 +578,26 @@ export default function GameTable({
     // For each card in the trick, we need to map it to a position relative to the current player's view
     const cardPositions: number[] = [];
     
+    // Get the lead player's position for this trick
+    // @ts-ignore - leadPosition might not be on the type yet
+    const leadPosition = game.leadPosition !== undefined 
+      ? game.leadPosition 
+      // @ts-ignore - dealerPosition might not be on the type yet
+      : game.dealerPosition !== undefined 
+        ? (game.dealerPosition + 1) % 4 
+        : 0;
+
+    console.log("Determining players for trick - lead position:", leadPosition);
+    
     game.currentTrick.forEach((card, index) => {
-      // Get the player ID who played this card
-      const playerId = cardPlayers[index];
-      if (!playerId) {
-        console.warn(`Could not find player for card ${index} (${card.rank}${card.suit})`);
-        // Default to using the card index as position (fallback)
-        cardPositions[index] = index;
-        return;
-      }
-      
-      // Find this player in the game.players array
-      const player = game.players.find(p => p.id === playerId);
-      if (!player) {
-        console.warn(`Could not find player with ID ${playerId} for card ${index}`);
-        cardPositions[index] = index;
-        return;
-      }
-      
-      // @ts-ignore - position property might not be on the type yet
-      const playerPosition = player.position !== undefined ? player.position : game.players.indexOf(player);
+      // Calculate the absolute position of the player who played this card
+      const playerPosition = (leadPosition + index) % 4;
       
       // Calculate the relative position from current player's viewpoint
       // This transforms the absolute table position to a relative view position
       const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
       
-      console.log(`Card ${index} (${card.rank}${card.suit}) by ${player.name}: absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}`);
+      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}`);
       
       // Store the position
       cardPositions[index] = relativePosition;
@@ -619,7 +613,7 @@ export default function GameTable({
             const isWinningCard = isTrickComplete && (index === winningIndex);
             
             // Get the position for this card relative to the current player's view
-            const positionIndex = cardPositions[index] !== undefined ? cardPositions[index] : index;
+            const positionIndex = cardPositions[index];
             const position = basePositions[positionIndex];
             
             return (
