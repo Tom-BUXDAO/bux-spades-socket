@@ -579,13 +579,25 @@ export default function GameTable({
     const cardPositions: number[] = [];
     
     // Get the lead player's position for this trick
-    // @ts-ignore - leadPosition might not be on the type yet
-    const leadPosition = game.leadPosition !== undefined 
-      ? game.leadPosition 
-      // @ts-ignore - dealerPosition might not be on the type yet
-      : game.dealerPosition !== undefined 
-        ? (game.dealerPosition + 1) % 4 
-        : 0;
+    let leadPosition: number;
+    
+    // If this is the first card of the trick, the lead position is the position of the player who played it
+    if (game.currentTrick.length === 1) {
+      // Find the player who played the first card
+      const firstCardPlayer = game.players.find(p => p.id === cardPlayers[0]);
+      // @ts-ignore - position property might not be on the type yet
+      leadPosition = firstCardPlayer?.position ?? 0;
+      console.log("First card of trick - Lead position set to:", leadPosition, "from player:", firstCardPlayer?.name);
+    } else {
+      // @ts-ignore - leadPosition might not be on the type yet
+      leadPosition = game.leadPosition !== undefined 
+        ? game.leadPosition 
+        // @ts-ignore - dealerPosition might not be on the type yet
+        : game.dealerPosition !== undefined 
+          ? (game.dealerPosition + 1) % 4 
+          : 0;
+      console.log("Continuing trick - Lead position:", leadPosition);
+    }
 
     console.log("Determining players for trick - lead position:", leadPosition);
     
@@ -597,7 +609,7 @@ export default function GameTable({
       // This transforms the absolute table position to a relative view position
       const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
       
-      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}`);
+      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}, played by ${cardPlayers[index] || 'unknown'}`);
       
       // Store the position
       cardPositions[index] = relativePosition;
