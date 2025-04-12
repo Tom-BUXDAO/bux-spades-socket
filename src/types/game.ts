@@ -32,6 +32,8 @@ export interface GameState {
   team1Bags: number;
   team2Bags: number;
   createdAt?: number;
+  leadPosition?: number;
+  dealerPosition?: number;
 }
 
 export interface LobbyState {

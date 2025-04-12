@@ -374,7 +374,6 @@ export default function GameTable({
     // When a new trick starts, reset our tracking
     if (game.currentTrick.length === 0) {
       console.log("🔄 New trick starting - resetting card players mapping");
-      // Save the completed trick mapping before clearing
       setCardPlayers({});
       setShowWinningCardHighlight(false);
       setWinningCardIndex(null);
@@ -382,32 +381,44 @@ export default function GameTable({
       return;
     }
 
-    // For a complete trick, we need to determine who played each card
-    // First, we need to figure out the starting player (dealer + 1)
-    // @ts-ignore - dealerPosition might not be on the type yet
-    const startingPlayerPosition = game.dealerPosition !== undefined 
+    // We need the lead player for this trick (the one who played the first card)
+    // This lead player is determined by the last trick winner, or dealer+1 for the first trick
+    // @ts-ignore - leadPosition and dealerPosition might not be on the type yet
+    const leadPosition = game.leadPosition !== undefined 
+      ? game.leadPosition 
       // @ts-ignore - dealerPosition might not be on the type yet
-      ? (game.dealerPosition + 1) % 4 
-      : 0;
-      
-    // Find the starting player
-    const startingPlayer = game.players.find(p => p.position === startingPlayerPosition);
-    if (!startingPlayer) {
-      console.warn("⚠️ Cannot determine starting player for this trick");
+      : game.dealerPosition !== undefined 
+        ? (game.dealerPosition + 1) % 4 
+        : 0;
+
+    console.log(`Determining players for trick - lead position: ${leadPosition}`);
+    
+    // Find the lead player who started this trick
+    const leadPlayer = game.players.find(p => {
+      // @ts-ignore - position property might not be on the type yet
+      return p.position === leadPosition;
+    });
+    
+    if (!leadPlayer) {
+      console.warn(`⚠️ Could not find lead player at position ${leadPosition}`);
       return;
     }
     
-    // The first card (index 0) is always played by the starting player
-    // Then each subsequent card is played by the next player in rotation
+    console.log(`📌 Lead player for this trick: ${leadPlayer.name} (position ${leadPosition})`);
+    
+    // The player order follows clockwise from the lead player
     const updatedCardPlayers: Record<number, string> = {};
     
-    // For each card in the trick, determine who played it
+    // Map each card to the player who played it based on turn order
     game.currentTrick.forEach((card, index) => {
-      // Calculate which position played this card
-      const playerPosition = (startingPlayerPosition + index) % 4;
+      // Calculate which position played this card (leadPosition + index) % 4
+      const playerPosition = (leadPosition + index) % 4;
       
       // Find the player at this position
-      const player = game.players.find(p => p.position === playerPosition);
+      const player = game.players.find(p => {
+        // @ts-ignore - position property might not be on the type yet
+        return p.position === playerPosition;
+      });
       
       if (player) {
         updatedCardPlayers[index] = player.id;
@@ -425,13 +436,9 @@ export default function GameTable({
     
     // For a complete trick, process the winner
     if (game.currentTrick.length === 4) {
-      // Calculate the winning card index
       const winningCardIndex = determineWinningCard(game.currentTrick);
       if (winningCardIndex !== null && winningCardIndex !== undefined) {
-        // Get the winner's ID from our mapping
         const winningPlayerId = updatedCardPlayers[winningCardIndex];
-        
-        // Find the winner in our players list
         const winningPlayer = game.players.find(p => p.id === winningPlayerId);
         
         if (winningPlayer) {
@@ -439,13 +446,13 @@ export default function GameTable({
           setWinningCardIndex(winningCardIndex);
           setWinningPlayerId(winningPlayerId);
           setShowWinningCardHighlight(true);
-          
-          // Save the completed trick mapping for future reference
           completedTrickCardPlayers.current = updatedCardPlayers;
         }
       }
     }
-  }, [game.currentTrick, game.players]);
+  }, [game.currentTrick, game.players, 
+    // @ts-ignore - leadPosition and dealerPosition might not be on the type yet
+    game.leadPosition, game.dealerPosition, cardPlayers]);
 
   // When playing a card, we now rely solely on server data for tracking
   const handlePlayCard = (card: Card) => {
@@ -568,48 +575,41 @@ export default function GameTable({
       { top: '50%', left: '50%', transform: 'translate(-150%, -50%)', label: 'West' },  // Left
     ];
 
-    // Map each card to a player position
-    // First, we need to know who played each card
-    const cardPlayerMap: {cardIndex: number, playerPosition: number}[] = [];
-
-    // For each card, determine which player played it
+    // For each card in the trick, we need to map it to a position relative to the current player's view
+    const cardPositions: number[] = [];
+    
     game.currentTrick.forEach((card, index) => {
       // Get the player ID who played this card
-      const playerId = cardPlayers[index] || '';
-      
-      // Find this player in the original (unrotated) game.players array to get their table position
-      const player = game.players.find(p => p.id === playerId);
-      if (player) {
-        // @ts-ignore - position property might not be on the type yet
-        const playerTablePosition = player.position !== undefined ? player.position : game.players.indexOf(player);
-        
-        // Calculate the rotated position of this player relative to the current player
-        // This is the position we'll use to place their card
-        const rotatedPosition = (4 + playerTablePosition - currentPlayerPosition) % 4;
-        
-        // Save this mapping
-        cardPlayerMap.push({
-          cardIndex: index,
-          playerPosition: rotatedPosition
-        });
-        
-        // Debug logging
-        console.log(`Card ${index} (${card.rank}${card.suit}) played by ${player.name} at position ${playerTablePosition}, rotated to ${rotatedPosition}`);
-      } else {
-        // If we can't determine who played this card, use its index in currentTrick
-        // (this is a fallback, should rarely happen)
-        cardPlayerMap.push({
-          cardIndex: index,
-          playerPosition: index
-        });
-        
-        // Debug logging for unidentified cards
-        console.log(`Card ${index} (${card.rank}${card.suit}) player unknown, defaulting to position ${index}`);
+      const playerId = cardPlayers[index];
+      if (!playerId) {
+        console.warn(`Could not find player for card ${index} (${card.rank}${card.suit})`);
+        // Default to using the card index as position (fallback)
+        cardPositions[index] = index;
+        return;
       }
+      
+      // Find this player in the game.players array
+      const player = game.players.find(p => p.id === playerId);
+      if (!player) {
+        console.warn(`Could not find player with ID ${playerId} for card ${index}`);
+        cardPositions[index] = index;
+        return;
+      }
+      
+      // @ts-ignore - position property might not be on the type yet
+      const playerPosition = player.position !== undefined ? player.position : game.players.indexOf(player);
+      
+      // Calculate the relative position from current player's viewpoint
+      // This transforms the absolute table position to a relative view position
+      const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
+      
+      console.log(`Card ${index} (${card.rank}${card.suit}) by ${player.name}: absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}`);
+      
+      // Store the position
+      cardPositions[index] = relativePosition;
     });
     
-    // Log the final mapping
-    console.log('Card player map:', cardPlayerMap, 'Current player position:', currentPlayerPosition);
+    console.log('Final card positions relative to current player:', cardPositions);
 
     return (
       <div className={`absolute inset-0 flex items-center justify-center`}>
@@ -618,11 +618,8 @@ export default function GameTable({
             // Determine if this is the winning card
             const isWinningCard = isTrickComplete && (index === winningIndex);
             
-            // Find the rotated position for this card
-            const cardPlacement = cardPlayerMap.find(cp => cp.cardIndex === index);
-            const positionIndex = cardPlacement ? cardPlacement.playerPosition : index;
-            
-            // Get the position styling for this card based on its player's position
+            // Get the position for this card relative to the current player's view
+            const positionIndex = cardPositions[index] !== undefined ? cardPositions[index] : index;
             const position = basePositions[positionIndex];
             
             return (
