@@ -536,11 +536,9 @@ export default function GameTable({
   
   // Fix the renderTrickCards function to use the same lead position logic
   const renderTrickCards = () => {
-    // Get the lead position to determine where each card should be displayed
     const leadPosition = getLeadPosition();
     console.log(`Lead position for trick: ${leadPosition}`);
     
-    // Map each card to its relative position from current player's view
     const cardPositions: number[] = [];
     game.currentTrick.forEach((card, index) => {
       const playerPosition = (leadPosition + index) % 4;
@@ -564,40 +562,43 @@ export default function GameTable({
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Play area container - stretches between player containers */}
         <div className="relative w-[calc(100%-140px)] h-[calc(100%-160px)] mx-auto">
-          {/* North card container - 50% height */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
-            {game.currentTrick.map((card, index) => (
-              cardPositions[index] === 2 && (
-                <Image
-                  key={`${card.rank}${card.suit}`}
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank}${card.suit}`}
-                  width={60}
-                  height={84}
-                  className="h-[50%] w-auto object-contain"
-                />
-              )
-            ))}
+          {/* Center column container */}
+          <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
+            {/* North card container */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+              {game.currentTrick.map((card, index) => (
+                cardPositions[index] === 2 && (
+                  <Image
+                    key={`${card.rank}${card.suit}`}
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank}${card.suit}`}
+                    width={60}
+                    height={84}
+                    className="h-full w-auto object-contain"
+                  />
+                )
+              ))}
+            </div>
+
+            {/* South card container */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+              {game.currentTrick.map((card, index) => (
+                cardPositions[index] === 0 && (
+                  <Image
+                    key={`${card.rank}${card.suit}`}
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank}${card.suit}`}
+                    width={60}
+                    height={84}
+                    className="h-full w-auto object-contain"
+                  />
+                )
+              ))}
+            </div>
           </div>
 
-          {/* South card container - 50% height */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
-            {game.currentTrick.map((card, index) => (
-              cardPositions[index] === 0 && (
-                <Image
-                  key={`${card.rank}${card.suit}`}
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank}${card.suit}`}
-                  width={60}
-                  height={84}
-                  className="h-[50%] w-auto object-contain"
-                />
-              )
-            ))}
-          </div>
-
-          {/* West card container - 50% height */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] flex items-center justify-center">
+          {/* Left column - positioned 50% of its width left of center */}
+          <div className="absolute left-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => (
               cardPositions[index] === 1 && (
                 <Image
@@ -606,14 +607,14 @@ export default function GameTable({
                   alt={`${card.rank}${card.suit}`}
                   width={60}
                   height={84}
-                  className="h-[50%] w-auto object-contain"
+                  className="h-full w-auto object-contain"
                 />
               )
             ))}
           </div>
 
-          {/* East card container - 50% height */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] flex items-center justify-center">
+          {/* Right column - positioned 50% of its width right of center */}
+          <div className="absolute right-[calc(50%-8.925%)] top-1/2 -translate-y-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => (
               cardPositions[index] === 3 && (
                 <Image
@@ -622,7 +623,7 @@ export default function GameTable({
                   alt={`${card.rank}${card.suit}`}
                   width={60}
                   height={84}
-                  className="h-[50%] w-auto object-contain"
+                  className="h-full w-auto object-contain"
                 />
               )
             ))}
