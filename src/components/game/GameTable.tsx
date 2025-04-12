@@ -375,7 +375,7 @@ export default function GameTable({
     if (game.currentTrick.length === 0) {
       console.log("🔄 New trick starting - resetting card players mapping");
       setCardPlayers({});
-      setShowWinningCardHighlight(false);
+          setShowWinningCardHighlight(false);
       setWinningCardIndex(null);
       setWinningPlayerId(null);
       return;
@@ -431,15 +431,15 @@ export default function GameTable({
     // Only update the state if we have new information
     if (Object.keys(updatedCardPlayers).length > Object.keys(cardPlayers).length) {
       console.log("📊 Updating card players mapping:", updatedCardPlayers);
-      setCardPlayers(updatedCardPlayers);
-    }
-    
+        setCardPlayers(updatedCardPlayers);
+      }
+      
     // For a complete trick, process the winner
     if (game.currentTrick.length === 4) {
-      const winningCardIndex = determineWinningCard(game.currentTrick);
+        const winningCardIndex = determineWinningCard(game.currentTrick);
       if (winningCardIndex !== null && winningCardIndex !== undefined) {
-        const winningPlayerId = updatedCardPlayers[winningCardIndex];
-        const winningPlayer = game.players.find(p => p.id === winningPlayerId);
+          const winningPlayerId = updatedCardPlayers[winningCardIndex];
+          const winningPlayer = game.players.find(p => p.id === winningPlayerId);
         
         if (winningPlayer) {
           console.log(`🏆 Winner determined: ${winningPlayer.name} with card ${winningCardIndex} (${game.currentTrick[winningCardIndex].rank}${game.currentTrick[winningCardIndex].suit})`);
@@ -579,43 +579,38 @@ export default function GameTable({
     const cardPositions: number[] = [];
     
     // Get the lead player's position for this trick
-    let leadPosition: number;
-    
-    // If this is the first card of the trick, the lead position is the position of the player who played it
-    if (game.currentTrick.length === 1) {
-      // Find the player who played the first card
-      const firstCardPlayer = game.players.find(p => p.id === cardPlayers[0]);
-      // @ts-ignore - position property might not be on the type yet
-      leadPosition = firstCardPlayer?.position ?? 0;
-      console.log("First card of trick - Lead position set to:", leadPosition, "from player:", firstCardPlayer?.name);
-    } else {
-      // @ts-ignore - leadPosition might not be on the type yet
-      leadPosition = game.leadPosition !== undefined 
-        ? game.leadPosition 
-        // @ts-ignore - dealerPosition might not be on the type yet
-        : game.dealerPosition !== undefined 
-          ? (game.dealerPosition + 1) % 4 
-          : 0;
-      console.log("Continuing trick - Lead position:", leadPosition);
-    }
+    // @ts-ignore - leadPosition might not be on the type yet
+    const leadPosition = game.leadPosition !== undefined 
+      ? game.leadPosition 
+      // @ts-ignore - dealerPosition might not be on the type yet
+      : game.dealerPosition !== undefined 
+        ? (game.dealerPosition + 1) % 4 
+        : 0;
 
-    console.log("Determining players for trick - lead position:", leadPosition);
+    console.log("Lead position for trick:", leadPosition);
     
+    // Map each card to its relative position
     game.currentTrick.forEach((card, index) => {
-      // Calculate the absolute position of the player who played this card
-      const playerPosition = (leadPosition + index) % 4;
+      // Find the player who played this card
+      const playerId = cardPlayers[index];
+      const player = game.players.find(p => p.id === playerId);
       
-      // Calculate the relative position from current player's viewpoint
-      // This transforms the absolute table position to a relative view position
-      // We need to rotate clockwise from the current player's position
-      const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
+      if (!player) {
+        console.warn(`Could not find player for card ${index}`);
+        return;
+      }
+
+      // @ts-ignore - position property might not be on the type yet
+      const absolutePosition = player.position ?? game.players.indexOf(player);
       
-      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}, played by ${cardPlayers[index] || 'unknown'}`);
+      // Calculate relative position from current player's view
+      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
       
-      // Store the position
+      console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
+      
       cardPositions[index] = relativePosition;
     });
-    
+
     console.log('Final card positions relative to current player:', cardPositions);
 
     return (
@@ -628,9 +623,9 @@ export default function GameTable({
             // Get the position for this card relative to the current player's view
             const positionIndex = cardPositions[index];
             const position = basePositions[positionIndex];
-            
-            return (
-              <div 
+          
+          return (
+            <div 
                 key={`${card.suit}-${card.rank}-${index}`}
                 className={`absolute ${isWinningCard ? (isMobile ? 'ring-2' : 'ring-4') : ''} ring-yellow-500 rounded-md`}
                 style={{
@@ -655,12 +650,12 @@ export default function GameTable({
                 {isWinningCard && isTrickComplete && winningPlayer && (
                   <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black text-center px-1 rounded-sm whitespace-nowrap" style={{ fontSize: isMobile ? '10px' : '12px' }}>
                     Winner: {winningPlayer.name}
-                  </div>
-                )}
               </div>
-            );
-          })}
-        </div>
+                )}
+            </div>
+          );
+        })}
+          </div>
       </div>
     );
   };
@@ -743,12 +738,20 @@ export default function GameTable({
   // Add back these missing functions
   const renderPlayerPosition = (position: number) => {
     const player = orderedPlayers[position];
-    if (!player) return null;
+    if (!player) {
+      // Empty seat
+      return null;
+    }
 
+    // Only mark a player as active if the game has started (not in WAITING status)
     const isActive = game.status !== "WAITING" && game.currentPlayer === player.id;
     const isWinningPlayer = player.id === winningPlayerId && showWinningCardHighlight;
     
-    // Base positioning for players
+    // Determine if we're on mobile
+    // const isMobile = screenSize.width < 640;
+    // Use the isMobile state which is derived from windowSize
+    
+    // Adjust positioning for responsive layout
     const getPositionClasses = (pos: number): string => {
       // Base positioning
       const basePositions = [
@@ -773,118 +776,194 @@ export default function GameTable({
       return basePositions[pos];
     };
 
-    // Calculate trick card extension based on position
-    const getTrickCardPosition = () => {
-      const distance = isMobile ? '4rem' : '6rem';
-      switch(position) {
-        case 0: // bottom
-          return { transform: `translateY(-${distance})` };
-        case 1: // left
-          return { transform: `translateX(${distance})` };
-        case 2: // top
-          return { transform: `translateY(${distance})` };
-        case 3: // right
-          return { transform: `translateX(-${distance})` };
+    // Get player avatar
+    const getPlayerAvatar = (player: any): string => {
+      // If player has their own image property, use that first
+      if (player.image) {
+        return player.image;
       }
+      
+      // If player matches the current user and we have their image
+      if (player.id === currentPlayerId && propUser?.image) {
+        return propUser.image;
+      }
+      
+      // Discord user ID (numeric string)
+      if (player.id && /^\d+$/.test(player.id)) {
+        // For Discord users without an avatar hash or with invalid avatar, use the default Discord avatar
+        return `https://cdn.discordapp.com/embed/avatars/${parseInt(player.id) % 5}.png`;
+      }
+      
+      // Guest user, use default avatar
+      if (player.id && player.id.startsWith('guest_')) {
+        return GUEST_AVATAR;
+      }
+      
+      // Fallback to bot avatar
+      return BOT_AVATAR;
     };
 
-    // Find if this player has played a card in the current trick
-    const playedCardIndex = Object.entries(cardPlayers).find(([_, playerId]) => playerId === player.id)?.[0];
-    const playedCard = playedCardIndex !== undefined ? game.currentTrick[parseInt(playedCardIndex)] : null;
+    // Determine if this is a left/right seat (position 1 or 3)
+    const isSideSeat = position === 1 || position === 3;
     
-    // Determine if this card is the winning card
-    const isWinningCard = game.currentTrick.length === 4 && (parseInt(playedCardIndex || '-1') === winningCardIndex);
-
-    // Card dimensions
-    const trickCardWidth = isMobile ? 45 : 60;
-    const trickCardHeight = isMobile ? 65 : 84;
+    // Calculate sizes based on device
+    const avatarWidth = isMobile ? 32 : 40;
+    const avatarHeight = isMobile ? 32 : 40;
+    
+    // Determine made/bid status color
+    const madeCount = player.tricks || 0;
+    const bidCount = player.bid !== undefined ? player.bid : 0;
+    // Replace color-based status with emoji indicators
+    const madeStatus = madeCount >= bidCount 
+      ? "✅" // Checkmark for met or exceeded bid
+      : "❌"; // X for not met bid
+    
+    // Custom team colors
+    const redTeamGradient = "bg-gradient-to-r from-red-700 to-red-500";
+    const blueTeamGradient = "bg-gradient-to-r from-blue-700 to-blue-500";
+    const teamGradient = player.team === 1 ? redTeamGradient : blueTeamGradient;
+    const teamLightColor = player.team === 1 ? 'bg-red-400' : 'bg-blue-400';
+    const teamAccentColor = player.team === 1 ? 'from-red-400' : 'from-blue-400';
+    const teamTextColor = player.team === 1 ? 'text-red-600' : 'text-blue-600';
 
     return (
       <div className={`absolute ${getPositionClasses(position)} ${isActive ? 'z-10' : 'z-0'}`}>
-        {/* Player container */}
         <div className={`
-          backdrop-blur-sm bg-white/10 rounded-xl overflow-visible
+          backdrop-blur-sm bg-white/10 rounded-xl overflow-hidden
           ${isActive ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/30' : 'shadow-md'}
-          transition-all duration-200 relative
+          transition-all duration-200
         `}>
-          {/* Player info and avatar */}
-          <div className={`
-            flex items-center gap-2 p-2
-            ${position === 1 ? 'flex-row' : 
-              position === 3 ? 'flex-row-reverse' : 
-              position === 0 ? 'flex-col' : 'flex-col-reverse'}
-          `}>
-            {/* Avatar */}
-            <div className={`
-              relative rounded-full overflow-hidden
-              ${isMobile ? 
-                (position === 0 || position === 2 ? 'w-[26px] h-[26px]' : 'w-[28px] h-[28px]') : 
-                'w-[32px] h-[32px]'}
-            `}>
-              <Image
-                src={player.avatar || '/default-avatar.png'}
-                alt={`${player.name}'s avatar`}
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-              />
-              {isActive && (
-                <div className="absolute inset-0 ring-2 ring-yellow-400 rounded-full animate-pulse" />
-              )}
-            </div>
-
-            {/* Player name and bid/tricks */}
-            <div className={`
-              flex
-              ${position === 1 ? 'flex-col items-start' :
-                position === 3 ? 'flex-col items-end' :
-                'items-center'}
-            `}>
-              <span className={`
-                font-medium truncate
-                ${isMobile ? 'text-[9px]' : 'text-sm'}
-                ${player.team === 1 ? 'text-red-400' : 'text-blue-400'}
-              `}>
-                {player.name}
-              </span>
-              <span className={`
-                ${isMobile ? 'text-[8px]' : 'text-xs'}
-                text-gray-300
-              `}>
-                {game.status === "BIDDING" ? 
-                  (player.bid !== undefined ? `Bid: ${player.bid}` : "Bidding...") :
-                  (player.tricks !== undefined ? `Tricks: ${player.tricks}` : "0")}
-              </span>
-            </div>
+          {isSideSeat ? (
+            // Left/right seats - vertical layout
+            <div className="flex flex-col items-center p-1.5 gap-1.5">
+              {/* Avatar with glowing active border */}
+              <div className={`relative`}>
+                <div className={`
+                  rounded-full overflow-hidden p-0.5
+                  ${isActive ? 'bg-gradient-to-r from-yellow-300 to-yellow-500 animate-pulse' : 
+                    `bg-gradient-to-r ${teamAccentColor} to-white/80`}
+                `}>
+                  <div className="bg-gray-900 rounded-full p-0.5">
+            <Image
+              src={getPlayerAvatar(player)}
+                      alt={player.name || "Player"}
+                      width={avatarWidth}
+                      height={avatarHeight}
+                      className="rounded-full object-cover"
+            />
           </div>
-
-          {/* Trick card */}
-          {playedCard && (
-            <div 
-              className="absolute left-1/2 -translate-x-1/2"
-              style={getTrickCardPosition()}
-            >
-              <div className={`
-                relative
-                ${isWinningCard ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/30' : ''}
-              `}>
-                <img 
-                  src={`/cards/${getCardImage(playedCard)}`}
-                  alt={`${playedCard.rank} of ${playedCard.suit}`}
-                  className="rounded-md"
-                  style={{ 
-                    width: `${trickCardWidth}px`,
-                    height: `${trickCardHeight}px` 
-                  }}
-                />
-                
-                {/* Winner indicator */}
-                {isWinningCard && game.currentTrick.length === 4 && (
-                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black text-center px-1 rounded-sm whitespace-nowrap" style={{ fontSize: isMobile ? '10px' : '12px' }}>
-                    Winner: {player.name}
-                  </div>
-                )}
+                  
+                  {/* Dealer chip with premium styling */}
+          {player.isDealer && (
+                    <div className="absolute -bottom-1 -right-1">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-md">
+                        <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-yellow-200">D</span>
+                        </div>
+                      </div>
+            </div>
+          )}
+        </div>
               </div>
+              
+              <div className="flex flex-col items-center gap-1">
+                {/* Player name with team color gradient background */}
+                <div className={`w-full px-2 py-1 rounded-lg shadow-sm ${teamGradient}`} style={{ width: isMobile ? '50px' : '70px' }}>
+                  <div className="text-white font-medium truncate text-center"
+                       style={{ fontSize: isMobile ? '9px' : '11px' }}>
+                    {player.name}
+                  </div>
+                </div>
+                
+                {/* Bid/Trick counter with glass morphism effect */}
+                <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1"
+                     style={{ width: isMobile ? '50px' : '70px' }}>
+                  <span style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
+                    {game.status === "WAITING" ? "0" : madeCount}
+                  </span>
+                  <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
+                  <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
+                    {game.status === "WAITING" ? "0" : bidCount}
+                  </span>
+                  <span style={{ fontSize: isMobile ? '10px' : '12px' }} className="ml-1">
+                    {game.status === "WAITING" ? "" : madeStatus}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Top/bottom seats - horizontal layout
+            <div className="flex items-center p-1.5 gap-1.5">
+              {/* Avatar with glowing active border */}
+              <div className={`relative`}>
+                <div className={`
+                  rounded-full overflow-hidden p-0.5
+                  ${isActive ? 'bg-gradient-to-r from-yellow-300 to-yellow-500 animate-pulse' : 
+                    `bg-gradient-to-r ${teamAccentColor} to-white/80`}
+                `}>
+                  <div className="bg-gray-900 rounded-full p-0.5">
+                    <Image
+                      src={getPlayerAvatar(player)}
+                      alt={player.name || "Player"}
+                      width={avatarWidth}
+                      height={avatarHeight}
+                      className="rounded-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Dealer chip with premium styling */}
+                  {player.isDealer && (
+                    <div className="absolute -bottom-1 -right-1">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-md">
+                        <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-yellow-200">D</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-1 items-center">
+                {/* Player name with team color gradient background */}
+                <div className={`w-full px-2 py-1 rounded-lg shadow-sm ${teamGradient}`} style={{ width: isMobile ? '50px' : '70px' }}>
+                  <div className="text-white font-medium truncate text-center"
+                       style={{ fontSize: isMobile ? '9px' : '11px' }}>
+                    {player.name}
+                  </div>
+                </div>
+                
+                {/* Bid/Trick counter with glass morphism effect */}
+                <div className="backdrop-blur-md bg-white/20 rounded-full px-2 py-0.5 shadow-inner flex items-center justify-center gap-1"
+                     style={{ width: isMobile ? '50px' : '70px' }}>
+                  <span style={{ fontSize: isMobile ? '9px' : '11px', fontWeight: 600 }}>
+                    {game.status === "WAITING" ? "0" : madeCount}
+                  </span>
+                  <span className="text-white/70" style={{ fontSize: isMobile ? '9px' : '11px' }}>/</span>
+                  <span className="text-white font-semibold" style={{ fontSize: isMobile ? '9px' : '11px' }}>
+                    {game.status === "WAITING" ? "0" : bidCount}
+                  </span>
+                  <span style={{ fontSize: isMobile ? '10px' : '12px' }} className="ml-1">
+                    {game.status === "WAITING" ? "" : madeStatus}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Winning animation with improved animation */}
+              {isWinningPlayer && (
+                <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
+                  <div className={`
+                    ${player.team === 1 ? 'text-red-400' : 'text-blue-400'} 
+                    font-bold animate-bounce flex items-center gap-0.5
+                  `} style={{ fontSize: isMobile ? '10px' : '12px' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" 
+                         className="w-3 h-3 inline-block">
+                      <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 01.919-.53l4.78 1.281a.75.75 0 01.531.919l-1.281 4.78a.75.75 0 01-1.449-.387l.81-3.022a19.407 19.407 0 00-5.594 5.203.75.75 0 01-1.139.093L7 10.06l-4.72 4.72a.75.75 0 01-1.06-1.061l5.25-5.25a.75.75 0 011.06 0l3.074 3.073a20.923 20.923 0 015.545-4.931l-3.042-.815a.75.75 0 01-.53-.919z" clipRule="evenodd" />
+                    </svg>
+                    <span>+1</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -914,43 +993,43 @@ export default function GameTable({
     return (
       <div className="absolute inset-x-0 bottom-0 flex justify-center">
         <div className="flex">
-          {sortedHand.map((card: Card, index: number) => {
-            const isPlayable = game.status === "PLAYING" && 
-              game.currentPlayer === currentPlayerId &&
-              playableCards.some((c: Card) => c.suit === card.suit && c.rank === card.rank);
+        {sortedHand.map((card: Card, index: number) => {
+          const isPlayable = game.status === "PLAYING" && 
+            game.currentPlayer === currentPlayerId &&
+            playableCards.some((c: Card) => c.suit === card.suit && c.rank === card.rank);
 
-            return (
-              <div
-                key={`${card.suit}${card.rank}`}
+          return (
+            <div
+              key={`${card.suit}${card.rank}`}
                 className={`relative transition-transform hover:-translate-y-4 hover:z-10 ${
-                  isPlayable ? 'cursor-pointer' : 'cursor-not-allowed'
-                }`}
-                style={{ 
-                  width: `${cardUIWidth}px`, 
-                  height: `${cardUIHeight}px`,
+                isPlayable ? 'cursor-pointer' : 'cursor-not-allowed'
+              }`}
+              style={{ 
+                width: `${cardUIWidth}px`, 
+                height: `${cardUIHeight}px`,
                   marginLeft: index > 0 ? `${overlapOffset}px` : '0',
                   zIndex: index
-                }}
-                onClick={() => isPlayable && handlePlayCard(card)}
-              >
-                <div className="relative">
-                  <Image
-                    src={`/cards/${getCardImage(card)}`}
-                    alt={`${card.rank}${card.suit}`}
-                    width={cardUIWidth}
-                    height={cardUIHeight}
+              }}
+              onClick={() => isPlayable && handlePlayCard(card)}
+            >
+              <div className="relative">
+                <Image
+                  src={`/cards/${getCardImage(card)}`}
+                  alt={`${card.rank}${card.suit}`}
+                  width={cardUIWidth}
+                  height={cardUIHeight}
                     className={`rounded-lg shadow-md ${
                       isPlayable ? 'hover:shadow-lg' : ''
-                    }`}
-                    style={{ width: 'auto', height: 'auto' }}
-                  />
-                  {!isPlayable && (
-                    <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
-                  )}
-                </div>
+                  }`}
+                  style={{ width: 'auto', height: 'auto' }}
+                />
+                {!isPlayable && (
+                  <div className="absolute inset-0 bg-gray-600/40 rounded-lg" />
+                )}
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
         </div>
       </div>
     );
@@ -1165,15 +1244,15 @@ export default function GameTable({
               border: `${Math.floor(2 * scaleFactor)}px solid #855f31`
             }}>
               {/* Leave Table button - inside table in top left corner */}
-              <button
-                onClick={handleLeaveTable}
+          <button
+            onClick={handleLeaveTable}
                 className="absolute top-4 left-4 z-10 p-2 bg-gray-800/90 text-white rounded-full hover:bg-gray-700 transition shadow-lg"
-                style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
-              >
+            style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}
+          >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-              </button>
+          </button>
               
               {/* Scoreboard in top right corner - inside the table */}
               <div className="absolute top-4 right-4 z-10 flex flex-col items-center px-2 py-1 bg-gray-800/90 rounded-lg shadow-lg">
@@ -1186,8 +1265,8 @@ export default function GameTable({
                     <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" />
                     <span className="text-xs">{game.team1Bags || 0}</span>
                   </div>
-                </div>
-                
+        </div>
+
                 {/* Team 2 (Blue) Score and Bags */}
                 <div className="flex items-center">
                   <div className="bg-blue-500 rounded-full w-2 h-2 mr-1"></div>
