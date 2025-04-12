@@ -569,10 +569,10 @@ export default function GameTable({
 
     // Define base positions for each card in the trick (NESW order)
     const basePositions = [
-      { top: '50%', left: '50%', transform: 'translate(-50%, -150%)', label: 'North' }, // Top
-      { top: '50%', left: '50%', transform: 'translate(50%, -50%)', label: 'East' },    // Right
-      { top: '50%', left: '50%', transform: 'translate(-50%, 50%)', label: 'South' },   // Bottom
-      { top: '50%', left: '50%', transform: 'translate(-150%, -50%)', label: 'West' },  // Left
+      { top: '50%', left: '50%', transform: 'translate(-50%, 50%)', label: 'South' },   // Bottom (0)
+      { top: '50%', left: '50%', transform: 'translate(-150%, -50%)', label: 'West' },  // Left (1)
+      { top: '50%', left: '50%', transform: 'translate(-50%, -150%)', label: 'North' }, // Top (2)
+      { top: '50%', left: '50%', transform: 'translate(50%, -50%)', label: 'East' },    // Right (3)
     ];
 
     // For each card in the trick, we need to map it to a position relative to the current player's view
@@ -607,7 +607,8 @@ export default function GameTable({
       
       // Calculate the relative position from current player's viewpoint
       // This transforms the absolute table position to a relative view position
-      const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
+      // We subtract from 4 and take modulo 4 to rotate clockwise
+      const relativePosition = (4 - ((4 + playerPosition - currentPlayerPosition) % 4)) % 4;
       
       console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${playerPosition}, relative to viewer pos ${relativePosition}, played by ${cardPlayers[index] || 'unknown'}`);
       
