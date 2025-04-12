@@ -591,12 +591,22 @@ export default function GameTable({
     
     // Map each card to its relative position
     game.currentTrick.forEach((card, index) => {
-      // Find the player who played this card
+      // First try to get the player from cardPlayers mapping
       const playerId = cardPlayers[index];
-      const player = game.players.find(p => p.id === playerId);
+      let player = playerId ? game.players.find(p => p.id === playerId) : null;
+
+      // If we couldn't find the player from cardPlayers, calculate based on turn order
+      if (!player) {
+        // Calculate which position played this card based on lead position
+        const playerPosition = (leadPosition + index) % 4;
+        player = game.players.find(p => {
+          // @ts-ignore - position property might not be on the type yet
+          return p.position === playerPosition;
+        });
+      }
       
       if (!player) {
-        console.warn(`Could not find player for card ${index}`);
+        console.warn(`Could not find player for card ${index} - skipping position calculation`);
         return;
       }
 
