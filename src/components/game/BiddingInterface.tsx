@@ -68,9 +68,6 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
     onBid(selectedBid);
   };
 
-  // Calculate available bids (0-13)
-  const availableBids = Array.from({ length: 14 }, (_, i) => i);
-
   return (
     <div className="w-[60%] h-[60%] bg-gray-800/95 backdrop-blur-sm rounded-xl p-4 shadow-xl flex flex-col">
       <div className="text-center mb-4">
@@ -80,35 +77,74 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
         )}
       </div>
 
-      <div className="flex-1 grid grid-cols-4 gap-2 mb-4">
-        {availableBids.map((bid) => (
+      <div className="flex-1 flex flex-col gap-2">
+        {/* Row 1: Buttons 1-6 */}
+        <div className="flex gap-2 justify-center">
+          {[1, 2, 3, 4, 5, 6].map((bid) => (
+            <button
+              key={bid}
+              onClick={() => handleBidClick(bid)}
+              className={`
+                rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105 w-full
+                sm:text-base sm:p-1.5
+                ${selectedBid === bid 
+                  ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
+                  : 'bg-gray-700 text-white hover:bg-gray-600'}
+              `}
+            >
+              {bid}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 2: Buttons 7-13 */}
+        <div className="flex gap-2 justify-center">
+          {[7, 8, 9, 10, 11, 12, 13].map((bid) => (
+            <button
+              key={bid}
+              onClick={() => handleBidClick(bid)}
+              className={`
+                rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105 w-full
+                sm:text-base sm:p-1.5
+                ${selectedBid === bid 
+                  ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
+                  : 'bg-gray-700 text-white hover:bg-gray-600'}
+              `}
+            >
+              {bid}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 3: Nil and Confirm */}
+        <div className="flex gap-2 justify-center mt-2">
           <button
-            key={bid}
-            onClick={() => handleBidClick(bid)}
+            onClick={() => handleBidClick(0)}
             className={`
-              rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105
-              ${selectedBid === bid 
+              rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105 w-1/3
+              sm:text-base sm:p-1.5
+              ${selectedBid === 0 
                 ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
                 : 'bg-gray-700 text-white hover:bg-gray-600'}
             `}
           >
-            {bid}
+            Nil
           </button>
-        ))}
+          <button
+            onClick={handleSubmit}
+            disabled={selectedBid === null || isSubmitting}
+            className={`
+              rounded-lg p-2 text-lg font-bold transition-all w-2/3
+              sm:text-base sm:p-1.5
+              ${selectedBid !== null && !isSubmitting
+                ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105'
+                : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
+            `}
+          >
+            {isSubmitting ? 'Submitting...' : 'Confirm Bid'}
+          </button>
+        </div>
       </div>
-
-      <button
-        onClick={handleSubmit}
-        disabled={selectedBid === null || isSubmitting}
-        className={`
-          w-full py-3 rounded-lg text-lg font-bold transition-all
-          ${selectedBid !== null && !isSubmitting
-            ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105'
-            : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
-        `}
-      >
-        {isSubmitting ? 'Submitting...' : 'Confirm Bid'}
-      </button>
     </div>
   );
 } 
