@@ -536,13 +536,6 @@ export default function GameTable({
   
   // Fix the renderTrickCards function to use the same lead position logic
   const renderTrickCards = () => {
-    // Determine if we're on mobile
-    const isMobile = windowSize.isMobile;
-    
-    // Card dimensions for the trick - we'll calculate these based on container size
-    const trickCardWidth = isMobile ? 35 : 60;
-    const trickCardHeight = isMobile ? 50 : 84;
-
     // Get the lead position to determine where each card should be displayed
     const leadPosition = getLeadPosition();
     console.log(`Lead position for trick: ${leadPosition}`);
@@ -567,7 +560,6 @@ export default function GameTable({
       cardPositions[index] = relativePosition;
     });
 
-    // Define the play area container that fits between player containers
     return (
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Play area container - stretches between player containers */}
@@ -576,54 +568,66 @@ export default function GameTable({
           <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
             {/* North card container */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
-              {cardPositions.findIndex(pos => pos === 2) !== -1 && (
-                <Image
-                  src={`/cards/${getCardImage(game.currentTrick[cardPositions.findIndex(pos => pos === 2)])}`}
-                  alt="Card"
-                  width={trickCardWidth}
-                  height={trickCardHeight}
-                  className="max-h-[150px] w-auto object-contain"
-                />
-              )}
+              {game.currentTrick.map((card, index) => (
+                cardPositions[index] === 2 && (
+                  <Image
+                    key={`${card.rank}${card.suit}`}
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank}${card.suit}`}
+                    width={60}
+                    height={84}
+                    className="max-h-[150px] w-auto object-contain"
+                  />
+                )
+              ))}
             </div>
             {/* South card container */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
-              {cardPositions.findIndex(pos => pos === 0) !== -1 && (
-                <Image
-                  src={`/cards/${getCardImage(game.currentTrick[cardPositions.findIndex(pos => pos === 0)])}`}
-                  alt="Card"
-                  width={trickCardWidth}
-                  height={trickCardHeight}
-                  className="max-h-[150px] w-auto object-contain"
-                />
-              )}
+              {game.currentTrick.map((card, index) => (
+                cardPositions[index] === 0 && (
+                  <Image
+                    key={`${card.rank}${card.suit}`}
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank}${card.suit}`}
+                    width={60}
+                    height={84}
+                    className="max-h-[150px] w-auto object-contain"
+                  />
+                )
+              ))}
             </div>
           </div>
 
           {/* Left column - 20px gap from center */}
           <div className="absolute left-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 -translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
-            {cardPositions.findIndex(pos => pos === 1) !== -1 && (
-              <Image
-                src={`/cards/${getCardImage(game.currentTrick[cardPositions.findIndex(pos => pos === 1)])}`}
-                alt="Card"
-                width={trickCardWidth}
-                height={trickCardHeight}
-                className="max-h-[150px] w-auto object-contain"
-              />
-            )}
+            {game.currentTrick.map((card, index) => (
+              cardPositions[index] === 1 && (
+                <Image
+                  key={`${card.rank}${card.suit}`}
+                  src={`/cards/${getCardImage(card)}`}
+                  alt={`${card.rank}${card.suit}`}
+                  width={60}
+                  height={84}
+                  className="max-h-[150px] w-auto object-contain"
+                />
+              )
+            ))}
           </div>
 
           {/* Right column - 20px gap from center */}
           <div className="absolute right-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
-            {cardPositions.findIndex(pos => pos === 3) !== -1 && (
-              <Image
-                src={`/cards/${getCardImage(game.currentTrick[cardPositions.findIndex(pos => pos === 3)])}`}
-                alt="Card"
-                width={trickCardWidth}
-                height={trickCardHeight}
-                className="max-h-[150px] w-auto object-contain"
-              />
-            )}
+            {game.currentTrick.map((card, index) => (
+              cardPositions[index] === 3 && (
+                <Image
+                  key={`${card.rank}${card.suit}`}
+                  src={`/cards/${getCardImage(card)}`}
+                  alt={`${card.rank}${card.suit}`}
+                  width={60}
+                  height={84}
+                  className="max-h-[150px] w-auto object-contain"
+                />
+              )
+            ))}
           </div>
         </div>
       </div>
