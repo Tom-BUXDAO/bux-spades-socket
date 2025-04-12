@@ -539,123 +539,32 @@ export default function GameTable({
     // Determine if we're on mobile
     const isMobile = windowSize.isMobile;
     
-    // Current trick rendering with winning card highlighting
-    if (!game.currentTrick || game.currentTrick.length === 0) {
-      return (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className={`w-[${isMobile ? 150 : 200}px] h-[${isMobile ? 150 : 200}px] rounded-lg flex items-center justify-center text-gray-400`}>
-            {game.completedTricks && game.completedTricks.length > 0 ? (
-              <div className="text-center">
-                <div className="text-lg font-bold mb-1">
-                  Trick complete
-                </div>
-                <div className="text-xs">Waiting for next trick...</div>
-              </div>
-            ) : (
-              <div className="text-sm">Waiting for first card...</div>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    // Card dimensions for the trick
+    // Card dimensions for the trick - we'll calculate these based on container size
     const trickCardWidth = isMobile ? 35 : 60;
     const trickCardHeight = isMobile ? 50 : 84;
-    
-    // Check if the trick is complete (all 4 cards played)
-    const isTrickComplete = game.currentTrick.length === 4;
-    
-    // Only calculate winner information if trick is complete
-    const winningIndex = isTrickComplete ? (showWinningCardHighlight ? winningCardIndex : null) : null;
-    const winningPlayer = isTrickComplete && winningPlayerId 
-      ? game.players.find(p => p.id === winningPlayerId)
-      : null;
 
-    // Define base positions for each card in the trick (NESW order)
-    const basePositions = [
-      { top: 'calc(100% - 80px)', left: '50%', transform: 'translate(-50%, 0)', label: 'South' },   // Bottom
-      { top: '50%', left: '20px', transform: 'translate(0, -50%)', label: 'West' },    // Left
-      { top: '80px', left: '50%', transform: 'translate(-50%, 0)', label: 'North' },   // Top
-      { top: '50%', left: 'calc(100% - 20px)', transform: 'translate(-100%, -50%)', label: 'East' },    // Right
-    ];
-
-    // Get the lead position using our consolidated function
-    const leadPosition = getLeadPosition();
-    console.log(`Lead position for trick cards: ${leadPosition}`);
-    
-    // For each card in the trick, we need to map it to a position relative to the current player's view
-    const cardPositions: number[] = [];
-    
-    // Map each card to its relative position
-    game.currentTrick.forEach((card, index) => {
-      // Calculate which position played this card based on lead position
-      const playerPosition = (leadPosition + index) % 4;
-      const player = game.players.find(p => {
-        // @ts-ignore - position property might not be on the type yet
-        return p.position === playerPosition;
-      });
-      
-      if (!player) {
-        console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
-        return;
-      }
-
-      // @ts-ignore - position property might not be on the type yet
-      const absolutePosition = player.position ?? game.players.indexOf(player);
-      
-      // Calculate relative position from current player's view
-      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
-      
-      console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
-      
-      cardPositions[index] = relativePosition;
-    });
-
-    console.log('Final card positions relative to current player:', cardPositions);
-
+    // Define the play area container that fits between player containers
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-full h-full max-w-[600px] max-h-[400px] mx-auto">
-          {game.currentTrick.map((card, index) => {
-            // Determine if this is the winning card
-            const isWinningCard = isTrickComplete && (index === winningIndex);
-            
-            // Get the position for this card relative to the current player's view
-            const positionIndex = cardPositions[index];
-            const position = basePositions[positionIndex];
-          
-            return (
-              <div 
-                key={`${card.suit}-${card.rank}-${index}`}
-                className={`absolute ${isWinningCard ? (isMobile ? 'ring-2' : 'ring-4') : ''} ring-yellow-500 rounded-md`}
-                style={{
-                  top: position.top,
-                  left: position.left,
-                  transform: position.transform,
-                  zIndex: isWinningCard ? 10 : index,
-                  transition: 'all 0.3s ease-in-out',
-                }}
-              >
-                <img 
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank} of ${card.suit}`}
-                  className="rounded-md"
-                  style={{ 
-                    width: `${trickCardWidth}px`,
-                    height: `${trickCardHeight}px`,
-                  }}
-                />
-                
-                {/* Winner indicator - only show if trick is complete */}
-                {isWinningCard && isTrickComplete && winningPlayer && (
-                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black text-center px-1 rounded-sm whitespace-nowrap" style={{ fontSize: isMobile ? '8px' : '12px' }}>
-                    Winner: {winningPlayer.name}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        {/* Play area container - stretches between player containers */}
+        <div className="relative w-[calc(100%-140px)] h-[calc(100%-160px)] mx-auto">
+          {/* Center column container */}
+          <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
+            {/* North card container */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+            </div>
+            {/* South card container */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+            </div>
+          </div>
+
+          {/* Left column - 20px gap from center */}
+          <div className="absolute left-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 -translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
+          </div>
+
+          {/* Right column - 20px gap from center */}
+          <div className="absolute right-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
+          </div>
         </div>
       </div>
     );
@@ -1289,6 +1198,30 @@ export default function GameTable({
 
               {/* Center content */}
               <div className="absolute inset-0 flex items-center justify-center">
+                {/* Play area container - always visible */}
+                <div className="relative w-[calc(100%-140px)] h-[calc(100%-160px)] mx-auto">
+                  {/* Center column container */}
+                  <div className="absolute left-1/2 -translate-x-1/2 h-full w-[33.33%] flex flex-col">
+                    {/* North card container */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+                    </div>
+                    {/* South card container */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+                    </div>
+                  </div>
+
+                  {/* Left column - 20px gap from center */}
+                  <div className="absolute left-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 -translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
+                  </div>
+
+                  {/* Right column - 20px gap from center */}
+                  <div className="absolute right-[calc(50%-33.33%-20px)] top-1/2 -translate-y-1/2 translate-x-1/2 h-[50%] w-[33.33%] flex items-center justify-center">
+                  </div>
+                </div>
+              </div>
+
+              {/* Overlay the game status buttons/messages on top of the play area */}
+              <div className="absolute inset-0 flex items-center justify-center">
                 {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
                   <button
                     onClick={handleStartGame}
@@ -1325,17 +1258,6 @@ export default function GameTable({
                   </div>
                 ) : null}
               </div>
-
-              {/* Bidding interface */}
-              {game.status === "BIDDING" && (
-                <BiddingInterface
-                  onBid={handleBid}
-                  currentBid={orderedPlayers[0]?.bid}
-                  gameId={game.id}
-                  playerId={currentPlayerId || ''}
-                  currentPlayerTurn={game.currentPlayer}
-                />
-              )}
             </div>
 
             {/* Cards area with more space */}
