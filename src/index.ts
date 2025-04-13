@@ -681,24 +681,6 @@ io.on('connection', (socket) => {
     console.log(`Updated game state after bid. Game status: ${game.status}, Current player: ${game.currentPlayer}`);
   });
 
-  // Helper function to get the lead position for a trick
-  function getLeadPosition(game: Game): number {
-    // For the first trick, the lead is the player after the dealer
-    if (game.currentTrick.length === 0) {
-      return (game.dealerPosition + 1) % 4;
-    }
-    
-    // For subsequent tricks, the lead is the winner of the previous trick
-    const lastTrick = game.completedTricks[game.completedTricks.length - 1];
-    if (lastTrick) {
-      const winningPlayer = game.players.find(p => p.id === lastTrick.winner);
-      return winningPlayer?.position ?? 0;
-    }
-    
-    // Fallback to dealer + 1 if something goes wrong
-    return (game.dealerPosition + 1) % 4;
-  }
-
   // Update the play_card handler
   socket.on('play_card', async ({ gameId, userId, card }) => {
     try {
@@ -773,6 +755,7 @@ io.on('connection', (socket) => {
           }
         }
 
+        // Add null check for winningPlayer
         if (!winningPlayer) {
           console.error('Could not determine winning player');
           return;
