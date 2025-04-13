@@ -580,19 +580,19 @@ io.on('connection', (socket) => {
     game.players[playerIndex].bid = bid;
     console.log(`Player ${game.players[playerIndex].name} bid ${bid}`);
 
-    // Determine the next player's turn - go to the next position
-    const currentPosition = game.players[playerIndex].position;
-    const nextPosition = (currentPosition + 1) % 4;
-    const nextPlayer = game.players.find(p => p.position === nextPosition);
+    // Determine the next player
+    const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
+    const nextPlayerIndex = (currentPlayerIndex - 1 + 4) % 4;  // Move clockwise
+    const nextPlayer = game.players.find(p => p.position === nextPlayerIndex);
     
     if (!nextPlayer) {
-      console.log(`Could not find next player at position ${nextPosition}`);
+      console.log(`Could not find next player at position ${nextPlayerIndex}`);
       socket.emit('error', { message: 'Error finding next player' });
       return;
     }
 
     game.currentPlayer = nextPlayer.id;
-    console.log(`Next player is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPosition}`);
+    console.log(`Next player is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPlayerIndex}`);
 
     // Check if all players have bid
     const allPlayersBid = game.players.every(p => p.bid !== undefined);
@@ -723,7 +723,7 @@ io.on('connection', (socket) => {
       
       // Determine the next player
       const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
-      const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
+      const nextPlayerIndex = (currentPlayerIndex - 1 + 4) % 4;  // Move clockwise
       game.currentPlayer = game.players[nextPlayerIndex].id;
       
       // Check if the trick is complete
