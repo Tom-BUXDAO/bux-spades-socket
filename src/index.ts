@@ -534,10 +534,23 @@ io.on('connection', (socket) => {
     }));
     
     // First player is to the left of the dealer - find by position
-    const dealerPosition = game.players.find(p => p.isDealer)?.position || 0;
+    const dealer = game.players.find(p => p.isDealer);
+    if (!dealer) {
+      console.error('No dealer found after setting dealer!');
+      return;
+    }
+    
+    const dealerPosition = dealer.position;
     const nextPosition = (dealerPosition + 1) % 4;
     const nextPlayer = game.players.find(p => p.position === nextPosition);
-    game.currentPlayer = nextPlayer?.id || game.players[0].id;
+    
+    if (!nextPlayer) {
+      console.error(`Could not find next player at position ${nextPosition}`);
+      return;
+    }
+    
+    game.currentPlayer = nextPlayer.id;
+    console.log(`First player to bid is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPosition}`);
     
     // Update game state in memory
     games.set(gameId, game);
@@ -620,12 +633,14 @@ io.on('connection', (socket) => {
         console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''}`);
       });
       
-      // The player after the dealer leads the first trick
+      // The player to the left of the dealer leads the first trick
       const dealer = game.players.find(p => p.isDealer);
       if (!dealer) {
         console.error('No dealer found!');
         return;
       }
+      
+      // Find the player to the left of the dealer (clockwise)
       const dealerPosition = dealer.position;
       const firstPosition = (dealerPosition + 1) % 4;
       const firstPlayer = game.players.find(p => p.position === firstPosition);
@@ -639,7 +654,7 @@ io.on('connection', (socket) => {
       }
       
       game.currentPlayer = firstPlayer.id;
-      console.log(`First player to lead is ${firstPlayer.name} (${game.currentPlayer}) at position ${firstPosition}`);
+      console.log(`First player to lead is ${firstPlayer.name} (${firstPlayer.id}) at position ${firstPosition}`);
     }
 
     // Update game state in memory
