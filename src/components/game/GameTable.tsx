@@ -543,8 +543,8 @@ export default function GameTable({
     console.log(`Rendering trick cards with lead position: ${leadPosition}`);
 
     return (
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-[calc(100%-140px)] h-[50%] mx-auto">
+      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+        <div className="relative w-full h-full max-w-[600px] max-h-[400px]">
           {game.currentTrick.map((card, index) => {
             // Calculate which position played this card based on lead position
             const playerPosition = (leadPosition + index) % 4;
@@ -563,31 +563,29 @@ export default function GameTable({
             let positionClass = '';
             switch (relativePosition) {
               case 0: // South
-                positionClass = 'absolute bottom-0 left-1/2 -translate-x-1/2';
+                positionClass = 'absolute bottom-[20%] left-1/2 -translate-x-1/2';
                 break;
               case 1: // West
-                positionClass = 'absolute top-1/2 -translate-y-1/2 left-[calc(50%-8.925%)]';
+                positionClass = 'absolute left-[20%] top-1/2 -translate-y-1/2';
                 break;
               case 2: // North
-                positionClass = 'absolute top-0 left-1/2 -translate-x-1/2';
+                positionClass = 'absolute top-[20%] left-1/2 -translate-x-1/2';
                 break;
               case 3: // East
-                positionClass = 'absolute top-1/2 -translate-y-1/2 right-[calc(50%-8.925%)]';
+                positionClass = 'absolute right-[20%] top-1/2 -translate-y-1/2';
                 break;
             }
 
             return (
-              <div key={`${card.suit}-${card.rank}`} className={`${positionClass} h-[50%]`}>
-                <div className="relative h-full">
-                  <Image
-                    src={`/cards/${getCardImage(card)}`}
-                    alt={`${card.rank} of ${card.suit}`}
-                    fill
-                    className="object-contain"
-                    quality={100}
-                    priority={true}
-                  />
-                </div>
+              <div key={`${card.suit}-${card.rank}`} className={`${positionClass} w-[72px] h-[96px]`}>
+                <Image
+                  src={`/cards/${getCardImage(card)}`}
+                  alt={`${card.rank} of ${card.suit}`}
+                  width={72}
+                  height={96}
+                  className="object-contain"
+                  priority={true}
+                />
               </div>
             );
           })}
