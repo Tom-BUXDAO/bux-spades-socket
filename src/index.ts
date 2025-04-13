@@ -718,33 +718,42 @@ io.on('connection', (socket) => {
     }
 
     // Find the player
-    const playerIndex = game.players.findIndex(p => p.id === userId);
-    if (playerIndex === -1) {
+    const player = game.players.find(p => p.id === userId);
+    if (!player) {
       console.log(`Player ${userId} not found in game`);
       socket.emit('error', { message: 'Player not found in game' });
       return;
     }
-    
-    const player = game.players[playerIndex];
-    
-    // Check if player has the card
+
+    // Validate the card is in player's hand
     const cardIndex = player.hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
     if (cardIndex === -1) {
-      console.log(`Player ${userId} does not have the card:`, card);
-      socket.emit('error', { message: 'You do not have this card' });
+      console.log(`Card ${card.rank} of ${card.suit} not found in player's hand`);
+      socket.emit('error', { message: 'Card not found in hand' });
       return;
     }
-    
-    // Check if card is valid to play
-    const isLeadingTrick = game.currentTrick.length === 0;
-    if (!isLeadingTrick) {
-      const leadSuit = game.currentTrick[0].suit;
-      const hasLeadSuit = player.hand.some(c => c.suit === leadSuit);
+
+    // If this is the first card in the trick, validate spades rule
+    if (game.currentTrick.length === 0) {
+      const canLeadSpades = game.completedTricks.some(trick => 
+        trick.some(c => c.suit === 'S')
+      );
       
-      // If player has the lead suit but played a different suit, that's not allowed
-      if (hasLeadSuit && card.suit !== leadSuit) {
-        console.log(`Player ${userId} must follow suit (${leadSuit})`);
-        socket.emit('error', { message: 'You must follow suit' });
+      if (card.suit === 'S' && !canLeadSpades) {
+        const hasOnlySpades = player.hand.every(c => c.suit === 'S');
+        if (!hasOnlySpades) {
+          console.log(`Cannot lead with spades before they are broken`);
+          socket.emit('error', { message: 'Cannot lead with spades before they are broken' });
+          return;
+        }
+      }
+    } else {
+      // Must follow suit if possible
+      const leadSuit = game.currentTrick[0].suit;
+      const hasSuit = player.hand.some(c => c.suit === leadSuit);
+      if (hasSuit && card.suit !== leadSuit) {
+        console.log(`Must follow suit ${leadSuit}`);
+        socket.emit('error', { message: 'Must follow suit' });
         return;
       }
     }
@@ -768,22 +777,18 @@ io.on('connection', (socket) => {
     
     // Determine if the trick is complete
     if (game.currentTrick.length === 4) {
-      // Use our helper to map cards to players
-      const trickMapping = mapTrickToPlayers(game, game.currentTrick);
-      
-      // Debug output
-      trickMapping.forEach((item, idx) => {
-        console.log(`Card ${idx} (${item.card.rank}${item.card.suit}) was played by ${item.player.name}`);
-      });
-      
       // Create an array to track who played each card
       const cardPlayers = [];
+      
+      // Find the player who led the trick (the one who would play next after the trick is complete)
+      const currentPlayerPosition = game.players.find(p => p.id === game.currentPlayer)?.position || 0;
+      const leadPosition = (currentPlayerPosition - 4 + 4) % 4; // 4 positions back from current player
+      
+      // Map each card to the player who played it
       for (let i = 0; i < game.currentTrick.length; i++) {
-        // Find which player played this card
-        // Use currentPlayer and position-based calculation instead of currentPlayerIndex
-        const currentPlayerPosition = game.players.find(p => p.id === game.currentPlayer)?.position || 0;
-        const playerIndex = (currentPlayerPosition - (game.currentTrick.length - i) + 4) % 4;
-        const player = game.players.find(p => p.position === playerIndex);
+        const playerPosition = (leadPosition + i) % 4;
+        const player = game.players.find(p => p.position === playerPosition);
+        
         if (player) {
           cardPlayers.push({ 
             card: game.currentTrick[i],
@@ -845,9 +850,6 @@ io.on('connection', (socket) => {
       
       // Store completed trick
       game.completedTricks.push([...game.currentTrick]);
-      
-      // IMPORTANT: Don't clear the trick yet - keep it visible
-      // We'll create a delayed version of the game state that will clear it later
       
       // Set the winning player as the next to play
       game.currentPlayer = winningPlayer.id;
@@ -973,30 +975,23 @@ io.on('connection', (socket) => {
           console.log(`Team 2 failed nil bids: ${team2NilFailCount} x -100 = ${team2NilFailCount * -100}`);
         }
         
-        // Update total scores
+        // Update team scores
         game.team1Score += team1RoundScore;
         game.team2Score += team2RoundScore;
         
-        console.log(`Team 1: Round Score ${team1RoundScore}, Total Score ${game.team1Score}, Bags ${game.team1Bags}`);
-        console.log(`Team 2: Round Score ${team2RoundScore}, Total Score ${game.team2Score}, Bags ${game.team2Bags}`);
-        
-        // Check for set penalties (10 bags = -100 points)
-        if (game.team1Bags >= 10) {
-          game.team1Score -= 100;
-          game.team1Bags -= 10;
-          console.log('Team 1 penalized 100 points for 10 bags');
-        }
-        
-        if (game.team2Bags >= 10) {
-          game.team2Score -= 100;
-          game.team2Bags -= 10;
-          console.log('Team 2 penalized 100 points for 10 bags');
-        }
-        
-        // Check for game end (first to 500 points)
+        // Check for game end (500 points)
         if (game.team1Score >= 500 || game.team2Score >= 500) {
-          game.status = 'GAME_OVER';
-          console.log(`Game over! Team ${game.team1Score >= 500 ? 1 : 2} wins!`);
+          console.log('Game complete!');
+          game.status = 'COMPLETE';
+          
+          // Emit hand_completed event
+          io.to(gameId).emit('hand_completed', {
+            gameId: gameId,
+            team1Score: game.team1Score,
+            team2Score: game.team2Score,
+            team1Bags: game.team1Bags,
+            team2Bags: game.team2Bags
+          });
         } else {
           // Reset for next hand
           setTimeout(() => {
