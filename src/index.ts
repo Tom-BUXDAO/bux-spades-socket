@@ -502,16 +502,16 @@ io.on('connection', (socket) => {
       isDealer: i === firstDealerIndex
     }));
     
-    // After bidding, the player to the right of the dealer leads first (clockwise)
+    // After bidding, the player to the left of the dealer leads first (counterclockwise)
     const dealer = game.players.find(p => p.isDealer);
     if (!dealer) {
       console.error('No dealer found!');
       return;
     }
     
-    // Find the player to the right of the dealer (clockwise)
+    // Find the player to the left of the dealer (counterclockwise)
     const dealerPosition = dealer.position;
-    const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go right (clockwise)
+    const firstPosition = (dealerPosition + 1) % 4;  // Go left (counterclockwise)
     const firstPlayer = game.players.find(p => p.position === firstPosition);
     
     console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
@@ -582,7 +582,7 @@ io.on('connection', (socket) => {
 
     // Determine the next player
     const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
-    const nextPlayerIndex = (currentPlayerIndex - 1 + 4) % 4;  // Move clockwise
+    const nextPlayerIndex = (currentPlayerIndex + 1) % 4;  // Move counterclockwise (left)
     const nextPlayer = game.players.find(p => p.position === nextPlayerIndex);
     
     if (!nextPlayer) {
@@ -606,16 +606,16 @@ io.on('connection', (socket) => {
         console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''}`);
       });
       
-      // After bidding, the player to the right of the dealer leads first (clockwise)
+      // After bidding, the player to the left of the dealer leads first (counterclockwise)
       const dealer = game.players.find(p => p.isDealer);
       if (!dealer) {
         console.error('No dealer found!');
         return;
       }
       
-      // Find the player to the right of the dealer (clockwise)
+      // Find the player to the left of the dealer (counterclockwise)
       const dealerPosition = dealer.position;
-      const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go right (clockwise)
+      const firstPosition = (dealerPosition + 1) % 4;  // Go left (counterclockwise)
       const firstPlayer = game.players.find(p => p.position === firstPosition);
       
       console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
@@ -723,7 +723,7 @@ io.on('connection', (socket) => {
       
       // Determine the next player
       const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
-      const nextPlayerIndex = (currentPlayerIndex - 1 + 4) % 4;  // Move clockwise
+      const nextPlayerIndex = (currentPlayerIndex + 1) % 4;  // Move counterclockwise (left)
       game.currentPlayer = game.players[nextPlayerIndex].id;
       
       // Check if the trick is complete
