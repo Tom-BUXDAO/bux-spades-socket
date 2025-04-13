@@ -34,8 +34,13 @@ const io = new Server(httpServer, {
 });
 
 interface Card {
-  suit: 'S' | 'H' | 'D' | 'C';
-  rank: number;
+  suit: 'H' | 'D' | 'C' | 'S';
+  rank: number | string;
+  playedBy?: {
+    id: string;
+    name: string;
+    position: number;
+  };
 }
 
 interface Player {
@@ -119,11 +124,10 @@ function mapTrickToPlayers(game: Game, trick: Card[]): { playerId: string, playe
   
   const currentPlayer = game.players[currentPlayerIdx];
   
-  // Calculate the position of the player who led the trick
-  // For a 4-card trick, it would be 4 positions before the current player
-  // For a trick in progress, it's (trick.length) positions before the current player
-  const positionsBack = trick.length;
-  const leadPosition = (currentPlayer.position - positionsBack + 4) % 4;
+  // For a complete trick (4 cards), the current player is the winner
+  // For a trick in progress, the current player is the next to play
+  // So we need to go back (trick.length) positions to find the lead position
+  const leadPosition = (currentPlayer.position - trick.length + 4) % 4;
   
   // Map each card to the player who played it
   for (let i = 0; i < trick.length; i++) {
@@ -761,8 +765,15 @@ io.on('connection', (socket) => {
     // Remove the card from player's hand
     player.hand.splice(cardIndex, 1);
     
-    // Add card to current trick
-    game.currentTrick.push(card);
+    // Add card to current trick with player information
+    game.currentTrick.push({
+      ...card,
+      playedBy: {
+        id: player.id,
+        name: player.name,
+        position: player.position
+      }
+    });
     
     console.log(`Player ${player.name} played ${card.rank} of ${card.suit}`);
     
@@ -778,30 +789,31 @@ io.on('connection', (socket) => {
     // Determine if the trick is complete
     if (game.currentTrick.length === 4) {
       // Create an array to track who played each card
-      const cardPlayers = [];
-      
-      // Find the player who led the trick (the one who would play next after the trick is complete)
-      const currentPlayerPosition = game.players.find(p => p.id === game.currentPlayer)?.position || 0;
-      const leadPosition = (currentPlayerPosition - 4 + 4) % 4; // 4 positions back from current player
-      
-      // Map each card to the player who played it
-      for (let i = 0; i < game.currentTrick.length; i++) {
-        const playerPosition = (leadPosition + i) % 4;
-        const player = game.players.find(p => p.position === playerPosition);
-        
-        if (player) {
-          cardPlayers.push({ 
-            card: game.currentTrick[i],
-            player: player
-          });
-          console.log(`Card ${i} (${game.currentTrick[i].rank}${game.currentTrick[i].suit}) was played by ${player.name}`);
+      const cardPlayers = game.currentTrick.map(card => {
+        if (!card.playedBy) {
+          console.error(`Card ${card.rank}${card.suit} has no player information!`);
+          return null;
         }
+        return {
+          card: { suit: card.suit as 'H' | 'D' | 'C' | 'S', rank: card.rank },
+          player: card.playedBy
+        };
+      }).filter((item): item is { card: { suit: 'H' | 'D' | 'C' | 'S'; rank: string | number }; player: { id: string; name: string; position: number } } => item !== null);
+      
+      if (cardPlayers.length === 0) {
+        console.error('No valid card players found in trick!');
+        return;
       }
+      
+      // Debug output
+      cardPlayers.forEach((item, idx) => {
+        console.log(`Card ${idx} (${item.card.rank}${item.card.suit}) was played by ${item.player.name} at position ${item.player.position}`);
+      });
       
       // Determine winning card
       const leadSuit = game.currentTrick[0].suit;
       let winningCard = game.currentTrick[0];
-      let winningPlayer = cardPlayers[0]?.player;
+      let winningPlayer = cardPlayers[0].player;
       
       // Check each card
       for (let i = 1; i < game.currentTrick.length; i++) {
@@ -810,7 +822,7 @@ io.on('connection', (socket) => {
         // Spades always win against other suits
         if (currentCard.suit === 'S' && winningCard.suit !== 'S') {
           winningCard = currentCard;
-          winningPlayer = cardPlayers[i]?.player;
+          winningPlayer = cardPlayers[i].player;
           continue;
         }
         
@@ -820,13 +832,12 @@ io.on('connection', (socket) => {
         }
         
         // If both the winning card and current card are spades or both match the lead suit
-        // Fix parseInt type error by ensuring we're comparing numbers to numbers
         const currentRank = typeof currentCard.rank === 'string' ? parseInt(currentCard.rank, 10) : currentCard.rank;
         const winningRank = typeof winningCard.rank === 'string' ? parseInt(winningCard.rank, 10) : winningCard.rank;
         
         if ((currentCard.suit === winningCard.suit) && (currentRank > winningRank)) {
           winningCard = currentCard;
-          winningPlayer = cardPlayers[i]?.player;
+          winningPlayer = cardPlayers[i].player;
         }
       }
       
@@ -838,18 +849,24 @@ io.on('connection', (socket) => {
       console.log(`Trick won by ${winningPlayer.name} with ${winningCard.rank} of ${winningCard.suit}`);
       
       // Award the trick to the winning player
-      winningPlayer.tricks += 1;
+      const winningPlayerObj = game.players.find(p => p.id === winningPlayer.id);
+      if (winningPlayerObj) {
+        winningPlayerObj.tricks += 1;
+      }
       
       // Emit trick_winner event
       io.to(gameId).emit('trick_winner', {
         gameId: gameId,
-        winningCard: winningCard,
+        winningCard: { suit: winningCard.suit, rank: winningCard.rank },
         winningPlayerId: winningPlayer.id,
         playerName: winningPlayer.name
       });
       
       // Store completed trick
-      game.completedTricks.push([...game.currentTrick]);
+      game.completedTricks.push(game.currentTrick.map(card => ({
+        suit: card.suit,
+        rank: card.rank
+      })));
       
       // Set the winning player as the next to play
       game.currentPlayer = winningPlayer.id;
