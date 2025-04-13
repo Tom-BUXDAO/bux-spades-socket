@@ -27,6 +27,7 @@ export interface GameState {
   players: Player[];
   currentPlayer: string;
   currentTrick: Card[];
+  currentTrickCardPlayers: string[];
   completedTricks: Card[][];
   team1Score: number;
   team2Score: number;
