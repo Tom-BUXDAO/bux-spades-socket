@@ -538,29 +538,48 @@ export default function GameTable({
   // Fix the renderTrickCards function to use the same lead position logic
   const renderTrickCards = () => {
     const leadPosition = getLeadPosition();
+    console.log(`Lead position for trick: ${leadPosition}`);
+    
+    const cardPositions: number[] = [];
+    game.currentTrick.forEach((card, index) => {
+      const playerPosition = (leadPosition + index) % 4;
+      const player = game.players.find(p => {
+        // @ts-ignore - position property might not be on the type yet
+        return p.position === playerPosition;
+      });
+      
+      if (!player) {
+        console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
+        return;
+      }
+
+      // @ts-ignore - position property might not be on the type yet
+      const absolutePosition = player.position ?? game.players.indexOf(player);
+      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
+      cardPositions[index] = relativePosition;
+    });
     
     return (
-      <div className="absolute top-24 bottom-24 left-24 right-24 flex items-center justify-center">
-        {/* Play area container */}
-        <div className="relative w-full h-full mx-auto">
+      <div className="absolute inset-0 flex items-center justify-center">
+        {/* Play area container - extends to player containers */}
+        <div className="relative w-[calc(100%-200px)] h-[calc(100%-200px)] mx-auto border-2 border-white/30">
           {/* North player trick card */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
-            {game.currentTrick.map((card, index) => {
-              const leadPos = getLeadPosition();
-              const playerPosition = (leadPos + index) % 4;
-              const player = game.players.find(p => p.position === playerPosition);
-              if (!player) return null;
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+        {game.currentTrick.map((card, index) => {
+              const leadPosition = getLeadPosition();
+              const cardPlayerPosition = (leadPosition + index) % 4;
+              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+              if (!cardPlayer) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
               
               return relativePosition === 2 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  fill={true}
                   style={{ objectFit: 'contain' }}
                   quality={100}
                   priority={true}
@@ -570,75 +589,72 @@ export default function GameTable({
           </div>
 
           {/* South player trick card */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
-              const leadPos = getLeadPosition();
-              const playerPosition = (leadPos + index) % 4;
-              const player = game.players.find(p => p.position === playerPosition);
-              if (!player) return null;
+              const leadPosition = getLeadPosition();
+              const cardPlayerPosition = (leadPosition + index) % 4;
+              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+              if (!cardPlayer) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
               
               return relativePosition === 0 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  fill={true}
                   style={{ objectFit: 'contain' }}
                   quality={100}
                   priority={true}
                 />
               );
             })}
-          </div>
+              </div>
 
           {/* West player trick card */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] flex items-center justify-center">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
-              const leadPos = getLeadPosition();
-              const playerPosition = (leadPos + index) % 4;
-              const player = game.players.find(p => p.position === playerPosition);
-              if (!player) return null;
+              const leadPosition = getLeadPosition();
+              const cardPlayerPosition = (leadPosition + index) % 4;
+              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+              if (!cardPlayer) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
               
               return relativePosition === 1 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  fill={true}
                   style={{ objectFit: 'contain' }}
                   quality={100}
                   priority={true}
                 />
-              );
-            })}
+          );
+        })}
           </div>
 
           {/* East player trick card */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] flex items-center justify-center">
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
-              const leadPos = getLeadPosition();
-              const playerPosition = (leadPos + index) % 4;
-              const player = game.players.find(p => p.position === playerPosition);
-              if (!player) return null;
+              const leadPosition = getLeadPosition();
+              const cardPlayerPosition = (leadPosition + index) % 4;
+              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+              if (!cardPlayer) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
               
               return relativePosition === 3 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  fill={true}
                   style={{ objectFit: 'contain' }}
                   quality={100}
                   priority={true}
@@ -873,24 +889,24 @@ export default function GameTable({
                     `bg-gradient-to-r ${teamAccentColor} to-white/80`}
                 `}>
                   <div className="bg-gray-900 rounded-full p-0.5">
-                    <Image
-                      src={getPlayerAvatar(player)}
+            <Image
+              src={getPlayerAvatar(player)}
                       alt={player.name || "Player"}
                       width={avatarWidth}
                       height={avatarHeight}
                       className="rounded-full object-cover"
                       priority={true}
-                    />
-                  </div>
+            />
+          </div>
                   
                   {/* Dealer chip with premium styling */}
-                  {player.isDealer && (
+          {player.isDealer && (
                     <div className="absolute -bottom-1 -right-1">
                       <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-md">
                         <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center">
                           <span className="text-[8px] font-bold text-yellow-200">D</span>
-                        </div>
-                      </div>
+            </div>
+        </div>
                     </div>
                   )}
                 </div>
@@ -1259,52 +1275,160 @@ export default function GameTable({
                 </div>
               ))}
 
-              {/* Center content - play area fills space between player containers */}
-              {game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
-                renderTrickCards()
-              ) : game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
-                <button
-                  onClick={handleStartGame}
-                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
-                  style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
-                >
-                  Start Game
-                </button>
-              ) : game.status === "WAITING" && game.players.length < 4 ? (
-                <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                  <div className="font-bold">Waiting for Players</div>
-                  <div className="text-sm mt-1">{game.players.length}/4 joined</div>
-                </div>
-              ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
-                <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                  <div className="font-bold">Waiting for Host</div>
-                  <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
-                </div>
-              ) : game.status === "BIDDING" && game.currentPlayer === currentPlayerId ? (
-                <div className="flex items-center justify-center w-full h-full">
-                  <BiddingInterface
-                    onBid={handleBid}
-                    currentBid={orderedPlayers[0]?.bid}
-                    gameId={game.id}
-                    playerId={currentPlayerId}
-                    currentPlayerTurn={game.currentPlayer}
-                  />
-                </div>
-              ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
-                <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
-                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                  <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
-                </div>
-              ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
-                <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
-                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                  <div className="text-sm">
-                    Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
+              {/* Center content */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                {/* Play area container - extends to player containers */}
+                <div className="relative w-[calc(100%-200px)] h-[calc(100%-200px)] mx-auto border-2 border-white/30">
+                  {/* North player trick card */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                    {game.currentTrick.map((card, index) => {
+                      const leadPosition = getLeadPosition();
+                      const cardPlayerPosition = (leadPosition + index) % 4;
+                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+                      if (!cardPlayer) return null;
+                      
+                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
+                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      
+                      return relativePosition === 2 && (
+                        <Image
+                          key={`${card.suit}-${card.rank}`}
+                          src={`/cards/${getCardImage(card)}`}
+                          alt={`${card.rank} of ${card.suit}`}
+                          fill={true}
+                          style={{ objectFit: 'contain' }}
+                          quality={100}
+                          priority={true}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* South player trick card */}
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                    {game.currentTrick.map((card, index) => {
+                      const leadPosition = getLeadPosition();
+                      const cardPlayerPosition = (leadPosition + index) % 4;
+                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+                      if (!cardPlayer) return null;
+                      
+                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
+                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      
+                      return relativePosition === 0 && (
+                        <Image
+                          key={`${card.suit}-${card.rank}`}
+                          src={`/cards/${getCardImage(card)}`}
+                          alt={`${card.rank} of ${card.suit}`}
+                          fill={true}
+                          style={{ objectFit: 'contain' }}
+                          quality={100}
+                          priority={true}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* West player trick card */}
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                    {game.currentTrick.map((card, index) => {
+                      const leadPosition = getLeadPosition();
+                      const cardPlayerPosition = (leadPosition + index) % 4;
+                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+                      if (!cardPlayer) return null;
+                      
+                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
+                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      
+                      return relativePosition === 1 && (
+                        <Image
+                          key={`${card.suit}-${card.rank}`}
+                          src={`/cards/${getCardImage(card)}`}
+                          alt={`${card.rank} of ${card.suit}`}
+                          fill={true}
+                          style={{ objectFit: 'contain' }}
+                          quality={100}
+                          priority={true}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* East player trick card */}
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                    {game.currentTrick.map((card, index) => {
+                      const leadPosition = getLeadPosition();
+                      const cardPlayerPosition = (leadPosition + index) % 4;
+                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
+                      if (!cardPlayer) return null;
+                      
+                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
+                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      
+                      return relativePosition === 3 && (
+                        <Image
+                          key={`${card.suit}-${card.rank}`}
+                          src={`/cards/${getCardImage(card)}`}
+                          alt={`${card.rank} of ${card.suit}`}
+                          fill={true}
+                          style={{ objectFit: 'contain' }}
+                          quality={100}
+                          priority={true}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
-              ) : null}
+              </div>
+
+              {/* Overlay the game status buttons/messages on top of the play area */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
+                  <button
+                    onClick={handleStartGame}
+                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
+                    style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
+                  >
+                    Start Game
+                  </button>
+                ) : game.status === "WAITING" && game.players.length < 4 ? (
+                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
+                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                    <div className="font-bold">Waiting for Players</div>
+                    <div className="text-sm mt-1">{game.players.length}/4 joined</div>
+                  </div>
+                ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
+                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
+                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                    <div className="font-bold">Waiting for Host</div>
+                    <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
+                  </div>
+                ) : game.status === "BIDDING" && game.currentPlayer === currentPlayerId ? (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <BiddingInterface
+                      onBid={handleBid}
+                      currentBid={orderedPlayers[0]?.bid}
+                      gameId={game.id}
+                      playerId={currentPlayerId}
+                      currentPlayerTurn={game.currentPlayer}
+                    />
+                  </div>
+                ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
+                  <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
+                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                    <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
+                  </div>
+                ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
+                  renderTrickCards()
+                ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
+                  <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
+                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                    <div className="text-sm">
+                      Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             {/* Cards area with more space */}
