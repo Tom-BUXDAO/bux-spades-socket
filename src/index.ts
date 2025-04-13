@@ -504,16 +504,16 @@ io.on('connection', (socket) => {
       isDealer: i === firstDealerIndex
     }));
     
-    // After bidding, the player to the left of the dealer bids first (counter-clockwise)
+    // After bidding, the player to the left of the dealer bids first (clockwise)
     const dealer = game.players.find(p => p.isDealer);
     if (!dealer) {
       console.error('No dealer found!');
       return;
     }
     
-    // Find the player to the left of the dealer (counter-clockwise)
+    // Find the player to the left of the dealer (clockwise)
     const dealerPosition = dealer.position;
-    const firstPosition = (dealerPosition + 1) % 4;  // Go left (counter-clockwise)
+    const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go clockwise
     const firstPlayer = game.players.find(p => p.position === firstPosition);
     
     console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
@@ -582,15 +582,15 @@ io.on('connection', (socket) => {
     game.players[playerIndex].bid = bid;
     console.log(`Player ${game.players[playerIndex].name} bid ${bid}`);
 
-    // Determine the next player
+    // Determine the next player - move clockwise for bidding
     const currentPlayer = game.players.find(p => p.id === userId);
     if (!currentPlayer) {
       console.error('Could not find current player');
       return;
     }
     
-    // Use position property to determine next player (counter-clockwise)
-    const nextPosition = (currentPlayer.position + 1) % 4;
+    // Use position property to determine next player (clockwise)
+    const nextPosition = (currentPlayer.position - 1 + 4) % 4;  // Move clockwise
     const nextPlayer = game.players.find(p => p.position === nextPosition);
     
     if (!nextPlayer) {
@@ -614,16 +614,16 @@ io.on('connection', (socket) => {
         console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''}`);
       });
       
-      // After bidding, the player to the left of the dealer bids first (counter-clockwise)
+      // After bidding, the player to the left of the dealer bids first (clockwise)
       const dealer = game.players.find(p => p.isDealer);
       if (!dealer) {
         console.error('No dealer found!');
         return;
       }
       
-      // Find the player to the left of the dealer (counter-clockwise)
+      // Find the player to the left of the dealer (clockwise)
       const dealerPosition = dealer.position;
-      const firstPosition = (dealerPosition + 1) % 4;  // Go left (counter-clockwise)
+      const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go clockwise
       const firstPlayer = game.players.find(p => p.position === firstPosition);
       
       console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
