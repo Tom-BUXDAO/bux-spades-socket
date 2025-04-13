@@ -540,47 +540,28 @@ export default function GameTable({
     const leadPosition = getLeadPosition();
     console.log(`Lead position for trick: ${leadPosition}`);
     
-    const cardPositions: number[] = [];
-    game.currentTrick.forEach((card, index) => {
-      const playerPosition = (leadPosition + index) % 4;
-      const player = game.players.find(p => {
-        // @ts-ignore - position property might not be on the type yet
-        return p.position === playerPosition;
-      });
-      
-      if (!player) {
-        console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
-        return;
-      }
-
-      // @ts-ignore - position property might not be on the type yet
-      const absolutePosition = player.position ?? game.players.indexOf(player);
-      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
-      cardPositions[index] = relativePosition;
-    });
-
     return (
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Play area container */}
         <div className="relative w-[calc(100%-140px)] h-[80%] mx-auto border-2 border-white/30">
           {/* North player trick card */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const leadPosition = getLeadPosition();
-              const cardPlayerPosition = (leadPosition + index) % 4;
-              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-              if (!cardPlayer) return null;
+              const leadPos = getLeadPosition();
+              const playerPosition = (leadPos + index) % 4;
+              const player = game.players.find(p => p.position === playerPosition);
+              if (!player) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 2 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  fill={true}
-                  style={{ objectFit: 'contain' }}
+                  width={84}
+                  height={120}
                   quality={100}
                   priority={true}
                 />
@@ -589,23 +570,23 @@ export default function GameTable({
           </div>
 
           {/* South player trick card */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const leadPosition = getLeadPosition();
-              const cardPlayerPosition = (leadPosition + index) % 4;
-              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-              if (!cardPlayer) return null;
+              const leadPos = getLeadPosition();
+              const playerPosition = (leadPos + index) % 4;
+              const player = game.players.find(p => p.position === playerPosition);
+              if (!player) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 0 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  fill={true}
-                  style={{ objectFit: 'contain' }}
+                  width={84}
+                  height={120}
                   quality={100}
                   priority={true}
                 />
@@ -614,23 +595,23 @@ export default function GameTable({
           </div>
 
           {/* West player trick card */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const leadPosition = getLeadPosition();
-              const cardPlayerPosition = (leadPosition + index) % 4;
-              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-              if (!cardPlayer) return null;
+              const leadPos = getLeadPosition();
+              const playerPosition = (leadPos + index) % 4;
+              const player = game.players.find(p => p.position === playerPosition);
+              if (!player) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 1 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  fill={true}
-                  style={{ objectFit: 'contain' }}
+                  width={84}
+                  height={120}
                   quality={100}
                   priority={true}
                 />
@@ -639,23 +620,23 @@ export default function GameTable({
           </div>
 
           {/* East player trick card */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] border border-white/30">
             {game.currentTrick.map((card, index) => {
-              const leadPosition = getLeadPosition();
-              const cardPlayerPosition = (leadPosition + index) % 4;
-              const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-              if (!cardPlayer) return null;
+              const leadPos = getLeadPosition();
+              const playerPosition = (leadPos + index) % 4;
+              const player = game.players.find(p => p.position === playerPosition);
+              if (!player) return null;
               
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-              const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+              const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 3 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  fill={true}
-                  style={{ objectFit: 'contain' }}
+                  width={84}
+                  height={120}
                   quality={100}
                   priority={true}
                 />
@@ -1280,23 +1261,23 @@ export default function GameTable({
                 {/* Play area container */}
                 <div className="relative w-[calc(100%-140px)] h-[80%] mx-auto border-2 border-white/30">
                   {/* North player trick card */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const leadPosition = getLeadPosition();
-                      const cardPlayerPosition = (leadPosition + index) % 4;
-                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-                      if (!cardPlayer) return null;
+                      const leadPos = getLeadPosition();
+                      const playerPosition = (leadPos + index) % 4;
+                      const player = game.players.find(p => p.position === playerPosition);
+                      if (!player) return null;
                       
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
                       
                       return relativePosition === 2 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          fill={true}
-                          style={{ objectFit: 'contain' }}
+                          width={84}
+                          height={120}
                           quality={100}
                           priority={true}
                         />
@@ -1305,23 +1286,23 @@ export default function GameTable({
                   </div>
 
                   {/* South player trick card */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const leadPosition = getLeadPosition();
-                      const cardPlayerPosition = (leadPosition + index) % 4;
-                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-                      if (!cardPlayer) return null;
+                      const leadPos = getLeadPosition();
+                      const playerPosition = (leadPos + index) % 4;
+                      const player = game.players.find(p => p.position === playerPosition);
+                      if (!player) return null;
                       
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
                       
                       return relativePosition === 0 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          fill={true}
-                          style={{ objectFit: 'contain' }}
+                          width={84}
+                          height={120}
                           quality={100}
                           priority={true}
                         />
@@ -1330,23 +1311,23 @@ export default function GameTable({
                   </div>
 
                   {/* West player trick card */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const leadPosition = getLeadPosition();
-                      const cardPlayerPosition = (leadPosition + index) % 4;
-                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-                      if (!cardPlayer) return null;
+                      const leadPos = getLeadPosition();
+                      const playerPosition = (leadPos + index) % 4;
+                      const player = game.players.find(p => p.position === playerPosition);
+                      if (!player) return null;
                       
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
                       
                       return relativePosition === 1 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          fill={true}
-                          style={{ objectFit: 'contain' }}
+                          width={84}
+                          height={120}
                           quality={100}
                           priority={true}
                         />
@@ -1355,23 +1336,23 @@ export default function GameTable({
                   </div>
 
                   {/* East player trick card */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      const leadPosition = getLeadPosition();
-                      const cardPlayerPosition = (leadPosition + index) % 4;
-                      const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
-                      if (!cardPlayer) return null;
+                      const leadPos = getLeadPosition();
+                      const playerPosition = (leadPos + index) % 4;
+                      const player = game.players.find(p => p.position === playerPosition);
+                      if (!player) return null;
                       
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
+                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
                       
                       return relativePosition === 3 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          fill={true}
-                          style={{ objectFit: 'contain' }}
+                          width={84}
+                          height={120}
                           quality={100}
                           priority={true}
                         />
