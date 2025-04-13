@@ -1121,8 +1121,8 @@ export default function GameTable({
   const hasCompletedTricks = game.completedTricks.length > 0;
 
   // Calculate scores
-  const team1Score = game.scores['team1'] || 0;
-  const team2Score = game.scores['team2'] || 0;
+  const team1Score = game?.scores?.['team1'] ?? 0;
+  const team2Score = game?.scores?.['team2'] ?? 0;
   const team1Bags = Math.floor((team1Score % 100) / 10);
   const team2Bags = Math.floor((team2Score % 100) / 10);
 
