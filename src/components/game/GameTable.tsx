@@ -539,64 +539,42 @@ export default function GameTable({
     if (!game.currentTrick || game.currentTrick.length === 0) return null;
 
     // Get the lead position for this trick
-    const leadPlayer = game.players.find(p => p.id === cardPlayers[0]);
-    if (!leadPlayer) {
-      console.warn('Could not find lead player');
-      return null;
-    }
-    const leadPosition = leadPlayer.position;
-    console.log(`Rendering trick cards with lead position: ${leadPosition}`);
+    const leadPosition = getLeadPosition();
+    
+    return game.currentTrick.map((card, index) => {
+      // Calculate the relative position from the current player's perspective
+      const relativePosition = (leadPosition + index) % 4;
+      
+      // Determine which CSS class to use based on the relative position
+      let positionClass = '';
+      switch (relativePosition) {
+        case 0: // South (current player)
+          positionClass = 'absolute bottom-0 left-1/2 transform -translate-x-1/2';
+          break;
+        case 1: // West
+          positionClass = 'absolute left-0 top-1/2 transform -translate-y-1/2';
+          break;
+        case 2: // North
+          positionClass = 'absolute top-0 left-1/2 transform -translate-x-1/2';
+          break;
+        case 3: // East
+          positionClass = 'absolute right-0 top-1/2 transform -translate-y-1/2';
+          break;
+      }
 
-    return (
-      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-        <div className="relative w-full h-full max-w-[600px] max-h-[400px]">
-          {game.currentTrick.map((card, index) => {
-            // Get the player who played this card
-            const playerId = cardPlayers[index.toString()];
-            const player = game.players.find(p => p.id === playerId);
-            
-            if (!player || player.position === undefined) {
-              console.warn(`Could not find player who played card at index ${index}`);
-              return null;
-            }
-
-            // Calculate relative position from current player's view
-            const relativePosition = (4 + player.position - currentPlayerPosition) % 4;
-            
-            console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at position ${player.position}, relative pos ${relativePosition}`);
-            
-            let positionClass = '';
-            switch (relativePosition) {
-              case 0: // South
-                positionClass = 'absolute bottom-[20%] left-1/2 -translate-x-1/2';
-                break;
-              case 1: // West
-                positionClass = 'absolute left-0 top-1/2 -translate-y-1/2';
-                break;
-              case 2: // North
-                positionClass = 'absolute top-[20%] left-1/2 -translate-x-1/2';
-                break;
-              case 3: // East
-                positionClass = 'absolute right-0 top-1/2 -translate-y-1/2';
-                break;
-            }
-
-            return (
-              <div key={`${card.suit}-${card.rank}`} className={`${positionClass} w-[72px] h-[96px]`}>
-                <Image
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank} of ${card.suit}`}
-                  width={72}
-                  height={96}
-                  className="object-contain"
-                  priority={true}
-                />
-              </div>
-            );
-          })}
+      return (
+        <div
+          key={`${card.suit}-${card.rank}`}
+          className={`${positionClass} w-24 h-36 z-10`}
+        >
+          <img
+            src={`/cards/${card.rank}${card.suit.charAt(0)}.png`}
+            alt={`${card.rank} of ${card.suit}`}
+            className="w-full h-full object-contain"
+          />
         </div>
-      </div>
-    );
+      );
+    });
   };
 
   const handleLeaveTable = () => {
