@@ -86,11 +86,6 @@ interface TeamScore {
   bags: number;
 }
 
-interface GameScores {
-  team1: TeamScore;
-  team2: TeamScore;
-}
-
 // Store active games
 const games = new Map<string, Game>();
 
