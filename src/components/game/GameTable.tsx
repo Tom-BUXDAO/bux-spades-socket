@@ -561,8 +561,8 @@ export default function GameTable({
 
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        {/* Play area container - extends to player containers */}
-        <div className="relative w-[calc(100%-200px)] h-[calc(100%-200px)] mx-auto border-2 border-white/30">
+        {/* Play area container */}
+        <div className="relative w-[calc(100%-140px)] h-[80%] mx-auto border-2 border-white/30">
           {/* North player trick card */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
@@ -1277,8 +1277,8 @@ export default function GameTable({
 
               {/* Center content */}
               <div className="absolute inset-0 flex items-center justify-center">
-                {/* Play area container - extends to player containers */}
-                <div className="relative w-[calc(100%-200px)] h-[calc(100%-200px)] mx-auto border-2 border-white/30">
+                {/* Play area container */}
+                <div className="relative w-[calc(100%-140px)] h-[80%] mx-auto border-2 border-white/30">
                   {/* North player trick card */}
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] w-[100px] border border-white/30 flex items-center justify-center">
                     {game.currentTrick.map((card, index) => {
