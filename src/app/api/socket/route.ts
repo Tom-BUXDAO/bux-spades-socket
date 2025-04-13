@@ -42,14 +42,18 @@ if (typeof window === "undefined" && !io) {
             hand: [],
             tricks: 0,
             team: 1,
+            position: 0
           }],
           currentPlayer: user.id,
           currentTrick: [],
+          currentTrickCardPlayers: [],
           completedTricks: [],
           team1Score: 0,
           team2Score: 0,
           team1Bags: 0,
           team2Bags: 0,
+          leadPosition: 0,
+          dealerPosition: 3
         };
 
         games.set(gameId, game);
@@ -71,18 +75,22 @@ if (typeof window === "undefined" && !io) {
 
         if (!user) return;
 
-        const team = (game.players.length % 2 + 1) as 1 | 2;
+        const position = game.players.length;
+        const team = (position % 2 + 1) as 1 | 2;
         game.players.push({
           id: user.id,
           name: user.name || "Unknown",
           hand: [],
           tricks: 0,
           team,
+          position
         });
 
         if (game.players.length === 4) {
           game.status = "BIDDING";
-          // TODO: Deal cards
+          game.players[3].isDealer = true;
+          game.dealerPosition = 3;
+          game.leadPosition = 0;
         }
 
         games.set(gameId, game);
