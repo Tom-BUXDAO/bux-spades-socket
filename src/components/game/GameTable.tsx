@@ -254,7 +254,7 @@ export default function GameTable({
   const MODAL_DISPLAY_TIME = 5000; // Time to show modals in milliseconds
   
   // Add state to directly track which player played which card
-  const [cardPlayers, setCardPlayers] = useState<Record<number, string>>({});
+  const [cardPlayers, setCardPlayers] = useState<string[]>([]);
   
   // Add a ref to preserve completed trick card-player mappings
   const completedTrickCardPlayers = useRef<Record<number, string>>({});
@@ -418,7 +418,7 @@ export default function GameTable({
     // When a new trick starts, reset our tracking
     if (game.currentTrick.length === 0) {
       console.log("🔄 New trick starting - resetting card players mapping");
-      setCardPlayers({});
+      setCardPlayers([]);
       setShowWinningCardHighlight(false);
       setWinningCardIndex(null);
       setWinningPlayerId(null);
@@ -449,7 +449,7 @@ export default function GameTable({
       console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${playerPosition}, relative pos ${relativePosition}`);
       
       // Update our card players mapping
-      const updatedMapping = { ...cardPlayers };
+      const updatedMapping = [...cardPlayers];
       updatedMapping[index] = player.id;
       setCardPlayers(updatedMapping);
       
@@ -481,7 +481,7 @@ export default function GameTable({
     
     // Update our local tracking immediately to know that current player played this card
     // This helps prevent the "Unknown" player issue when we play our own card
-    const updatedMapping = { ...cardPlayers };
+    const updatedMapping = [...cardPlayers];
     updatedMapping[game.currentTrick.length] = currentPlayerId;
     setCardPlayers(updatedMapping);
     
@@ -534,31 +534,36 @@ export default function GameTable({
     return game.players.find(p => p.id === playerId) || null;
   };
   
-  // Fix the renderTrickCards function to use the same lead position logic
+  // Fix the renderTrickCards function to use cardPlayers
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) return null;
 
     // Get the lead position for this trick
-    const leadPosition = getLeadPosition();
+    const leadPlayer = game.players.find(p => p.id === cardPlayers[0]);
+    if (!leadPlayer) {
+      console.warn('Could not find lead player');
+      return null;
+    }
+    const leadPosition = leadPlayer.position;
     console.log(`Rendering trick cards with lead position: ${leadPosition}`);
 
     return (
       <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
         <div className="relative w-full h-full max-w-[600px] max-h-[400px]">
           {game.currentTrick.map((card, index) => {
-            // Calculate which position played this card based on lead position
-            const playerPosition = (leadPosition + index) % 4;
-            const player = game.players.find(p => p.position === playerPosition);
+            // Get the player who played this card
+            const playerId = cardPlayers[index];
+            const player = game.players.find(p => p.id === playerId);
             
-            if (!player) {
-              console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
+            if (!player || player.position === undefined) {
+              console.warn(`Could not find player who played card at index ${index}`);
               return null;
             }
 
             // Calculate relative position from current player's view
-            const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
+            const relativePosition = (4 + player.position - currentPlayerPosition) % 4;
             
-            console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${playerPosition}, relative pos ${relativePosition}`);
+            console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at position ${player.position}, relative pos ${relativePosition}`);
             
             let positionClass = '';
             switch (relativePosition) {
@@ -1141,6 +1146,13 @@ export default function GameTable({
     const position = (currentPlayerInfo.position - stepsBack + 4) % 4;
     return game.players.find(p => p.position === position) || null;
   };
+
+  // Update cardPlayers when game state changes
+  useEffect(() => {
+    if (game.cardPlayers) {
+      setCardPlayers(game.cardPlayers);
+    }
+  }, [game.cardPlayers]);
 
   // Return the JSX for the component
   return (

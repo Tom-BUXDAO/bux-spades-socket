@@ -23,17 +23,19 @@ export type GameStatus = "WAITING" | "BIDDING" | "PLAYING" | "FINISHED";
 
 export interface GameState {
   id: string;
-  status: GameStatus;
   players: Player[];
+  status: GameStatus;
   currentPlayer: string;
   currentTrick: Card[];
-  currentTrickCardPlayers: string[];
+  spadesBroken: boolean;
+  cardPlayers: string[];  // Array to track which player played each card in the trick
   completedTricks: Card[][];
+  createdAt: number;
   team1Score: number;
   team2Score: number;
   team1Bags: number;
   team2Bags: number;
-  createdAt?: number;
+  currentTrickCardPlayers: string[];
   leadPosition?: number;
   dealerPosition?: number;
 }
