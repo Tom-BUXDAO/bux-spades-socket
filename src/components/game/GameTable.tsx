@@ -1257,7 +1257,7 @@ export default function GameTable({
               ))}
 
               {/* Center content - play area fills space between player containers */}
-              <div className="absolute inset-[15%] flex items-center justify-center">
+              <div className={`absolute ${windowSize.width < 768 ? 'inset-[25%]' : 'inset-[15%]'} flex items-center justify-center`}>
                 {/* Play area container - fills available space */}
                 <div className="relative w-full h-full mx-auto border-2 border-white/30">
                   {/* North player trick card */}
