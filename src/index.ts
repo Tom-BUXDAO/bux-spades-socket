@@ -584,7 +584,7 @@ io.on('connection', (socket) => {
 
     // Determine the next player
     const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
-    const nextPlayerIndex = (currentPlayerIndex - 1 + 4) % 4;  // Move clockwise (right) to match bidding
+    const nextPlayerIndex = (currentPlayerIndex + 1) % 4;  // Move counter-clockwise (left)
     const nextPlayer = game.players.find(p => p.position === nextPlayerIndex);
     
     if (!nextPlayer) {
