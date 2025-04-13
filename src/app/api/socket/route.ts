@@ -1,7 +1,8 @@
+import { Server } from 'socket.io';
 import { Server as NetServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { NextApiResponse } from "next";
-import type { GameState, Card } from "@/types/game";
+import type { GameState, Player } from "@/types/game";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -33,37 +34,41 @@ if (typeof window === "undefined" && !io) {
 
         // Generate a unique game ID
         const gameId = Math.random().toString(36).substring(7);
-        const game: GameState = {
+        const player: Player = {
+          id: userId,
+          name: `Player ${userId.substring(0, 4)}`,
+          hand: [],
+          tricks: 0,
+          team: 1 as 1 | 2,
+          position: 0
+        };
+        const newGame: GameState = {
           id: gameId,
-          status: 'WAITING',
-          players: [{
-            id: userId,
-            name: `Player ${userId.substring(0, 4)}`,
-            hand: [],
-            tricks: 0,
-            team: 1,
-            position: 0
-          }],
-          currentPlayer: userId,
+          status: "WAITING",
+          players: [player],
+          currentPlayer: "",
           currentTrick: [],
-          currentTrickCardPlayers: [],
+          tricks: [],
           completedTricks: [],
+          hands: {},
           bids: {},
           scores: { team1: 0, team2: 0 },
           dealerPosition: 0,
-          spadesBroken: false,
+          northSouthTricks: 0,
+          eastWestTricks: 0,
+          currentTrickCardPlayers: [],
           cardPlayers: {},
           createdAt: new Date().toISOString()
         };
 
         // Store the game in memory
-        games.set(gameId, game);
+        games.set(gameId, newGame);
 
         // Join the game room
         socket.join(gameId);
 
         // Emit the game state to the creator
-        socket.emit('game_created', game);
+        socket.emit('game_created', newGame);
 
         // Broadcast the updated game list to all clients
         if (io) {
