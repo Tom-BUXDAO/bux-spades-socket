@@ -370,21 +370,21 @@ export default function GameTable({
   // Fix the getLeadPosition function
   const getLeadPosition = () => {
     // If it's the first trick, the player after the dealer leads
-    if (game.tricks.length === 0 && game.currentTrick.length === 0) {
-      const dealerPosition = game.players.find(p => p.isDealer)?.position || 0;
-      // Move clockwise from dealer (next position)
-      return (dealerPosition + 1) % 4;
+    if (!game?.tricks?.length && !game?.currentTrick?.length) {
+      const dealer = game.players.find(p => p.isDealer);
+      return ((dealer?.position ?? 0) + 1) % 4;
     }
 
-    // If it's a new trick (but not the first), the winner of the last trick leads
-    if (game.currentTrick.length === 0 && game.tricks.length > 0) {
+    // If it's a new trick (but not the first), use the last trick's winner
+    if (!game?.currentTrick?.length && game?.tricks?.length) {
       const lastTrick = game.tricks[game.tricks.length - 1];
-      const winningPlayer = game.players.find(p => p.id === lastTrick.winningPlayerId);
-      return winningPlayer?.position || 0;
+      const winner = game.players.find(p => p.id === lastTrick?.winningPlayerId);
+      return winner?.position ?? 0;
     }
 
-    // If we're in the middle of a trick, the first player who played leads
-    return game.players.find(p => p.id === cardPlayers['0'])?.position || 0;
+    // If we're in the middle of a trick, use the first player of the trick
+    const firstPlayer = game.players.find(p => p.id === cardPlayers?.['0']);
+    return firstPlayer?.position ?? 0;
   };
 
   // Effect to track which card was played by which player
@@ -504,38 +504,28 @@ export default function GameTable({
   
   // Fix the renderTrickCards function
   const renderTrickCards = () => {
-    if (!game.currentTrick || game.currentTrick.length === 0) return null;
+    if (!game?.currentTrick?.length) return null;
 
     const leadPos = getLeadPosition();
-    console.log(`Lead position for trick: ${leadPos}`);
     
     return game.currentTrick.map((card, index) => {
-      // Calculate absolute position (clockwise from lead position)
       const absolutePosition = (leadPos + index) % 4;
-      
-      // Calculate relative position from current player's view
-      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
-      
-      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
+      const relativePosition = (4 + absolutePosition - (currentPlayerPosition ?? 0)) % 4;
 
-      // Map positions to table locations
       const positions: Record<number, string> = {
-        0: 'absolute bottom-[20%] left-1/2 transform -translate-x-1/2', // Current player (South)
-        1: 'absolute left-[20%] top-1/2 transform -translate-y-1/2',    // Left (West)
-        2: 'absolute top-[20%] left-1/2 transform -translate-x-1/2',    // Opposite (North)
-        3: 'absolute right-[20%] top-1/2 transform -translate-y-1/2'    // Right (East)
+        0: 'absolute bottom-[20%] left-1/2 transform -translate-x-1/2',
+        1: 'absolute left-[20%] top-1/2 transform -translate-y-1/2',
+        2: 'absolute top-[20%] left-1/2 transform -translate-x-1/2',
+        3: 'absolute right-[20%] top-1/2 transform -translate-y-1/2'
       };
-
-      const positionClass = positions[relativePosition];
-      const cardImagePath = `/cards/${getCardImage(card)}`;
 
       return (
         <div
           key={`${card.suit}-${card.rank}-${index}`}
-          className={`${positionClass} w-24 h-36 z-10`}
+          className={`${positions[relativePosition]} w-24 h-36 z-10`}
         >
           <img
-            src={cardImagePath}
+            src={`/cards/${getCardImage(card)}`}
             alt={`${card.rank} of ${card.suit}`}
             className="w-full h-full object-contain"
           />
