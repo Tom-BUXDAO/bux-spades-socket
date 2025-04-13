@@ -681,7 +681,7 @@ io.on('connection', (socket) => {
     console.log(`Updated game state after bid. Game status: ${game.status}, Current player: ${game.currentPlayer}`);
   });
 
-  // Add this helper function at the top level
+  // Helper function to get the lead position for a trick
   function getLeadPosition(game: Game): number {
     // For the first trick, the lead is the player after the dealer
     if (game.currentTrick.length === 0) {
@@ -847,7 +847,7 @@ io.on('connection', (socket) => {
           game.players = dealCards(game.players);
         }
       } else {
-        // Move to next player
+        // Move to next player clockwise
         const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
         const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
         game.currentPlayer = game.players[nextPlayerIndex].id;
