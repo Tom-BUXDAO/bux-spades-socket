@@ -400,13 +400,15 @@ export default function GameTable({
       }
     }
     
-    // For new tricks, lead is the current player (who is about to play)
-    const leadPlayer = game.players.find(p => p.id === game.currentPlayer);
-    if (leadPlayer) {
-      // @ts-ignore - position property might not be on the type yet
-      const pos = leadPlayer.position ?? game.players.indexOf(leadPlayer);
-      console.log(`New trick - Lead player is ${leadPlayer.name} at position ${pos}`);
-      return pos;
+    // For new tricks, lead is the winner of the previous trick
+    if (game.completedTricks.length > 0) {
+      const lastTrickWinner = game.players.find(p => p.id === game.currentPlayer);
+      if (lastTrickWinner) {
+        // @ts-ignore - position property might not be on the type yet
+        const pos = lastTrickWinner.position ?? game.players.indexOf(lastTrickWinner);
+        console.log(`New trick - Lead player is previous trick winner ${lastTrickWinner.name} at position ${pos}`);
+        return pos;
+      }
     }
     
     console.error('Could not determine lead position');
@@ -454,11 +456,16 @@ export default function GameTable({
       
       console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
       
+      // Update our card players mapping
+      const updatedMapping = { ...cardPlayers };
+      updatedMapping[index] = player.id;
+      setCardPlayers(updatedMapping);
+      
       cardPositions[index] = relativePosition;
     });
 
     console.log('Final card positions relative to current player:', cardPositions);
-  }, [game.currentTrick, game.players, cardPlayers, currentPlayerPosition, game.completedTricks]);
+  }, [game.currentTrick, game.players, currentPlayerPosition, game.completedTricks]);
 
   // When playing a card, we now rely solely on server data for tracking
   const handlePlayCard = (card: Card) => {
@@ -543,7 +550,7 @@ export default function GameTable({
           {/* North player trick card */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              const cardPlayer = cardPlayers[index];
               if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
@@ -567,7 +574,7 @@ export default function GameTable({
           {/* South player trick card */}
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              const cardPlayer = cardPlayers[index];
               if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
@@ -591,7 +598,7 @@ export default function GameTable({
           {/* West player trick card */}
           <div className="absolute top-1/2 -translate-y-1/2 left-[calc(50%-8.925%)] h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              const cardPlayer = cardPlayers[index];
               if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
@@ -615,7 +622,7 @@ export default function GameTable({
           {/* East player trick card */}
           <div className="absolute top-1/2 -translate-y-1/2 right-[calc(50%-8.925%)] h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              const cardPlayer = cardPlayers[index];
               if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
