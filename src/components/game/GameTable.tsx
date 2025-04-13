@@ -399,32 +399,24 @@ export default function GameTable({
       return;
     }
 
-    // Get the lead position using our consolidated function
-    const leadPosition = getLeadPosition();
-    console.log(`Lead position for trick: ${leadPosition}`);
-    
-    // Initialize array to store card positions
-    const cardPositions: number[] = [];
-    
-    // Map each card to its relative position
+    // Map each card to its player
     game.currentTrick.forEach((card, index) => {
-      // Calculate which position played this card based on lead position
-      const absolutePosition = (leadPosition + index) % 4;
-      
+      if (!card.playedBy) {
+        console.error(`Card at index ${index} has no playedBy information:`, card);
+        return;
+      }
+
       // Calculate relative position from current player's view
-      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
+      const relativePosition = (4 + card.playedBy.position - currentPlayerPosition) % 4;
       
-      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
+      console.log(`Card ${index} (${card.rank}${card.suit}): played by ${card.playedBy.name} at position ${card.playedBy.position}, relative pos ${relativePosition}`);
       
       // Update our card players mapping
       const updatedMapping = { ...cardPlayers };
-      updatedMapping[index.toString()] = game.players.find(p => p.position === absolutePosition)?.id || '';
+      updatedMapping[index.toString()] = card.playedBy.id;
       setCardPlayers(updatedMapping);
-      
-      cardPositions[index] = relativePosition;
     });
 
-    console.log('Final card positions relative to current player:', cardPositions);
   }, [game.currentTrick, game.players, currentPlayerPosition, game.completedTricks]);
 
   // When playing a card, we now rely solely on server data for tracking
@@ -507,11 +499,13 @@ export default function GameTable({
     if (!game?.currentTrick?.length) return null;
 
     return game.currentTrick.map((card, index) => {
-      // Get the actual position of the player who played this card
-      const playerPosition = card.playedBy?.position ?? 0;
-      
+      if (!card.playedBy) {
+        console.error(`Card ${card.rank}${card.suit} is missing playedBy information`);
+        return null;
+      }
+
       // Calculate relative position based on the actual player's position
-      const relativePosition = (4 + playerPosition - (currentPlayerPosition ?? 0)) % 4;
+      const relativePosition = (4 + card.playedBy.position - (currentPlayerPosition ?? 0)) % 4;
 
       const positions: Record<number, string> = {
         0: 'absolute bottom-[20%] left-1/2 transform -translate-x-1/2',
@@ -524,6 +518,8 @@ export default function GameTable({
         <div
           key={`${card.suit}-${card.rank}-${index}`}
           className={`${positions[relativePosition]} w-24 h-36 z-10`}
+          data-player={card.playedBy.name}
+          data-position={card.playedBy.position}
         >
           <img
             src={`/cards/${getCardImage(card)}`}
@@ -532,7 +528,7 @@ export default function GameTable({
           />
         </div>
       );
-    });
+    }).filter(Boolean);
   };
 
   const handleLeaveTable = () => {
