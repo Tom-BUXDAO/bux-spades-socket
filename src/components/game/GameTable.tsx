@@ -566,13 +566,13 @@ export default function GameTable({
                 positionClass = 'absolute bottom-0 left-1/2 -translate-x-1/2';
                 break;
               case 1: // West
-                positionClass = 'absolute top-1/2 -translate-y-1/2 left-[calc(50%-8.925%)]';
+                positionClass = 'absolute top-1/2 -translate-y-1/2 left-0';
                 break;
               case 2: // North
                 positionClass = 'absolute top-0 left-1/2 -translate-x-1/2';
                 break;
               case 3: // East
-                positionClass = 'absolute top-1/2 -translate-y-1/2 right-[calc(50%-8.925%)]';
+                positionClass = 'absolute top-1/2 -translate-y-1/2 right-0';
                 break;
             }
 
