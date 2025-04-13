@@ -497,51 +497,39 @@ export default function GameTable({
   // Add state for trick completion animation
   const [completedTrick, setCompletedTrick] = useState<{
     cards: Card[];
-    winningPlayerId: string;
     winningCard: Card;
+    winningPlayerId: string;
   } | null>(null);
   const [showTrickAnimation, setShowTrickAnimation] = useState(false);
 
-  // Effect to handle trick completion and animation
+  // Effect to handle trick completion event
   useEffect(() => {
-    if (!game?.currentTrick) return;
+    if (!socket) return;
 
-    // When a trick is complete (4 cards)
-    if (game.currentTrick.length === 4) {
-      // Store the completed trick before it's cleared
-      const trick = [...game.currentTrick];
-      
-      // Find the winning card (highest of lead suit or highest spade)
-      const leadSuit = trick[0].suit;
-      let winningCard = trick[0];
-      let winningPlayerId = trick[0].playedBy?.id || '';
-
-      trick.forEach(card => {
-        if (card.suit === 'S' && winningCard.suit !== 'S') {
-          winningCard = card;
-          winningPlayerId = card.playedBy?.id || '';
-        } else if (card.suit === leadSuit && card.rank > winningCard.rank) {
-          winningCard = card;
-          winningPlayerId = card.playedBy?.id || '';
-        }
-      });
-
-      setCompletedTrick({
-        cards: trick,
-        winningPlayerId,
-        winningCard
-      });
+    const handleTrickComplete = (trick: {
+      cards: Card[];
+      winningCard: Card;
+      winningPlayerId: string;
+    }) => {
+      console.log('Trick completed:', trick);
+      setCompletedTrick(trick);
       setShowTrickAnimation(true);
 
-      // Clear the animation after delay
+      // Clear animation after delay
       setTimeout(() => {
         setShowTrickAnimation(false);
         setCompletedTrick(null);
       }, 2000);
-    }
-  }, [game?.currentTrick]);
+    };
 
-  // Modify the renderTrickCards function to handle animation
+    socket.on('trick_complete', handleTrickComplete);
+
+    return () => {
+      socket.off('trick_complete', handleTrickComplete);
+    };
+  }, [socket]);
+
+  // Modify renderTrickCards to show animation
   const renderTrickCards = () => {
     const cardsToRender = showTrickAnimation && completedTrick 
       ? completedTrick.cards 
