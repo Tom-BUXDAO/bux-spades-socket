@@ -407,22 +407,16 @@ export default function GameTable({
     // Map each card to its relative position
     game.currentTrick.forEach((card, index) => {
       // Calculate which position played this card based on lead position
-      const playerPosition = (leadPosition + index) % 4;
-      const player = game.players.find(p => p.position === playerPosition);
+      const absolutePosition = (leadPosition + index) % 4;
       
-      if (!player) {
-        console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
-        return;
-      }
-
       // Calculate relative position from current player's view
-      const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
+      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
       
-      console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${playerPosition}, relative pos ${relativePosition}`);
+      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
       
       // Update our card players mapping
       const updatedMapping = { ...cardPlayers };
-      updatedMapping[index.toString()] = player.id;
+      updatedMapping[index.toString()] = game.players.find(p => p.position === absolutePosition)?.id || '';
       setCardPlayers(updatedMapping);
       
       cardPositions[index] = relativePosition;
@@ -515,33 +509,38 @@ export default function GameTable({
     console.log(`Lead position for trick: ${leadPosition}`);
     
     return game.currentTrick.map((card, index) => {
-      // Calculate the relative position from the current player's perspective
-      const relativePosition = (leadPosition + index) % 4;
+      // Calculate which position played this card based on lead position
+      const absolutePosition = (leadPosition + index) % 4;
+      
+      // Calculate relative position from current player's view
+      const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
+      
+      console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
       
       // Determine which CSS class to use based on the relative position
       let positionClass = '';
       switch (relativePosition) {
-        case 0: // South (current player)
-          positionClass = 'absolute bottom-0 left-1/2 transform -translate-x-1/2';
+        case 0: // Bottom (current player's position)
+          positionClass = 'absolute bottom-[20%] left-1/2 transform -translate-x-1/2';
           break;
-        case 1: // West
-          positionClass = 'absolute left-0 top-1/2 transform -translate-y-1/2';
+        case 1: // Left
+          positionClass = 'absolute left-[20%] top-1/2 transform -translate-y-1/2';
           break;
-        case 2: // North
-          positionClass = 'absolute top-0 left-1/2 transform -translate-x-1/2';
+        case 2: // Top
+          positionClass = 'absolute top-[20%] left-1/2 transform -translate-x-1/2';
           break;
-        case 3: // East
-          positionClass = 'absolute right-0 top-1/2 transform -translate-y-1/2';
+        case 3: // Right
+          positionClass = 'absolute right-[20%] top-1/2 transform -translate-y-1/2';
           break;
       }
 
       // Use the getCardImage helper for consistent card image paths
       const cardImagePath = `/cards/${getCardImage(card)}`;
-      console.log(`Rendering card: ${card.rank}${card.suit} at position ${relativePosition}, image path: ${cardImagePath}`);
+      console.log(`Rendering card at relative position ${relativePosition}, image path: ${cardImagePath}`);
 
       return (
         <div
-          key={`${card.suit}-${card.rank}`}
+          key={`${card.suit}-${card.rank}-${index}`}
           className={`${positionClass} w-24 h-36 z-10`}
         >
           <img
