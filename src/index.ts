@@ -783,51 +783,63 @@ io.on('connection', (socket) => {
           return;
         }
 
+        // Increment the winner's trick count
+        winningPlayer.tricks = (winningPlayer.tricks || 0) + 1;
+
         const completedTrick = {
           cards: game.currentTrick,
           winningCard,
           winningPlayerId: winningPlayer.id
         };
-        game.completedTricks.push(completedTrick);
-        
-        // Clear current trick and set next leader
-        game.currentTrick = [];
-        game.currentPlayer = winningPlayer.id;
 
-        // Check if hand is complete
-        if (game.players.every(p => p.hand.length === 0)) {
-          // Calculate scores and start new hand
-          const scores = calculateHandScore(game.players);
-          game.scores = {
-            team1: (game.scores?.team1 || 0) + scores.team1.score,
-            team2: (game.scores?.team2 || 0) + scores.team2.score
-          };
-          
-          // Reset for new hand
-          game.status = 'BIDDING';
-          game.currentPlayer = game.players[game.dealerPosition].id;
-          game.spadesBroken = false;
-          game.players.forEach(p => {
-            p.hand = [];
-            p.tricks = 0;
-            p.bid = undefined;
-          });
-          
-          // Deal new hands
-          game.players = dealCards(game.players);
-        }
+        // First emit the completed trick for animation
+        io.to(gameId).emit('trick_complete', completedTrick);
+
+        // Wait for animation before clearing trick and continuing
+        setTimeout(() => {
+          game.completedTricks.push(completedTrick);
+          game.currentTrick = [];
+          game.currentPlayer = winningPlayer.id;
+
+          // Check if hand is complete
+          if (game.players.every(p => p.hand.length === 0)) {
+            // Calculate scores and start new hand
+            const scores = calculateHandScore(game.players);
+            game.scores = {
+              team1: (game.scores?.team1 || 0) + scores.team1.score,
+              team2: (game.scores?.team2 || 0) + scores.team2.score
+            };
+            
+            // Reset for new hand
+            game.status = 'BIDDING';
+            game.currentPlayer = game.players[game.dealerPosition].id;
+            game.spadesBroken = false;
+            game.players.forEach(p => {
+              p.hand = [];
+              p.tricks = 0;
+              p.bid = undefined;
+            });
+            
+            // Deal new hands
+            game.players = dealCards(game.players);
+          }
+
+          // Broadcast updated game state after the delay
+          io.to(gameId).emit('game_update', game);
+          io.emit('games_update', Array.from(games.values()));
+        }, 2000); // 2 second delay for animation
+
       } else {
         // Move to next player clockwise
-        // Sort players by position to ensure clockwise movement
         const sortedPlayers = [...game.players].sort((a, b) => a.position - b.position);
         const currentPlayerIndex = sortedPlayers.findIndex(p => p.id === userId);
         const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
         game.currentPlayer = sortedPlayers[nextPlayerIndex].id;
-      }
 
-      // Broadcast updated game state
-      io.to(gameId).emit('game_update', game);
-      io.emit('games_update', Array.from(games.values()));
+        // Broadcast updated game state immediately for non-completed tricks
+        io.to(gameId).emit('game_update', game);
+        io.emit('games_update', Array.from(games.values()));
+      }
 
     } catch (error) {
       console.error('Error handling play_card:', error);
