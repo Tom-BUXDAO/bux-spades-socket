@@ -778,7 +778,7 @@ io.on('connection', (socket) => {
         }
         
         // Find and increment the winner's tricks
-        const winner = game.players.find(p => p.id === winningPlayer.id);
+        const winner = game.players.find(p => p.id === winningPlayer?.id);
         if (winner) {
           winner.tricks = (winner.tricks || 0) + 1;
         }
@@ -786,12 +786,12 @@ io.on('connection', (socket) => {
         // Emit the trick winner event
         io.to(gameId).emit('trick_winner', {
           gameId,
-          winnerId: winningPlayer.id,
+          winnerId: winningPlayer?.id,
           trick: game.currentTrick
         });
         
         // Set the next player to the trick winner
-        game.currentPlayer = winningPlayer.id;
+        game.currentPlayer = winningPlayer?.id;
         
         // Store the completed trick
         game.completedTricks.push([...game.currentTrick]);
