@@ -566,24 +566,18 @@ export default function GameTable({
           {/* North player trick card */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
             {game.currentTrick.map((card, index) => {
-              // Get the lead position
               const leadPosition = getLeadPosition();
-              // Calculate who played this card based on lead position
               const cardPlayerPosition = (leadPosition + index) % 4;
-              // Find the player at this position
               const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
               if (!cardPlayer) return null;
               
-              // Calculate their position relative to the viewing player
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
-              
-              console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
               
               return relativePosition === 2 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${card.rank}${card.suit}.png`}
+                  src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
                   width={84}
                   height={120}
@@ -605,12 +599,10 @@ export default function GameTable({
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
               
-              console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
-              
               return relativePosition === 0 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${card.rank}${card.suit}.png`}
+                  src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
                   width={84}
                   height={120}
@@ -632,12 +624,10 @@ export default function GameTable({
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
               
-              console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
-              
               return relativePosition === 1 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${card.rank}${card.suit}.png`}
+                  src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
                   width={84}
                   height={120}
@@ -659,12 +649,10 @@ export default function GameTable({
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
               
-              console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
-              
               return relativePosition === 3 && (
                 <Image
                   key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${card.rank}${card.suit}.png`}
+                  src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
                   width={84}
                   height={120}
@@ -1294,24 +1282,18 @@ export default function GameTable({
                   {/* North player trick card */}
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
                     {game.currentTrick.map((card, index) => {
-                      // Get the lead position
                       const leadPosition = getLeadPosition();
-                      // Calculate who played this card based on lead position
                       const cardPlayerPosition = (leadPosition + index) % 4;
-                      // Find the player at this position
                       const cardPlayer = game.players.find(p => p.position === cardPlayerPosition);
                       if (!cardPlayer) return null;
                       
-                      // Calculate their position relative to the viewing player
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
                       const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
-                      
-                      console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
                       
                       return relativePosition === 2 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${card.rank}${card.suit}.png`}
+                          src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
                           width={84}
                           height={120}
@@ -1333,12 +1315,10 @@ export default function GameTable({
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
                       const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
                       
-                      console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
-                      
                       return relativePosition === 0 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${card.rank}${card.suit}.png`}
+                          src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
                           width={84}
                           height={120}
@@ -1360,12 +1340,10 @@ export default function GameTable({
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
                       const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
                       
-                      console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
-                      
                       return relativePosition === 1 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${card.rank}${card.suit}.png`}
+                          src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
                           width={84}
                           height={120}
@@ -1387,12 +1365,10 @@ export default function GameTable({
                       const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
                       const relativePosition = (4 + cardPlayerPosition - viewerPosition) % 4;
                       
-                      console.log(`Card ${card.rank}${card.suit} - Player: ${cardPlayer.name}, Position: ${cardPlayerPosition}, Relative: ${relativePosition}`);
-                      
                       return relativePosition === 3 && (
                         <Image
                           key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${card.rank}${card.suit}.png`}
+                          src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
                           width={84}
                           height={120}
