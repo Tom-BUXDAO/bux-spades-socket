@@ -748,7 +748,7 @@ io.on('connection', (socket) => {
         
         // Find winning card
         let winningCard = leadCard;
-        const initialWinningPlayer = sortedPlayers.find(p => p?.id && leadCard?.playedBy && p.id.toString() === leadCard.playedBy.toString());
+        const initialWinningPlayer = sortedPlayers.find(p => p?.id && leadCard?.playedBy && p.id === leadCard.playedBy.id);
         
         if (!initialWinningPlayer) {
           console.error('Could not find player who played lead card:', leadCard);
@@ -759,11 +759,9 @@ io.on('connection', (socket) => {
         
         for (let i = 1; i < game.currentTrick.length; i++) {
           const currentCard = game.currentTrick[i];
-          if (!currentCard || !currentCard.playedBy || !currentCard.playedBy.id) continue;
+          if (!currentCard?.playedBy?.id) continue;
           
-          // At this point we know playedBy exists and has an id
-          const playedBy = currentCard.playedBy as { id: string };
-          const currentPlayer = sortedPlayers.find(p => p?.id && p.id.toString() === playedBy.id.toString());
+          const currentPlayer = sortedPlayers.find(p => p?.id === currentCard.playedBy?.id);
           
           if (!currentPlayer) {
             console.error('Could not find player who played card:', currentCard);
