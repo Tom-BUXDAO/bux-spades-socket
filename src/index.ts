@@ -762,7 +762,7 @@ io.on('connection', (socket) => {
         }
 
         // Find and increment the winner's tricks
-        const winner = game.players.find(p => p.id === winningPlayer.id);
+        const winner = game.players.find(p => p.id === winningPlayer!.id);
         if (winner) {
           winner.tricks = (winner.tricks || 0) + 1;
         }
