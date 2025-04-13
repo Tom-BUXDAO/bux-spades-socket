@@ -23,43 +23,55 @@ if (typeof window === "undefined" && !io) {
   io.on("connection", (socket) => {
     console.log("Client connected");
 
-    socket.on("create_game", async ({ userId }) => {
+    socket.on("create_game", (data: { userId: string }) => {
       try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, name: true },
-        });
+        const { userId } = data;
+        if (!userId) {
+          socket.emit('error', { message: 'User ID is required' });
+          return;
+        }
 
-        if (!user) return;
-
+        // Generate a unique game ID
         const gameId = Math.random().toString(36).substring(7);
         const game: GameState = {
           id: gameId,
-          status: "WAITING",
+          status: 'WAITING',
           players: [{
-            id: user.id,
-            name: user.name || "Unknown",
+            id: userId,
+            name: `Player ${userId.substring(0, 4)}`,
             hand: [],
             tricks: 0,
             team: 1,
             position: 0
           }],
-          currentPlayer: user.id,
+          currentPlayer: userId,
           currentTrick: [],
           currentTrickCardPlayers: [],
           completedTricks: [],
-          team1Score: 0,
-          team2Score: 0,
-          team1Bags: 0,
-          team2Bags: 0,
-          leadPosition: 0,
-          dealerPosition: 3
+          bids: {},
+          scores: {},
+          dealerPosition: 0,
+          spadesBroken: false,
+          cardPlayers: {},
+          createdAt: new Date().toISOString()
         };
 
+        // Store the game in memory
         games.set(gameId, game);
-        io?.emit("games_update", Array.from(games.values()));
+
+        // Join the game room
+        socket.join(gameId);
+
+        // Emit the game state to the creator
+        socket.emit('game_created', game);
+
+        // Broadcast the updated game list to all clients
+        if (io) {
+          io.emit('game_list_updated', Array.from(games.values()));
+        }
       } catch (error) {
-        console.error("Error creating game:", error);
+        console.error('Error creating game:', error);
+        socket.emit('error', { message: 'Failed to create game' });
       }
     });
 
@@ -88,14 +100,14 @@ if (typeof window === "undefined" && !io) {
 
         if (game.players.length === 4) {
           game.status = "BIDDING";
-          game.players[3].isDealer = true;
           game.dealerPosition = 3;
-          game.leadPosition = 0;
         }
 
         games.set(gameId, game);
-        io?.emit("games_update", Array.from(games.values()));
-        io?.to(gameId).emit("game_update", game);
+        if (io) {
+          io.emit("game_list_updated", Array.from(games.values()));
+          io.to(gameId).emit("game_updated", game);
+        }
       } catch (error) {
         console.error("Error joining game:", error);
       }

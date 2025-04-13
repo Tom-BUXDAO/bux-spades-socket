@@ -15,7 +15,7 @@ export interface Player {
   bid?: number;
   browserSessionId?: string;
   isDealer?: boolean;
-  position?: number;
+  position: number;
   image?: string;
 }
 
@@ -23,21 +23,18 @@ export type GameStatus = "WAITING" | "BIDDING" | "PLAYING" | "FINISHED";
 
 export interface GameState {
   id: string;
-  players: Player[];
   status: GameStatus;
+  players: Player[];
   currentPlayer: string;
   currentTrick: Card[];
+  currentTrickCardPlayers: { playerId: string; card: Card }[];
+  completedTricks: { cards: Card[]; winner: string }[];
+  bids: { [key: string]: number };
+  scores: { [key: string]: number };
+  dealerPosition: number;
   spadesBroken: boolean;
-  cardPlayers: string[];  // Array to track which player played each card in the trick
-  completedTricks: Card[][];
-  createdAt: number;
-  team1Score: number;
-  team2Score: number;
-  team1Bags: number;
-  team2Bags: number;
-  currentTrickCardPlayers: string[];
-  leadPosition?: number;
-  dealerPosition?: number;
+  cardPlayers: { [key: string]: string }; // Maps card IDs to player IDs
+  createdAt: string;
 }
 
 export interface LobbyState {

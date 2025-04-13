@@ -88,8 +88,8 @@ function getLeadSuit(trick: Card[]): Suit | null {
 
 function hasSpadeBeenPlayed(game: GameState): boolean {
   // Check if any completed trick contained a spade
-  return game.completedTricks?.some((trick: Card[]) => 
-    trick.some((card: Card) => card.suit === 'S')
+  return game.completedTricks?.some((trick) => 
+    trick.cards.some((card: Card) => card.suit === 'S')
   ) || false;
 }
 
@@ -254,7 +254,7 @@ export default function GameTable({
   const MODAL_DISPLAY_TIME = 5000; // Time to show modals in milliseconds
   
   // Add state to directly track which player played which card
-  const [cardPlayers, setCardPlayers] = useState<string[]>([]);
+  const [cardPlayers, setCardPlayers] = useState<{[key: string]: string}>({});
   
   // Add a ref to preserve completed trick card-player mappings
   const completedTrickCardPlayers = useRef<Record<number, string>>({});
@@ -418,7 +418,7 @@ export default function GameTable({
     // When a new trick starts, reset our tracking
     if (game.currentTrick.length === 0) {
       console.log("🔄 New trick starting - resetting card players mapping");
-      setCardPlayers([]);
+      setCardPlayers({});
       setShowWinningCardHighlight(false);
       setWinningCardIndex(null);
       setWinningPlayerId(null);
@@ -449,8 +449,8 @@ export default function GameTable({
       console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${playerPosition}, relative pos ${relativePosition}`);
       
       // Update our card players mapping
-      const updatedMapping = [...cardPlayers];
-      updatedMapping[index] = player.id;
+      const updatedMapping = { ...cardPlayers };
+      updatedMapping[index.toString()] = player.id;
       setCardPlayers(updatedMapping);
       
       cardPositions[index] = relativePosition;
@@ -481,8 +481,8 @@ export default function GameTable({
     
     // Update our local tracking immediately to know that current player played this card
     // This helps prevent the "Unknown" player issue when we play our own card
-    const updatedMapping = [...cardPlayers];
-    updatedMapping[game.currentTrick.length] = currentPlayerId;
+    const updatedMapping = { ...cardPlayers };
+    updatedMapping[game.currentTrick.length.toString()] = currentPlayerId;
     setCardPlayers(updatedMapping);
     
     // Send the play to the server
@@ -527,7 +527,7 @@ export default function GameTable({
   // Add this function at the bottom of the component
   const getPlayerWhoPlayedCard = (cardIndex: number) => {
     // Get player ID from our tracking
-    const playerId = cardPlayers[cardIndex];
+    const playerId = cardPlayers[cardIndex.toString()];
     if (!playerId) return null;
     
     // Find the player object
@@ -552,7 +552,7 @@ export default function GameTable({
         <div className="relative w-full h-full max-w-[600px] max-h-[400px]">
           {game.currentTrick.map((card, index) => {
             // Get the player who played this card
-            const playerId = cardPlayers[index];
+            const playerId = cardPlayers[index.toString()];
             const player = game.players.find(p => p.id === playerId);
             
             if (!player || player.position === undefined) {
@@ -962,8 +962,8 @@ export default function GameTable({
     
     if (socket && handScores) {
       // Calculate the new scores after this hand
-      const newTeam1Score = game.team1Score + handScores.team1.score;
-      const newTeam2Score = game.team2Score + handScores.team2.score;
+      const newTeam1Score = game.scores['team1'] || 0;
+      const newTeam2Score = game.scores['team2'] || 0;
       
       // Check if the game is over (500 points reached)
       const team1Won = newTeam1Score >= WINNING_SCORE;
@@ -1117,10 +1117,19 @@ export default function GameTable({
     }
   }, []);
 
+  // Fix completed tricks check
+  const hasCompletedTricks = game.completedTricks.length > 0;
+
+  // Calculate scores
+  const team1Score = game.scores['team1'] || 0;
+  const team2Score = game.scores['team2'] || 0;
+  const team1Bags = Math.floor((team1Score % 100) / 10);
+  const team2Bags = Math.floor((team2Score % 100) / 10);
+
   // Utility function to get player for a card if the mapping is missing that card
-  const getPlayerForCardIndex = (index: number, existingMapping: Record<number, string>) => {
+  const getPlayerForCardIndex = (index: number, existingMapping: Record<string, string>) => {
     // First, try to get from the existing mapping
-    const playerId = existingMapping[index];
+    const playerId = existingMapping[index.toString()];
     if (playerId) {
       const player = game.players.find(p => p.id === playerId);
       if (player) return player;
@@ -1185,22 +1194,22 @@ export default function GameTable({
                 {/* Team 1 (Red) Score and Bags */}
                 <div className="flex items-center mb-1">
                   <div className="bg-red-500 rounded-full w-2 h-2 mr-1"></div>
-                  <span className="text-white font-bold mr-1 text-sm">{game.team1Score}</span>
+                  <span className="text-white font-bold mr-1 text-sm">{team1Score}</span>
                   {/* Team 1 Bags */}
-                  <div className="flex items-center text-yellow-300" title={`Team 1 Bags: ${game.team1Bags || 0}`}>
+                  <div className="flex items-center text-yellow-300" title={`Team 1 Bags: ${team1Bags}`}>
                     <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" priority={true} />
-                    <span className="text-xs">{game.team1Bags || 0}</span>
+                    <span className="text-xs">{team1Bags}</span>
                   </div>
         </div>
 
                 {/* Team 2 (Blue) Score and Bags */}
                 <div className="flex items-center">
                   <div className="bg-blue-500 rounded-full w-2 h-2 mr-1"></div>
-                  <span className="text-white font-bold mr-1 text-sm">{game.team2Score}</span>
+                  <span className="text-white font-bold mr-1 text-sm">{team2Score}</span>
                   {/* Team 2 Bags */}
-                  <div className="flex items-center text-yellow-300" title={`Team 2 Bags: ${game.team2Bags || 0}`}>
+                  <div className="flex items-center text-yellow-300" title={`Team 2 Bags: ${team2Bags}`}>
                     <Image src="/bag.svg" width={12} height={12} alt="Bags" className="mr-1" priority={true} />
-                    <span className="text-xs">{game.team2Bags || 0}</span>
+                    <span className="text-xs">{team2Bags}</span>
                   </div>
                 </div>
               </div>
@@ -1301,9 +1310,9 @@ export default function GameTable({
           <WinnerModal
             isOpen={showWinner}
             onClose={handleWinnerClose}
-            team1Score={game.team1Score + handScores.team1.score}
-            team2Score={game.team2Score + handScores.team2.score}
-            winningTeam={game.team1Score + handScores.team1.score > game.team2Score + handScores.team2.score ? 1 : 2}
+            team1Score={team1Score}
+            team2Score={team2Score}
+            winningTeam={team1Score > team2Score ? 1 : 2}
           />
         )}
         
@@ -1312,9 +1321,9 @@ export default function GameTable({
           <LoserModal
             isOpen={showLoser}
             onClose={handleLoserClose}
-            team1Score={game.team1Score + handScores.team1.score}
-            team2Score={game.team2Score + handScores.team2.score}
-            winningTeam={game.team1Score + handScores.team1.score > game.team2Score + handScores.team2.score ? 1 : 2}
+            team1Score={team1Score}
+            team2Score={team2Score}
+            winningTeam={team1Score > team2Score ? 1 : 2}
           />
         )}
       </div>
