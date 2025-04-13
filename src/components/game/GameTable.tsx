@@ -538,14 +538,13 @@ export default function GameTable({
   // Fix the renderTrickCards function to use the same lead position logic
   const renderTrickCards = () => {
     const leadPosition = getLeadPosition();
-    console.log(`Lead position for trick: ${leadPosition}`);
     
     return (
-      <div className="absolute inset-[20%] flex items-center justify-center">
+      <div className="absolute top-24 bottom-24 left-24 right-24 flex items-center justify-center">
         {/* Play area container */}
-        <div className="relative w-full h-full mx-auto border-2 border-white/30">
+        <div className="relative w-full h-full mx-auto">
           {/* North player trick card */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
@@ -571,7 +570,7 @@ export default function GameTable({
           </div>
 
           {/* South player trick card */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
@@ -597,7 +596,7 @@ export default function GameTable({
           </div>
 
           {/* West player trick card */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
@@ -623,7 +622,7 @@ export default function GameTable({
           </div>
 
           {/* East player trick card */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
