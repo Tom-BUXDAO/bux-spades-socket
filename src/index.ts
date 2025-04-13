@@ -770,14 +770,14 @@ io.on('connection', (socket) => {
         // Store the completed trick
         game.completedTricks.push({
           cards: [...game.currentTrick],
-          winner: winningPlayer.id
+          winner: winningPlayer!.id
         });
 
         // Clear the current trick
         game.currentTrick = [];
 
         // Set next player to the trick winner
-        game.currentPlayer = winningPlayer.id;
+        game.currentPlayer = winningPlayer!.id;
 
         // Check if hand is complete
         if (game.players.every(p => p.hand.length === 0)) {
