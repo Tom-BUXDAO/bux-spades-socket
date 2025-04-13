@@ -561,10 +561,10 @@ export default function GameTable({
 
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        {/* Play area container */}
-        <div className="relative w-[calc(100%-140px)] h-[calc(100%-160px)] mx-auto border-2 border-white/30">
+        {/* Play area container - restoring the half-height */}
+        <div className="relative w-[calc(100%-140px)] h-[50%] mx-auto border-2 border-white/30">
           {/* North player trick card */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPosition = getLeadPosition();
               const cardPlayerPosition = (leadPosition + index) % 4;
@@ -579,8 +579,8 @@ export default function GameTable({
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  width={42}
+                  height={60}
                   quality={100}
                   priority={true}
                 />
@@ -589,7 +589,7 @@ export default function GameTable({
           </div>
 
           {/* South player trick card */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPosition = getLeadPosition();
               const cardPlayerPosition = (leadPosition + index) % 4;
@@ -604,8 +604,8 @@ export default function GameTable({
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  width={42}
+                  height={60}
                   quality={100}
                   priority={true}
                 />
@@ -614,7 +614,7 @@ export default function GameTable({
           </div>
 
           {/* West player trick card */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPosition = getLeadPosition();
               const cardPlayerPosition = (leadPosition + index) % 4;
@@ -629,8 +629,8 @@ export default function GameTable({
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  width={42}
+                  height={60}
                   quality={100}
                   priority={true}
                 />
@@ -639,7 +639,7 @@ export default function GameTable({
           </div>
 
           {/* East player trick card */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
             {game.currentTrick.map((card, index) => {
               const leadPosition = getLeadPosition();
               const cardPlayerPosition = (leadPosition + index) % 4;
@@ -654,8 +654,8 @@ export default function GameTable({
                   key={`${card.suit}-${card.rank}`}
                   src={`/cards/${getCardImage(card)}`}
                   alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
+                  width={42}
+                  height={60}
                   quality={100}
                   priority={true}
                 />
@@ -1277,10 +1277,10 @@ export default function GameTable({
 
               {/* Center content */}
               <div className="absolute inset-0 flex items-center justify-center">
-                {/* Play area container */}
-                <div className="relative w-[calc(100%-140px)] h-[calc(100%-160px)] mx-auto border-2 border-white/30">
+                {/* Play area container - restoring the half-height */}
+                <div className="relative w-[calc(100%-140px)] h-[50%] mx-auto border-2 border-white/30">
                   {/* North player trick card */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
                     {game.currentTrick.map((card, index) => {
                       const leadPosition = getLeadPosition();
                       const cardPlayerPosition = (leadPosition + index) % 4;
@@ -1295,8 +1295,8 @@ export default function GameTable({
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          width={84}
-                          height={120}
+                          width={42}
+                          height={60}
                           quality={100}
                           priority={true}
                         />
@@ -1305,7 +1305,7 @@ export default function GameTable({
                   </div>
 
                   {/* South player trick card */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
                     {game.currentTrick.map((card, index) => {
                       const leadPosition = getLeadPosition();
                       const cardPlayerPosition = (leadPosition + index) % 4;
@@ -1320,8 +1320,8 @@ export default function GameTable({
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          width={84}
-                          height={120}
+                          width={42}
+                          height={60}
                           quality={100}
                           priority={true}
                         />
@@ -1330,7 +1330,7 @@ export default function GameTable({
                   </div>
 
                   {/* West player trick card */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
                     {game.currentTrick.map((card, index) => {
                       const leadPosition = getLeadPosition();
                       const cardPlayerPosition = (leadPosition + index) % 4;
@@ -1345,8 +1345,8 @@ export default function GameTable({
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          width={84}
-                          height={120}
+                          width={42}
+                          height={60}
                           quality={100}
                           priority={true}
                         />
@@ -1355,7 +1355,7 @@ export default function GameTable({
                   </div>
 
                   {/* East player trick card */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[120px] flex items-center justify-center border border-white/30">
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[60px] flex items-center justify-center">
                     {game.currentTrick.map((card, index) => {
                       const leadPosition = getLeadPosition();
                       const cardPlayerPosition = (leadPosition + index) % 4;
@@ -1370,8 +1370,8 @@ export default function GameTable({
                           key={`${card.suit}-${card.rank}`}
                           src={`/cards/${getCardImage(card)}`}
                           alt={`${card.rank} of ${card.suit}`}
-                          width={84}
-                          height={120}
+                          width={42}
+                          height={60}
                           quality={100}
                           priority={true}
                         />
