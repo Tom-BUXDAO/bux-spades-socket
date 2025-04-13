@@ -52,6 +52,12 @@ export default function GameBoard({ gameId }: GameBoardProps) {
     return <div>Loading game...</div>;
   }
 
+  // Calculate scores
+  const team1Score = game.scores['team1'] || 0;
+  const team2Score = game.scores['team2'] || 0;
+  const team1Bags = Math.floor((team1Score % 100) / 10);
+  const team2Bags = Math.floor((team2Score % 100) / 10);
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -65,13 +71,13 @@ export default function GameBoard({ gameId }: GameBoardProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 bg-gray-50 rounded-lg">
           <h3 className="font-medium mb-2">Team 1</h3>
-          <p>Score: {game.team1Score}</p>
-          <p>Bags: {game.team1Bags}</p>
+          <p>Score: {team1Score}</p>
+          <p>Bags: {team1Bags}</p>
         </div>
         <div className="p-4 bg-gray-50 rounded-lg">
           <h3 className="font-medium mb-2">Team 2</h3>
-          <p>Score: {game.team2Score}</p>
-          <p>Bags: {game.team2Bags}</p>
+          <p>Score: {team2Score}</p>
+          <p>Bags: {team2Bags}</p>
         </div>
       </div>
 
