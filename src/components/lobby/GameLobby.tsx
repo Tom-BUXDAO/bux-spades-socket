@@ -291,6 +291,8 @@ export default function GameLobby({
 
   // Determine team based on position - North/South (0,2) are Team 1, East/West (1,3) are Team 2
   const getTeamForPosition = (position: number): 1 | 2 => {
+    // North/South (positions 0,2) are Team 1
+    // East/West (positions 1,3) are Team 2
     return position % 2 === 0 ? 1 : 2;
   };
 

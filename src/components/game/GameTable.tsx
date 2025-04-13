@@ -305,8 +305,7 @@ export default function GameTable({
       
       // Place each player at their explicit position
       game.players.forEach(p => {
-        // @ts-ignore - position property might not be on the type yet
-        const pos = p.position !== undefined ? p.position : game.players.indexOf(p);
+        const pos = p.position ?? game.players.indexOf(p);
         positions[pos] = p;
       });
       
@@ -314,7 +313,6 @@ export default function GameTable({
     }
 
     // Create a rotated array where current player is at position 0 (South)
-    // Create a new array with 4 positions
     const rotated = Array(4).fill(null);
     
     // Place each player at their rotated position based on their explicit position
@@ -322,8 +320,7 @@ export default function GameTable({
       if (!player || !player.id) return;
       
       // Get the player's explicit position, or fall back to array index
-      // @ts-ignore - position property might not be on the type yet
-      const originalPos = player.position !== undefined ? player.position : game.players.indexOf(player);
+      const originalPos = player.position ?? game.players.indexOf(player);
       
       // Calculate new position relative to current player
       // Formula: (4 + originalPos - currentPlayerPosition) % 4
@@ -382,6 +379,7 @@ export default function GameTable({
         return 0;
       }
       const dealerPosition = dealer.position ?? game.players.indexOf(dealer);
+      // Lead is left of dealer (position + 1)
       const leadPos = (dealerPosition + 1) % 4;
       console.log(`First trick of hand - Lead is left of dealer ${dealer.name} (pos ${dealerPosition}) -> lead pos ${leadPos}`);
       return leadPos;
@@ -389,20 +387,15 @@ export default function GameTable({
     
     // For continuing tricks, if first card is played, find who played it
     if (game.currentTrick.length > 0) {
-      // Calculate who played the first card based on current player
-      const currentPlayerObj = game.players.find(p => p.id === game.currentPlayer);
-      if (!currentPlayerObj) return 0;
-      
-      const currentPosition = currentPlayerObj.position ?? game.players.indexOf(currentPlayerObj);
-      // Since currentPlayer is the next to play, we can work backwards
-      // If we have N cards played and current player at position P,
-      // then first card was played by position (P - N) % 4
-      const firstCardPosition = ((currentPosition - game.currentTrick.length) + 4) % 4;
-      
-      const firstCardPlayer = game.players.find(p => p.position === firstCardPosition);
-      if (firstCardPlayer) {
-        console.log(`Current trick - First card played by ${firstCardPlayer.name} at position ${firstCardPosition}`);
-        return firstCardPosition;
+      // Get the first card's player from our card players mapping
+      const firstCardPlayerId = cardPlayers[0];
+      if (firstCardPlayerId) {
+        const firstCardPlayer = game.players.find(p => p.id === firstCardPlayerId);
+        if (firstCardPlayer) {
+          const pos = firstCardPlayer.position ?? game.players.indexOf(firstCardPlayer);
+          console.log(`Current trick - First card played by ${firstCardPlayer.name} at position ${pos}`);
+          return pos;
+        }
       }
     }
     
@@ -545,16 +538,27 @@ export default function GameTable({
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) return null;
 
+    // Get the lead position for this trick
+    const leadPosition = getLeadPosition();
+    console.log(`Rendering trick cards with lead position: ${leadPosition}`);
+
     return (
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative w-[calc(100%-140px)] h-[50%] mx-auto">
           {game.currentTrick.map((card, index) => {
-            const cardPlayer = cardPlayers[index];
-            if (!cardPlayer) return null;
+            // Calculate which position played this card based on lead position
+            const playerPosition = (leadPosition + index) % 4;
+            const player = game.players.find(p => p.position === playerPosition);
             
-            const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
-            const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-            const relativePosition = (4 + playerPosition - viewerPosition) % 4;
+            if (!player) {
+              console.warn(`Could not find player at position ${playerPosition} for card ${index}`);
+              return null;
+            }
+
+            // Calculate relative position from current player's view
+            const relativePosition = (4 + playerPosition - currentPlayerPosition) % 4;
+            
+            console.log(`Card ${index} (${card.rank}${card.suit}): played by ${player.name} at absolute pos ${playerPosition}, relative pos ${relativePosition}`);
             
             let positionClass = '';
             switch (relativePosition) {
