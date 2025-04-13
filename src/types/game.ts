@@ -27,12 +27,22 @@ export interface GameState {
   players: Player[];
   currentPlayer: string;
   currentTrick: Card[];
-  currentTrickCardPlayers: { playerId: string; card: Card }[];
-  completedTricks: { cards: Card[]; winner: string }[];
-  bids: { [key: string]: number };
+  tricks: Array<{
+    winningPlayerId: string;
+    cards: Card[];
+  }>;
+  completedTricks: Array<{
+    winner: string;
+    cards: Card[];
+  }>;
+  hands: { [key: string]: Card[] };
   scores: { [key: string]: number };
+  bids: { [key: string]: number };
   dealerPosition: number;
-  spadesBroken: boolean;
+  northSouthTricks: number;
+  eastWestTricks: number;
+  winningTeam?: string;
+  currentTrickCardPlayers: { playerId: string; card: Card }[];
   cardPlayers: { [key: string]: string }; // Maps card IDs to player IDs
   createdAt: string;
 }

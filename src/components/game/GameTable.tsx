@@ -369,20 +369,22 @@ export default function GameTable({
 
   // Fix the getLeadPosition function
   const getLeadPosition = () => {
-    if (!game.currentTrick || game.currentTrick.length === 0) {
-      // For the first trick, the lead is the player after the dealer
-      return (game.dealerPosition + 1) % 4;
+    // If it's the first trick, the player after the dealer leads
+    if (game.tricks.length === 0 && game.currentTrick.length === 0) {
+      const dealerPosition = game.players.find(p => p.isDealer)?.position || 0;
+      // Move clockwise from dealer (next position)
+      return (dealerPosition + 1) % 4;
     }
-    
-    // For subsequent tricks, the lead is the winner of the previous trick
-    const lastTrick = game.completedTricks[game.completedTricks.length - 1];
-    if (lastTrick) {
-      const winningPlayer = game.players.find(p => p.id === lastTrick.winner);
-      return winningPlayer?.position ?? 0;
+
+    // If it's a new trick (but not the first), the winner of the last trick leads
+    if (game.currentTrick.length === 0 && game.tricks.length > 0) {
+      const lastTrick = game.tricks[game.tricks.length - 1];
+      const winningPlayer = game.players.find(p => p.id === lastTrick.winningPlayerId);
+      return winningPlayer?.position || 0;
     }
-    
-    // Fallback to dealer + 1 if something goes wrong
-    return (game.dealerPosition + 1) % 4;
+
+    // If we're in the middle of a trick, the first player who played leads
+    return game.players.find(p => p.id === cardPlayers['0'])?.position || 0;
   };
 
   // Effect to track which card was played by which player
@@ -504,39 +506,28 @@ export default function GameTable({
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) return null;
 
-    // Get the lead position for this trick
-    const leadPosition = getLeadPosition();
-    console.log(`Lead position for trick: ${leadPosition}`);
+    const leadPos = getLeadPosition();
+    console.log(`Lead position for trick: ${leadPos}`);
     
     return game.currentTrick.map((card, index) => {
-      // Calculate which position played this card based on lead position
-      const absolutePosition = (leadPosition + index) % 4;
+      // Calculate absolute position (clockwise from lead position)
+      const absolutePosition = (leadPos + index) % 4;
       
       // Calculate relative position from current player's view
       const relativePosition = (4 + absolutePosition - currentPlayerPosition) % 4;
       
       console.log(`Card ${index} (${card.rank}${card.suit}): absolute pos ${absolutePosition}, relative pos ${relativePosition}`);
-      
-      // Determine which CSS class to use based on the relative position
-      let positionClass = '';
-      switch (relativePosition) {
-        case 0: // Bottom (current player's position)
-          positionClass = 'absolute bottom-[20%] left-1/2 transform -translate-x-1/2';
-          break;
-        case 1: // Left
-          positionClass = 'absolute left-[20%] top-1/2 transform -translate-y-1/2';
-          break;
-        case 2: // Top
-          positionClass = 'absolute top-[20%] left-1/2 transform -translate-x-1/2';
-          break;
-        case 3: // Right
-          positionClass = 'absolute right-[20%] top-1/2 transform -translate-y-1/2';
-          break;
-      }
 
-      // Use the getCardImage helper for consistent card image paths
+      // Map positions to table locations
+      const positions: Record<number, string> = {
+        0: 'absolute bottom-[20%] left-1/2 transform -translate-x-1/2', // Current player (South)
+        1: 'absolute left-[20%] top-1/2 transform -translate-y-1/2',    // Left (West)
+        2: 'absolute top-[20%] left-1/2 transform -translate-x-1/2',    // Opposite (North)
+        3: 'absolute right-[20%] top-1/2 transform -translate-y-1/2'    // Right (East)
+      };
+
+      const positionClass = positions[relativePosition];
       const cardImagePath = `/cards/${getCardImage(card)}`;
-      console.log(`Rendering card at relative position ${relativePosition}, image path: ${cardImagePath}`);
 
       return (
         <div
