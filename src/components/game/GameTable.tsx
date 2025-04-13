@@ -542,10 +542,10 @@ export default function GameTable({
     
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        {/* Play area container with yet another arbitrary size change */}
-        <div className="relative w-[90%] h-[70%] mx-auto border-2 border-white/30">
-          {/* North player trick card - now with more unnecessary styling */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+        {/* Play area container - fills available space */}
+        <div className="relative w-full h-full mx-auto border-2 border-white/30">
+          {/* North player trick card */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
@@ -569,8 +569,8 @@ export default function GameTable({
             })}
           </div>
 
-          {/* South player trick card - with matching pointless changes */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+          {/* South player trick card */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
@@ -594,8 +594,8 @@ export default function GameTable({
             })}
           </div>
 
-          {/* West player trick card - why not add some more unnecessary styles */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+          {/* West player trick card */}
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
@@ -619,8 +619,8 @@ export default function GameTable({
             })}
           </div>
 
-          {/* East player trick card - consistency in making things worse */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+          {/* East player trick card */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
             {game.currentTrick.map((card, index) => {
               const leadPos = getLeadPosition();
               const playerPosition = (leadPos + index) % 4;
@@ -1256,12 +1256,12 @@ export default function GameTable({
                 </div>
               ))}
 
-              {/* Center content */}
+              {/* Center content - play area fills space between player containers */}
               <div className="absolute inset-0 flex items-center justify-center">
-                {/* Play area container with yet another arbitrary size change */}
-                <div className="relative w-[90%] h-[70%] mx-auto border-2 border-white/30">
-                  {/* North player trick card - now with more unnecessary styling */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+                {/* Play area container - fills available space */}
+                <div className="relative w-full h-full mx-auto border-2 border-white/30">
+                  {/* North player trick card */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
                     {game.currentTrick.map((card, index) => {
                       const leadPos = getLeadPosition();
                       const playerPosition = (leadPos + index) % 4;
@@ -1285,8 +1285,8 @@ export default function GameTable({
                     })}
                   </div>
 
-                  {/* South player trick card - with matching pointless changes */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+                  {/* South player trick card */}
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
                     {game.currentTrick.map((card, index) => {
                       const leadPos = getLeadPosition();
                       const playerPosition = (leadPos + index) % 4;
@@ -1310,8 +1310,8 @@ export default function GameTable({
                     })}
                   </div>
 
-                  {/* West player trick card - why not add some more unnecessary styles */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+                  {/* West player trick card */}
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
                     {game.currentTrick.map((card, index) => {
                       const leadPos = getLeadPosition();
                       const playerPosition = (leadPos + index) % 4;
@@ -1335,8 +1335,8 @@ export default function GameTable({
                     })}
                   </div>
 
-                  {/* East player trick card - consistency in making things worse */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[40%] w-[25%] border border-white/30 flex items-center justify-center bg-white/5">
+                  {/* East player trick card */}
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
                     {game.currentTrick.map((card, index) => {
                       const leadPos = getLeadPosition();
                       const playerPosition = (leadPos + index) % 4;
