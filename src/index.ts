@@ -736,33 +736,6 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Get the lead position for this trick
-      const leadPosition = getLeadPosition(game);
-      
-      // Validate spades rules
-      if (game.currentTrick.length === 0) {
-        // First card of the trick
-        if (card.suit === 'S' && !game.spadesBroken) {
-          // Can only lead spades if it's the only suit in hand
-          const hasOtherSuits = currentPlayer.hand.some(c => c.suit !== 'S');
-          if (hasOtherSuits) {
-            socket.emit('error', { message: 'Cannot lead spades unless broken' });
-            return;
-          }
-        }
-      } else {
-        // Following to a trick
-        const leadSuit = game.currentTrick[0].suit;
-        if (card.suit !== leadSuit) {
-          // Check if player has the lead suit
-          const hasLeadSuit = currentPlayer.hand.some(c => c.suit === leadSuit);
-          if (hasLeadSuit) {
-            socket.emit('error', { message: 'Must follow suit' });
-            return;
-          }
-        }
-      }
-
       // Remove card from player's hand
       currentPlayer.hand.splice(cardIndex, 1);
 
@@ -843,7 +816,6 @@ io.on('connection', (socket) => {
           });
           
           // Deal new hands
-          const deck = shuffleArray(createDeck());
           game.players = dealCards(game.players);
         }
       } else {
