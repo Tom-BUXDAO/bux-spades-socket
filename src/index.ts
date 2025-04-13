@@ -502,16 +502,16 @@ io.on('connection', (socket) => {
       isDealer: i === firstDealerIndex
     }));
     
-    // After bidding, the player to the left of the dealer leads first (counterclockwise)
+    // After bidding, the player to the right of the dealer leads first (clockwise)
     const dealer = game.players.find(p => p.isDealer);
     if (!dealer) {
       console.error('No dealer found!');
       return;
     }
     
-    // Find the player to the left of the dealer (counterclockwise)
+    // Find the player to the right of the dealer (clockwise)
     const dealerPosition = dealer.position;
-    const firstPosition = (dealerPosition + 1) % 4;  // Go left (counterclockwise)
+    const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go right (clockwise)
     const firstPlayer = game.players.find(p => p.position === firstPosition);
     
     console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
@@ -580,19 +580,19 @@ io.on('connection', (socket) => {
     game.players[playerIndex].bid = bid;
     console.log(`Player ${game.players[playerIndex].name} bid ${bid}`);
 
-    // Determine the next player
-    const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
-    const nextPlayerIndex = (currentPlayerIndex + 1) % 4;  // Move counterclockwise (left)
-    const nextPlayer = game.players.find(p => p.position === nextPlayerIndex);
+    // Determine the next player - move clockwise (to the right)
+    const currentPlayerPosition = game.players[playerIndex].position;
+    const nextPosition = (currentPlayerPosition - 1 + 4) % 4;  // Move clockwise (right)
+    const nextPlayer = game.players.find(p => p.position === nextPosition);
     
     if (!nextPlayer) {
-      console.log(`Could not find next player at position ${nextPlayerIndex}`);
+      console.log(`Could not find next player at position ${nextPosition}`);
       socket.emit('error', { message: 'Error finding next player' });
       return;
     }
 
     game.currentPlayer = nextPlayer.id;
-    console.log(`Next player is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPlayerIndex}`);
+    console.log(`Next player is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPosition}`);
 
     // Check if all players have bid
     const allPlayersBid = game.players.every(p => p.bid !== undefined);
@@ -606,16 +606,16 @@ io.on('connection', (socket) => {
         console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''}`);
       });
       
-      // After bidding, the player to the left of the dealer leads first (counterclockwise)
+      // After bidding, the player to the right of the dealer leads first (clockwise)
       const dealer = game.players.find(p => p.isDealer);
       if (!dealer) {
         console.error('No dealer found!');
         return;
       }
       
-      // Find the player to the left of the dealer (counterclockwise)
+      // Find the player to the right of the dealer (clockwise)
       const dealerPosition = dealer.position;
-      const firstPosition = (dealerPosition + 1) % 4;  // Go left (counterclockwise)
+      const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go right (clockwise)
       const firstPlayer = game.players.find(p => p.position === firstPosition);
       
       console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
