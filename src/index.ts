@@ -62,7 +62,7 @@ interface Game {
   players: Player[];
   currentPlayer: string;
   currentTrick: Card[];
-  completedTricks: { cards: Card[]; winner: string }[];
+  completedTricks: { cards: Card[]; winningCard: Card; winningPlayerId: string }[];
   team1Score: number;
   team2Score: number;
   team1Bags: number;
@@ -84,6 +84,11 @@ interface TeamScore {
   madeNils: number;
   score: number;
   bags: number;
+}
+
+interface GameScores {
+  team1: TeamScore;
+  team2: TeamScore;
 }
 
 // Store active games
@@ -739,45 +744,62 @@ io.on('connection', (socket) => {
 
       // Check if trick is complete
       if (game.currentTrick.length === 4) {
-        // Determine winning card and player
-        let winningCard = game.currentTrick[0];
-        let winningPlayer = game.currentTrick[0].playedBy;
-        const leadSuit = game.currentTrick[0].suit;
-
+        // Sort players by position
+        const sortedPlayers = [...game.players].sort((a, b) => a.position - b.position);
+        
+        // Get lead card and suit
+        const leadCard = game.currentTrick[0];
+        const leadSuit = leadCard.suit;
+        
+        // Find winning card
+        let winningCard = leadCard;
+        const initialWinningPlayer = sortedPlayers.find(p => p?.id && leadCard?.playedBy && p.id.toString() === leadCard.playedBy.toString());
+        
+        if (!initialWinningPlayer) {
+          console.error('Could not find player who played lead card:', leadCard);
+          return;
+        }
+        
+        let winningPlayer = initialWinningPlayer;
+        
         for (let i = 1; i < game.currentTrick.length; i++) {
           const currentCard = game.currentTrick[i];
+          if (!currentCard || !currentCard.playedBy || !currentCard.playedBy.id) continue;
+          
+          // At this point we know playedBy exists and has an id
+          const playedBy = currentCard.playedBy as { id: string };
+          const currentPlayer = sortedPlayers.find(p => p?.id && p.id.toString() === playedBy.id.toString());
+          
+          if (!currentPlayer) {
+            console.error('Could not find player who played card:', currentCard);
+            continue;
+          }
+          
           if (currentCard.suit === leadSuit && currentCard.rank > winningCard.rank) {
             winningCard = currentCard;
-            winningPlayer = currentCard.playedBy;
+            winningPlayer = currentPlayer;
           } else if (currentCard.suit === 'S' && winningCard.suit !== 'S') {
             winningCard = currentCard;
-            winningPlayer = currentCard.playedBy;
+            winningPlayer = currentPlayer;
           }
         }
-
-        // Add null check for winningPlayer
-        if (!winningPlayer) {
-          console.error('Could not determine winning player');
+        
+        // Store completed trick with winning information
+        if (!winningPlayer || !winningPlayer.id || !winningCard) {
+          console.error('Missing winning player or card information');
           return;
         }
 
-        // Find and increment the winner's tricks
-        const winner = game.players.find(p => p.id === winningPlayer!.id);
-        if (winner) {
-          winner.tricks = (winner.tricks || 0) + 1;
-        }
-
-        // Store the completed trick
-        game.completedTricks.push({
-          cards: [...game.currentTrick],
-          winner: winningPlayer!.id
-        });
-
-        // Clear the current trick
+        const completedTrick = {
+          cards: game.currentTrick,
+          winningCard,
+          winningPlayerId: winningPlayer.id
+        };
+        game.completedTricks.push(completedTrick);
+        
+        // Clear current trick and set next leader
         game.currentTrick = [];
-
-        // Set next player to the trick winner
-        game.currentPlayer = winningPlayer!.id;
+        game.currentPlayer = winningPlayer.id;
 
         // Check if hand is complete
         if (game.players.every(p => p.hand.length === 0)) {
@@ -803,9 +825,11 @@ io.on('connection', (socket) => {
         }
       } else {
         // Move to next player clockwise
-        const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
+        // Sort players by position to ensure clockwise movement
+        const sortedPlayers = [...game.players].sort((a, b) => a.position - b.position);
+        const currentPlayerIndex = sortedPlayers.findIndex(p => p.id === userId);
         const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
-        game.currentPlayer = game.players[nextPlayerIndex].id;
+        game.currentPlayer = sortedPlayers[nextPlayerIndex].id;
       }
 
       // Broadcast updated game state
