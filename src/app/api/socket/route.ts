@@ -49,7 +49,7 @@ if (typeof window === "undefined" && !io) {
           currentTrickCardPlayers: [],
           completedTricks: [],
           bids: {},
-          scores: {},
+          scores: { team1: 0, team2: 0 },
           dealerPosition: 0,
           spadesBroken: false,
           cardPlayers: {},
