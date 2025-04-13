@@ -614,13 +614,32 @@ io.on('connection', (socket) => {
       console.log('All players have bid, transitioning to PLAYING state');
       game.status = 'PLAYING';
       
+      // Debug log all players and their positions
+      console.log('Current players and positions:');
+      game.players.forEach(p => {
+        console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''}`);
+      });
+      
       // The player after the dealer leads the first trick
-      const dealerPosition = game.players.find(p => p.isDealer)?.position || 0;
+      const dealer = game.players.find(p => p.isDealer);
+      if (!dealer) {
+        console.error('No dealer found!');
+        return;
+      }
+      const dealerPosition = dealer.position;
       const firstPosition = (dealerPosition + 1) % 4;
       const firstPlayer = game.players.find(p => p.position === firstPosition);
-      game.currentPlayer = firstPlayer?.id || game.players[0].id;
       
-      console.log(`First player to lead is ${firstPlayer?.name} (${game.currentPlayer}) at position ${firstPosition}`);
+      console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
+      console.log(`First player should be at position ${firstPosition}`);
+      
+      if (!firstPlayer) {
+        console.error(`Could not find player at position ${firstPosition}`);
+        return;
+      }
+      
+      game.currentPlayer = firstPlayer.id;
+      console.log(`First player to lead is ${firstPlayer.name} (${game.currentPlayer}) at position ${firstPosition}`);
     }
 
     // Update game state in memory
@@ -719,8 +738,8 @@ io.on('connection', (socket) => {
     
     console.log(`Player ${player.name} played ${card.rank} of ${card.suit}`);
     
-    // Determine the next player
-    const nextPosition = (player.position + 1) % 4;
+    // Determine the next player (counter-clockwise)
+    const nextPosition = ((player.position - 1) + 4) % 4;
     const nextPlayer = game.players.find(p => p.position === nextPosition);
     
     if (nextPlayer) {
@@ -1021,7 +1040,7 @@ io.on('connection', (socket) => {
     } else {
       // Trick continues, next player's turn
       const currentPosition = player.position;
-      const nextPosition = (currentPosition + 1) % 4;
+      const nextPosition = ((currentPosition - 1) + 4) % 4;
       const nextPlayer = game.players.find(p => p.position === nextPosition);
       
       if (nextPlayer) {
@@ -1129,18 +1148,4 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameId);
     if (game) {
-      console.log(`Found game ${gameId}, status: ${game.status}, players: ${game.players.length}`);
-      if (callback) callback(game);
-      socket.emit('game_update', game);
-    } else {
-      console.log(`Game ${gameId} not found`);
-      if (callback) callback(null);
-      socket.emit('error', { message: 'Game not found' });
-    }
-  });
-});
-
-const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`Socket.IO server running on port ${PORT}`);
-}); 
+      console.log(`
