@@ -541,7 +541,7 @@ export default function GameTable({
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative w-[calc(100%-140px)] h-[50%] mx-auto">
           {/* North player trick card */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%]">
             {game.currentTrick.map((card, index) => {
               const cardPlayer = game.currentTrickCardPlayers[index];
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
@@ -549,21 +549,22 @@ export default function GameTable({
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 2 && (
-                <Image
-                  key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
-                  quality={100}
-                  priority={true}
-                />
+                <div key={`${card.suit}-${card.rank}`} className="relative h-full">
+                  <Image
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank} of ${card.suit}`}
+                    fill
+                    className="object-contain"
+                    quality={100}
+                    priority={true}
+                  />
+                </div>
               );
             })}
           </div>
 
           {/* South player trick card */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%]">
             {game.currentTrick.map((card, index) => {
               const cardPlayer = game.currentTrickCardPlayers[index];
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
@@ -571,21 +572,22 @@ export default function GameTable({
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 0 && (
-                <Image
-                  key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
-                  quality={100}
-                  priority={true}
-                />
+                <div key={`${card.suit}-${card.rank}`} className="relative h-full">
+                  <Image
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank} of ${card.suit}`}
+                    fill
+                    className="object-contain"
+                    quality={100}
+                    priority={true}
+                  />
+                </div>
               );
             })}
           </div>
 
           {/* West player trick card */}
-          <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute top-1/2 -translate-y-1/2 left-[calc(50%-8.925%)] h-[50%]">
             {game.currentTrick.map((card, index) => {
               const cardPlayer = game.currentTrickCardPlayers[index];
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
@@ -593,21 +595,22 @@ export default function GameTable({
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 1 && (
-                <Image
-                  key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
-                  quality={100}
-                  priority={true}
-                />
+                <div key={`${card.suit}-${card.rank}`} className="relative h-full">
+                  <Image
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank} of ${card.suit}`}
+                    fill
+                    className="object-contain"
+                    quality={100}
+                    priority={true}
+                  />
+                </div>
               );
             })}
           </div>
 
           {/* East player trick card */}
-          <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2">
+          <div className="absolute top-1/2 -translate-y-1/2 right-[calc(50%-8.925%)] h-[50%]">
             {game.currentTrick.map((card, index) => {
               const cardPlayer = game.currentTrickCardPlayers[index];
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
@@ -615,15 +618,16 @@ export default function GameTable({
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
               
               return relativePosition === 3 && (
-                <Image
-                  key={`${card.suit}-${card.rank}`}
-                  src={`/cards/${getCardImage(card)}`}
-                  alt={`${card.rank} of ${card.suit}`}
-                  width={84}
-                  height={120}
-                  quality={100}
-                  priority={true}
-                />
+                <div key={`${card.suit}-${card.rank}`} className="relative h-full">
+                  <Image
+                    src={`/cards/${getCardImage(card)}`}
+                    alt={`${card.rank} of ${card.suit}`}
+                    fill
+                    className="object-contain"
+                    quality={100}
+                    priority={true}
+                  />
+                </div>
               );
             })}
           </div>
@@ -854,24 +858,24 @@ export default function GameTable({
                     `bg-gradient-to-r ${teamAccentColor} to-white/80`}
                 `}>
                   <div className="bg-gray-900 rounded-full p-0.5">
-            <Image
-              src={getPlayerAvatar(player)}
+                    <Image
+                      src={getPlayerAvatar(player)}
                       alt={player.name || "Player"}
                       width={avatarWidth}
                       height={avatarHeight}
                       className="rounded-full object-cover"
                       priority={true}
-            />
-          </div>
+                    />
+                  </div>
                   
                   {/* Dealer chip with premium styling */}
-          {player.isDealer && (
+                  {player.isDealer && (
                     <div className="absolute -bottom-1 -right-1">
                       <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 shadow-md">
                         <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center">
                           <span className="text-[8px] font-bold text-yellow-200">D</span>
-            </div>
-        </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1018,12 +1022,12 @@ export default function GameTable({
         }
         
         // Don't start a new hand, game is over
-      socket.emit("update_scores", {
-        gameId: game.id,
-        team1Score: handScores.team1.score,
-        team2Score: handScores.team2.score,
-        startNewHand: true
-      });
+        socket.emit("update_scores", {
+          gameId: game.id,
+          team1Score: handScores.team1.score,
+          team2Score: handScores.team2.score,
+          startNewHand: true
+        });
       }
       
       setHandScores(null);
