@@ -535,8 +535,8 @@ export default function GameTable({
           break;
       }
 
-      // Fix the card image path
-      const cardImagePath = `/cards/${card.rank}${card.suit.charAt(0)}.png`;
+      // Use the getCardImage helper for consistent card image paths
+      const cardImagePath = `/cards/${getCardImage(card)}`;
       console.log(`Rendering card: ${card.rank}${card.suit} at position ${relativePosition}, image path: ${cardImagePath}`);
 
       return (
