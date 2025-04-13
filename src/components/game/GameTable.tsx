@@ -494,17 +494,67 @@ export default function GameTable({
     return game.players.find(p => p.id === playerId) || null;
   };
   
-  // Fix the renderTrickCards function
-  const renderTrickCards = () => {
-    if (!game?.currentTrick?.length) return null;
+  // Add state for trick completion animation
+  const [completedTrick, setCompletedTrick] = useState<{
+    cards: Card[];
+    winningPlayerId: string;
+    winningCard: Card;
+  } | null>(null);
+  const [showTrickAnimation, setShowTrickAnimation] = useState(false);
 
-    return game.currentTrick.map((card, index) => {
+  // Effect to handle trick completion and animation
+  useEffect(() => {
+    if (!game?.currentTrick) return;
+
+    // When a trick is complete (4 cards)
+    if (game.currentTrick.length === 4) {
+      // Store the completed trick before it's cleared
+      const trick = [...game.currentTrick];
+      
+      // Find the winning card (highest of lead suit or highest spade)
+      const leadSuit = trick[0].suit;
+      let winningCard = trick[0];
+      let winningPlayerId = trick[0].playedBy?.id || '';
+
+      trick.forEach(card => {
+        if (card.suit === 'S' && winningCard.suit !== 'S') {
+          winningCard = card;
+          winningPlayerId = card.playedBy?.id || '';
+        } else if (card.suit === leadSuit && card.rank > winningCard.rank) {
+          winningCard = card;
+          winningPlayerId = card.playedBy?.id || '';
+        }
+      });
+
+      setCompletedTrick({
+        cards: trick,
+        winningPlayerId,
+        winningCard
+      });
+      setShowTrickAnimation(true);
+
+      // Clear the animation after delay
+      setTimeout(() => {
+        setShowTrickAnimation(false);
+        setCompletedTrick(null);
+      }, 2000);
+    }
+  }, [game?.currentTrick]);
+
+  // Modify the renderTrickCards function to handle animation
+  const renderTrickCards = () => {
+    const cardsToRender = showTrickAnimation && completedTrick 
+      ? completedTrick.cards 
+      : game?.currentTrick || [];
+
+    if (!cardsToRender.length) return null;
+
+    return cardsToRender.map((card, index) => {
       if (!card.playedBy) {
         console.error(`Card ${card.rank}${card.suit} is missing playedBy information`);
         return null;
       }
 
-      // Calculate relative position based on the actual player's position
       const relativePosition = (4 + card.playedBy.position - (currentPlayerPosition ?? 0)) % 4;
 
       const positions: Record<number, string> = {
@@ -514,10 +564,15 @@ export default function GameTable({
         3: 'absolute right-[20%] top-1/2 transform -translate-y-1/2'
       };
 
+      const isWinningCard = showTrickAnimation && 
+        completedTrick?.winningCard.suit === card.suit && 
+        completedTrick?.winningCard.rank === card.rank;
+
       return (
         <div
           key={`${card.suit}-${card.rank}-${index}`}
-          className={`${positions[relativePosition]} w-24 h-36 z-10`}
+          className={`${positions[relativePosition]} w-24 h-36 z-10 transition-all duration-300
+            ${isWinningCard ? 'ring-4 ring-yellow-400 scale-110' : ''}`}
           data-player={card.playedBy.name}
           data-position={card.playedBy.position}
         >
@@ -526,6 +581,13 @@ export default function GameTable({
             alt={`${card.rank} of ${card.suit}`}
             className="w-full h-full object-contain"
           />
+          {isWinningCard && (
+            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 
+              bg-yellow-400 text-black font-bold rounded-full px-3 py-1
+              animate-bounce">
+              +1
+            </div>
+          )}
         </div>
       );
     }).filter(Boolean);
@@ -606,17 +668,13 @@ export default function GameTable({
     };
   }, [isMobile]);
   
-  // Add back these missing functions
+  // Update the player tricks display
   const renderPlayerPosition = (position: number) => {
     const player = orderedPlayers[position];
-    if (!player) {
-      // Empty seat
-      return null;
-    }
+    if (!player) return null;
 
-    // Only mark a player as active if the game has started (not in WAITING status)
     const isActive = game.status !== "WAITING" && game.currentPlayer === player.id;
-    const isWinningPlayer = player.id === winningPlayerId && showWinningCardHighlight;
+    const isWinningTrick = showTrickAnimation && completedTrick?.winningPlayerId === player.id;
     
     // Determine if we're on mobile
     // const isMobile = screenSize.width < 640;
@@ -681,6 +739,7 @@ export default function GameTable({
         <div className={`
           backdrop-blur-sm bg-white/10 rounded-xl overflow-hidden
           ${isActive ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/30' : 'shadow-md'}
+          ${isWinningTrick ? 'animate-pulse' : ''}
           transition-all duration-200
         `}>
           {isSideSeat ? (
@@ -802,7 +861,7 @@ export default function GameTable({
               </div>
               
               {/* Winning animation with improved animation */}
-              {isWinningPlayer && (
+              {isWinningTrick && (
                 <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
                   <div className={`
                     ${player.team === 1 ? 'text-red-400' : 'text-blue-400'} 
