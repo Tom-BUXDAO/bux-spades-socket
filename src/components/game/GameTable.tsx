@@ -367,50 +367,22 @@ export default function GameTable({
     console.log('Socket connected:', socket?.connected);
   };
 
-  // Add a function to determine lead position
+  // Fix the getLeadPosition function
   const getLeadPosition = () => {
-    // For the first trick of a hand, lead is left of dealer
-    const isFirstTrickOfHand = game.completedTricks.length === 0 && game.currentTrick.length === 0;
-    
-    if (isFirstTrickOfHand) {
-      const dealer = game.players.find(p => p.isDealer);
-      if (!dealer) {
-        console.error('Could not find dealer for first trick');
-        return 0;
-      }
-      const dealerPosition = dealer.position ?? game.players.indexOf(dealer);
-      // Lead is left of dealer (position + 1)
-      const leadPos = (dealerPosition + 1) % 4;
-      console.log(`First trick of hand - Lead is left of dealer ${dealer.name} (pos ${dealerPosition}) -> lead pos ${leadPos}`);
-      return leadPos;
+    if (!game.currentTrick || game.currentTrick.length === 0) {
+      // For the first trick, the lead is the player after the dealer
+      return (game.dealerPosition + 1) % 4;
     }
     
-    // For continuing tricks, if first card is played, find who played it
-    if (game.currentTrick.length > 0) {
-      // Get the first card's player from our card players mapping
-      const firstCardPlayerId = cardPlayers[0];
-      if (firstCardPlayerId) {
-        const firstCardPlayer = game.players.find(p => p.id === firstCardPlayerId);
-        if (firstCardPlayer) {
-          const pos = firstCardPlayer.position ?? game.players.indexOf(firstCardPlayer);
-          console.log(`Current trick - First card played by ${firstCardPlayer.name} at position ${pos}`);
-          return pos;
-        }
-      }
+    // For subsequent tricks, the lead is the winner of the previous trick
+    const lastTrick = game.completedTricks[game.completedTricks.length - 1];
+    if (lastTrick) {
+      const winningPlayer = game.players.find(p => p.id === lastTrick.winner);
+      return winningPlayer?.position ?? 0;
     }
     
-    // For new tricks, lead is the winner of the previous trick
-    if (game.completedTricks.length > 0) {
-      const lastTrickWinner = game.players.find(p => p.id === game.currentPlayer);
-      if (lastTrickWinner) {
-        const pos = lastTrickWinner.position ?? game.players.indexOf(lastTrickWinner);
-        console.log(`New trick - Lead player is previous trick winner ${lastTrickWinner.name} at position ${pos}`);
-        return pos;
-      }
-    }
-    
-    console.error('Could not determine lead position');
-    return 0;
+    // Fallback to dealer + 1 if something goes wrong
+    return (game.dealerPosition + 1) % 4;
   };
 
   // Effect to track which card was played by which player
@@ -534,12 +506,13 @@ export default function GameTable({
     return game.players.find(p => p.id === playerId) || null;
   };
   
-  // Fix the renderTrickCards function to use cardPlayers
+  // Fix the renderTrickCards function
   const renderTrickCards = () => {
     if (!game.currentTrick || game.currentTrick.length === 0) return null;
 
     // Get the lead position for this trick
     const leadPosition = getLeadPosition();
+    console.log(`Lead position for trick: ${leadPosition}`);
     
     return game.currentTrick.map((card, index) => {
       // Calculate the relative position from the current player's perspective
@@ -562,13 +535,17 @@ export default function GameTable({
           break;
       }
 
+      // Fix the card image path
+      const cardImagePath = `/cards/${card.rank}${card.suit.charAt(0)}.png`;
+      console.log(`Rendering card: ${card.rank}${card.suit} at position ${relativePosition}, image path: ${cardImagePath}`);
+
       return (
         <div
           key={`${card.suit}-${card.rank}`}
           className={`${positionClass} w-24 h-36 z-10`}
         >
           <img
-            src={`/cards/${card.rank}${card.suit.charAt(0)}.png`}
+            src={cardImagePath}
             alt={`${card.rank} of ${card.suit}`}
             className="w-full h-full object-contain"
           />
