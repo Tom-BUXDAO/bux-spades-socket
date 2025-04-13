@@ -1257,159 +1257,51 @@ export default function GameTable({
               ))}
 
               {/* Center content - play area fills space between player containers */}
-              <div className={`absolute ${windowSize.width < 768 ? 'inset-[25%]' : 'inset-[15%]'} flex items-center justify-center`}>
-                {/* Play area container - fills available space */}
-                <div className="relative w-full h-full mx-auto border-2 border-white/30">
-                  {/* North player trick card */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
-                    {game.currentTrick.map((card, index) => {
-                      const leadPos = getLeadPosition();
-                      const playerPosition = (leadPos + index) % 4;
-                      const player = game.players.find(p => p.position === playerPosition);
-                      if (!player) return null;
-                      
-                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
-                      
-                      return relativePosition === 2 && (
-                        <Image
-                          key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${getCardImage(card)}`}
-                          alt={`${card.rank} of ${card.suit}`}
-                          fill
-                          style={{ objectFit: 'contain', padding: '5px' }}
-                          quality={100}
-                          priority={true}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* South player trick card */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
-                    {game.currentTrick.map((card, index) => {
-                      const leadPos = getLeadPosition();
-                      const playerPosition = (leadPos + index) % 4;
-                      const player = game.players.find(p => p.position === playerPosition);
-                      if (!player) return null;
-                      
-                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
-                      
-                      return relativePosition === 0 && (
-                        <Image
-                          key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${getCardImage(card)}`}
-                          alt={`${card.rank} of ${card.suit}`}
-                          fill
-                          style={{ objectFit: 'contain', padding: '5px' }}
-                          quality={100}
-                          priority={true}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* West player trick card */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
-                    {game.currentTrick.map((card, index) => {
-                      const leadPos = getLeadPosition();
-                      const playerPosition = (leadPos + index) % 4;
-                      const player = game.players.find(p => p.position === playerPosition);
-                      if (!player) return null;
-                      
-                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
-                      
-                      return relativePosition === 1 && (
-                        <Image
-                          key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${getCardImage(card)}`}
-                          alt={`${card.rank} of ${card.suit}`}
-                          fill
-                          style={{ objectFit: 'contain', padding: '5px' }}
-                          quality={100}
-                          priority={true}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* East player trick card */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[50%] max-h-[200px] border border-white/30 flex items-center justify-center bg-white/5">
-                    {game.currentTrick.map((card, index) => {
-                      const leadPos = getLeadPosition();
-                      const playerPosition = (leadPos + index) % 4;
-                      const player = game.players.find(p => p.position === playerPosition);
-                      if (!player) return null;
-                      
-                      const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
-                      const relativePosition = (4 + playerPosition - viewerPosition) % 4;
-                      
-                      return relativePosition === 3 && (
-                        <Image
-                          key={`${card.suit}-${card.rank}`}
-                          src={`/cards/${getCardImage(card)}`}
-                          alt={`${card.rank} of ${card.suit}`}
-                          fill
-                          style={{ objectFit: 'contain', padding: '5px' }}
-                          quality={100}
-                          priority={true}
-                        />
-                      );
-                    })}
+              {game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
+                renderTrickCards()
+              ) : game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
+                <button
+                  onClick={handleStartGame}
+                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
+                  style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
+                >
+                  Start Game
+                </button>
+              ) : game.status === "WAITING" && game.players.length < 4 ? (
+                <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="font-bold">Waiting for Players</div>
+                  <div className="text-sm mt-1">{game.players.length}/4 joined</div>
+                </div>
+              ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
+                <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="font-bold">Waiting for Host</div>
+                  <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
+                </div>
+              ) : game.status === "BIDDING" && game.currentPlayer === currentPlayerId ? (
+                <div className="flex items-center justify-center w-full h-full">
+                  <BiddingInterface
+                    onBid={handleBid}
+                    currentBid={orderedPlayers[0]?.bid}
+                    gameId={game.id}
+                    playerId={currentPlayerId}
+                    currentPlayerTurn={game.currentPlayer}
+                  />
+                </div>
+              ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
+                <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
+                </div>
+              ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
+                <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
+                     style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
+                  <div className="text-sm">
+                    Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
                   </div>
                 </div>
-              </div>
-
-              {/* Overlay the game status buttons/messages on top of the play area */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                {game.status === "WAITING" && game.players.length === 4 && game.players[0]?.id === currentPlayerId ? (
-                  <button
-                    onClick={handleStartGame}
-                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg shadow-lg transform hover:scale-105 transition-all"
-                    style={{ fontSize: `${Math.floor(16 * scaleFactor)}px` }}
-                  >
-                    Start Game
-                  </button>
-                ) : game.status === "WAITING" && game.players.length < 4 ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Players</div>
-                    <div className="text-sm mt-1">{game.players.length}/4 joined</div>
-                  </div>
-                ) : game.status === "WAITING" && game.players[0]?.id !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for Host</div>
-                    <div className="text-sm mt-1">Only {game.players[0]?.name} can start</div>
-                  </div>
-                ) : game.status === "BIDDING" && game.currentPlayer === currentPlayerId ? (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <BiddingInterface
-                      onBid={handleBid}
-                      currentBid={orderedPlayers[0]?.bid}
-                      gameId={game.id}
-                      playerId={currentPlayerId}
-                      currentPlayerTurn={game.currentPlayer}
-                    />
-                  </div>
-                ) : game.status === "BIDDING" && game.currentPlayer !== currentPlayerId ? (
-                  <div className="px-4 py-2 bg-gray-700 text-white rounded-lg text-center animate-pulse"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="font-bold">Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to bid</div>
-                  </div>
-                ) : game.status === "PLAYING" && game.currentTrick && game.currentTrick.length > 0 ? (
-                  renderTrickCards()
-                ) : game.status === "PLAYING" && game.currentTrick?.length === 0 ? (
-                  <div className="px-4 py-2 bg-gray-700/70 text-white rounded-lg text-center"
-                       style={{ fontSize: `${Math.floor(14 * scaleFactor)}px` }}>
-                    <div className="text-sm">
-                      Waiting for {game.players.find(p => p.id === game.currentPlayer)?.name} to play
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+              ) : null}
             </div>
 
             {/* Cards area with more space */}
