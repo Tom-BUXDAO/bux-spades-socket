@@ -1148,4 +1148,19 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameId);
     if (game) {
-      console.log(`
+      console.log(`Game ${gameId} found:`, {
+        id: game.id,
+        state: game.status,
+        players: game.players.map(p => ({ id: p.id, name: p.name }))
+      });
+      if (callback) callback(game);
+    } else {
+      console.log(`Game ${gameId} not found`);
+      if (callback) callback(null);
+    }
+  });
+});
+
+httpServer.listen(process.env.PORT || 3001, () => {
+  console.log(`Server is running on port ${process.env.PORT || 3001}`);
+});
