@@ -543,7 +543,8 @@ export default function GameTable({
           {/* North player trick card */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers[index];
+              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
@@ -566,7 +567,8 @@ export default function GameTable({
           {/* South player trick card */}
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers[index];
+              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
@@ -589,7 +591,8 @@ export default function GameTable({
           {/* West player trick card */}
           <div className="absolute top-1/2 -translate-y-1/2 left-[calc(50%-8.925%)] h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers[index];
+              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
@@ -612,7 +615,8 @@ export default function GameTable({
           {/* East player trick card */}
           <div className="absolute top-1/2 -translate-y-1/2 right-[calc(50%-8.925%)] h-[50%]">
             {game.currentTrick.map((card, index) => {
-              const cardPlayer = game.currentTrickCardPlayers[index];
+              const cardPlayer = game.currentTrickCardPlayers?.[index];
+              if (!cardPlayer) return null;
               const playerPosition = game.players.find(p => p.id === cardPlayer)?.position ?? 0;
               const viewerPosition = game.players.find(p => p.id === currentPlayerId)?.position ?? 0;
               const relativePosition = (4 + playerPosition - viewerPosition) % 4;
