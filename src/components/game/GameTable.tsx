@@ -381,22 +381,28 @@ export default function GameTable({
         console.error('Could not find dealer for first trick');
         return 0;
       }
-      // @ts-ignore - position property might not be on the type yet
       const dealerPosition = dealer.position ?? game.players.indexOf(dealer);
       const leadPos = (dealerPosition + 1) % 4;
       console.log(`First trick of hand - Lead is left of dealer ${dealer.name} (pos ${dealerPosition}) -> lead pos ${leadPos}`);
       return leadPos;
     }
     
-    // For continuing tricks, if first card is played, use that player's position
+    // For continuing tricks, if first card is played, find who played it
     if (game.currentTrick.length > 0) {
-      // Find the player who played the first card of the trick
-      const firstCardPlayer = game.players.find(p => p.id === game.currentPlayer);
+      // Calculate who played the first card based on current player
+      const currentPlayerObj = game.players.find(p => p.id === game.currentPlayer);
+      if (!currentPlayerObj) return 0;
+      
+      const currentPosition = currentPlayerObj.position ?? game.players.indexOf(currentPlayerObj);
+      // Since currentPlayer is the next to play, we can work backwards
+      // If we have N cards played and current player at position P,
+      // then first card was played by position (P - N) % 4
+      const firstCardPosition = ((currentPosition - game.currentTrick.length) + 4) % 4;
+      
+      const firstCardPlayer = game.players.find(p => p.position === firstCardPosition);
       if (firstCardPlayer) {
-        // @ts-ignore - position property might not be on the type yet
-        const pos = firstCardPlayer.position ?? game.players.indexOf(firstCardPlayer);
-        console.log(`Current trick - First card played by ${firstCardPlayer.name} at position ${pos}`);
-        return pos;
+        console.log(`Current trick - First card played by ${firstCardPlayer.name} at position ${firstCardPosition}`);
+        return firstCardPosition;
       }
     }
     
@@ -404,7 +410,6 @@ export default function GameTable({
     if (game.completedTricks.length > 0) {
       const lastTrickWinner = game.players.find(p => p.id === game.currentPlayer);
       if (lastTrickWinner) {
-        // @ts-ignore - position property might not be on the type yet
         const pos = lastTrickWinner.position ?? game.players.indexOf(lastTrickWinner);
         console.log(`New trick - Lead player is previous trick winner ${lastTrickWinner.name} at position ${pos}`);
         return pos;
