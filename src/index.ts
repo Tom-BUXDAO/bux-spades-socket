@@ -731,10 +731,23 @@ io.on('connection', (socket) => {
         game.spadesBroken = true;
       }
       
-      // Determine the next player
-      const currentPlayerIndex = game.players.findIndex(p => p.id === userId);
-      const nextPlayerIndex = (currentPlayerIndex - 1 + 4) % 4;  // Move clockwise (right) to match bidding
-      game.currentPlayer = game.players[nextPlayerIndex].id;
+      // Determine the next player using position
+      const currentPlayer = game.players.find(p => p.id === userId);
+      if (!currentPlayer) {
+        console.error('Could not find current player');
+        return;
+      }
+      
+      // Move clockwise (next position)
+      const nextPosition = (currentPlayer.position + 1) % 4;
+      const nextPlayer = game.players.find(p => p.position === nextPosition);
+      
+      if (!nextPlayer) {
+        console.error('Could not find next player at position', nextPosition);
+        return;
+      }
+      
+      game.currentPlayer = nextPlayer.id;
       
       // Check if the trick is complete
       if (game.currentTrick.length === 4) {
