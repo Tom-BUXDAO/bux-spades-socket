@@ -186,7 +186,7 @@ function determineWinningCard(trick: Card[]): number {
 
 // Add a new interface to track which player played each card
 interface TrickCard extends Card {
-  playedBy?: string; // Player ID who played this card
+  // No need to redefine playedBy since we want to use the same type as Card
 }
 
 // Add this near the top of the file, after imports
@@ -506,11 +506,12 @@ export default function GameTable({
   const renderTrickCards = () => {
     if (!game?.currentTrick?.length) return null;
 
-    const leadPos = getLeadPosition();
-    
     return game.currentTrick.map((card, index) => {
-      const absolutePosition = (leadPos + index) % 4;
-      const relativePosition = (4 + absolutePosition - (currentPlayerPosition ?? 0)) % 4;
+      // Get the actual position of the player who played this card
+      const playerPosition = card.playedBy?.position ?? 0;
+      
+      // Calculate relative position based on the actual player's position
+      const relativePosition = (4 + playerPosition - (currentPlayerPosition ?? 0)) % 4;
 
       const positions: Record<number, string> = {
         0: 'absolute bottom-[20%] left-1/2 transform -translate-x-1/2',
