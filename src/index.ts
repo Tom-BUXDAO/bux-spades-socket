@@ -533,24 +533,28 @@ io.on('connection', (socket) => {
       isDealer: i === firstDealerIndex
     }));
     
-    // First player is to the left of the dealer - find by position
+    // After bidding, the player to the right of the dealer leads first (clockwise)
     const dealer = game.players.find(p => p.isDealer);
     if (!dealer) {
-      console.error('No dealer found after setting dealer!');
+      console.error('No dealer found!');
       return;
     }
     
+    // Find the player to the right of the dealer (clockwise)
     const dealerPosition = dealer.position;
-    const nextPosition = (dealerPosition + 1) % 4;
-    const nextPlayer = game.players.find(p => p.position === nextPosition);
+    const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go right (clockwise)
+    const firstPlayer = game.players.find(p => p.position === firstPosition);
     
-    if (!nextPlayer) {
-      console.error(`Could not find next player at position ${nextPosition}`);
+    console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
+    console.log(`First player should be at position ${firstPosition}`);
+    
+    if (!firstPlayer) {
+      console.error(`Could not find player at position ${firstPosition}`);
       return;
     }
     
-    game.currentPlayer = nextPlayer.id;
-    console.log(`First player to bid is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPosition}`);
+    game.currentPlayer = firstPlayer.id;
+    console.log(`First player to lead is ${firstPlayer.name} (${firstPlayer.id}) at position ${firstPosition}`);
     
     // Update game state in memory
     games.set(gameId, game);
@@ -633,16 +637,16 @@ io.on('connection', (socket) => {
         console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''}`);
       });
       
-      // The player to the left of the dealer leads the first trick
+      // After bidding, the player to the right of the dealer leads first (clockwise)
       const dealer = game.players.find(p => p.isDealer);
       if (!dealer) {
         console.error('No dealer found!');
         return;
       }
       
-      // Find the player to the left of the dealer (clockwise)
+      // Find the player to the right of the dealer (clockwise)
       const dealerPosition = dealer.position;
-      const firstPosition = (dealerPosition + 1) % 4;
+      const firstPosition = (dealerPosition - 1 + 4) % 4;  // Go right (clockwise)
       const firstPlayer = game.players.find(p => p.position === firstPosition);
       
       console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
@@ -753,8 +757,8 @@ io.on('connection', (socket) => {
     
     console.log(`Player ${player.name} played ${card.rank} of ${card.suit}`);
     
-    // Determine the next player (counter-clockwise)
-    const nextPosition = ((player.position - 1) + 4) % 4;
+    // Determine the next player (clockwise)
+    const nextPosition = (player.position + 1) % 4;
     const nextPlayer = game.players.find(p => p.position === nextPosition);
     
     if (nextPlayer) {
@@ -1055,7 +1059,7 @@ io.on('connection', (socket) => {
     } else {
       // Trick continues, next player's turn
       const currentPosition = player.position;
-      const nextPosition = ((currentPosition - 1) + 4) % 4;
+      const nextPosition = (player.position + 1) % 4;
       const nextPlayer = game.players.find(p => p.position === nextPosition);
       
       if (nextPlayer) {
@@ -1163,15 +1167,7 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameId);
     if (game) {
-      console.log(`Game ${gameId} found:`, {
-        id: game.id,
-        state: game.status,
-        players: game.players.map(p => ({ id: p.id, name: p.name }))
-      });
-      if (callback) callback(game);
-    } else {
       console.log(`Game ${gameId} not found`);
-      if (callback) callback(null);
     }
   });
 });
