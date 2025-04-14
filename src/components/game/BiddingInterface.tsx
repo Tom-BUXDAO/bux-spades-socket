@@ -80,8 +80,8 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
       {/* Apply unique class - Changed positioning to absolute center within parent */}
       {/* Removed inset-0, flex, items-center, justify-center, p-4 */}
       <div className={`${modalContainerClass} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50`}>
-        {/* Apply unique class - Content styles remain */}
-        <div className={`${modalContentClass} w-[380px] md:w-[360px] sm:w-[320px] max-sm:w-[280px] bg-gray-800/95 rounded-2xl p-4 max-sm:p-3 shadow-xl`}>
+        {/* Updated modal style: backdrop blur, darker bg, subtle border */}
+        <div className={`${modalContentClass} w-[380px] md:w-[360px] sm:w-[320px] max-sm:w-[280px] backdrop-blur-md bg-gray-900/75 border border-white/10 rounded-2xl p-4 max-sm:p-3 shadow-xl`}>
           <div className="text-center mb-3 max-sm:mb-2">
             <h2 className="text-lg max-sm:text-base font-bold text-white">Make Your Bid</h2>
             {currentBid !== undefined && (
@@ -96,21 +96,21 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
                 <button
                   key={bid}
                   onClick={() => handleBidClick(bid)}
-                  // Add unique class
-                  className={`${numberButtonClass} w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11 rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all flex items-center justify-center flex-shrink-0 ${selectedBid === bid ? 'bg-yellow-500 text-black ring-2 max-sm:ring-1 ring-yellow-300 shadow-lg' : 'bg-gray-700 text-white hover:bg-gray-600'}`}>
+                  // Updated button styles
+                  className={`${numberButtonClass} w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11 rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all flex items-center justify-center flex-shrink-0 ${selectedBid === bid ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black ring-2 ring-yellow-200 shadow-lg' : 'bg-gray-700/80 hover:bg-gray-600/90 text-white'}`}>
                   {bid}
                 </button>
               ))}
             </div>
 
-            {/* Row 2: 5-9 - Note: Spacing still needs fixing later if this works */}
+            {/* Row 2: 5-9 */}
             <div className="flex justify-center gap-3 max-sm:gap-2">
               {[5, 6, 7, 8, 9].map((bid) => (
                 <button
                   key={bid}
                   onClick={() => handleBidClick(bid)}
-                  // Add unique class
-                  className={`${numberButtonClass} w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11 rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all flex items-center justify-center flex-shrink-0 ${selectedBid === bid ? 'bg-yellow-500 text-black ring-2 max-sm:ring-1 ring-yellow-300 shadow-lg' : 'bg-gray-700 text-white hover:bg-gray-600'}`}>
+                  // Updated button styles
+                  className={`${numberButtonClass} w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11 rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all flex items-center justify-center flex-shrink-0 ${selectedBid === bid ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black ring-2 ring-yellow-200 shadow-lg' : 'bg-gray-700/80 hover:bg-gray-600/90 text-white'}`}>
                   {bid}
                 </button>
               ))}
@@ -122,8 +122,8 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
                 <button
                   key={bid}
                   onClick={() => handleBidClick(bid)}
-                  // Add unique class
-                  className={`${numberButtonClass} w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11 rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all flex items-center justify-center flex-shrink-0 ${selectedBid === bid ? 'bg-yellow-500 text-black ring-2 max-sm:ring-1 ring-yellow-300 shadow-lg' : 'bg-gray-700 text-white hover:bg-gray-600'}`}>
+                  // Updated button styles
+                  className={`${numberButtonClass} w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11 rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all flex items-center justify-center flex-shrink-0 ${selectedBid === bid ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black ring-2 ring-yellow-200 shadow-lg' : 'bg-gray-700/80 hover:bg-gray-600/90 text-white'}`}>
                   {bid}
                 </button>
               ))}
@@ -134,24 +134,23 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
               {/* Nil Button */}
               <button
                 onClick={() => handleBidClick(0)}
-                // Add unique class
-                className={`${bottomButtonClass} h-10 max-sm:h-9 flex-1 rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold transition-all flex items-center justify-center ${selectedBid === 0 ? 'bg-blue-500 text-white ring-2 max-sm:ring-1 ring-blue-300 shadow-lg' : 'bg-gray-700 text-white hover:bg-gray-600'}`}>
+                 // Updated button styles
+                className={`${bottomButtonClass} h-10 max-sm:h-9 flex-1 rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold transition-all flex items-center justify-center ${selectedBid === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white ring-2 ring-blue-300 shadow-lg' : 'bg-gray-700/80 hover:bg-gray-600/90 text-white'}`}>
                 Nil
               </button>
               {/* Blind Nil Button */}
               <button 
                 disabled={true}
-                // Add unique class
                 className={`${bottomButtonClass} h-10 max-sm:h-9 flex-1 rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold bg-gray-600 text-gray-400 cursor-not-allowed flex items-center justify-center`}>
                 Blind Nil
               </button> 
-              {/* Submit Button */}
+              {/* Submit Button - Changed text to Confirm */}
               <button
                 onClick={handleSubmit}
                 disabled={selectedBid === null || isSubmitting}
-                // Add unique class
-                className={`${bottomButtonClass} h-10 max-sm:h-9 flex-1 rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold transition-all flex items-center justify-center ${selectedBid !== null && !isSubmitting ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}>
-                {isSubmitting ? 'Submitting...' : 'Submit Bid'} 
+                 // Updated button styles and text
+                className={`${bottomButtonClass} h-10 max-sm:h-9 flex-1 rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold transition-all flex items-center justify-center ${selectedBid !== null && !isSubmitting ? 'bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white font-semibold' : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}>
+                {isSubmitting ? 'Confirming...' : 'Confirm'} 
               </button>
             </div>
           </div>
