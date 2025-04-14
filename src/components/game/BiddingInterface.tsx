@@ -68,82 +68,109 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
     onBid(selectedBid);
   };
 
+  const buttonBaseClasses = `
+    w-12 h-12 rounded-full text-lg font-bold transition-all transform
+    flex items-center justify-center
+    sm:w-14 sm:h-14
+    md:w-16 md:h-16
+  `;
+
+  const selectedButtonClasses = `
+    bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg
+    hover:bg-yellow-400 scale-105
+  `;
+
+  const unselectedButtonClasses = `
+    bg-gray-700 text-white hover:bg-gray-600
+    hover:scale-105
+  `;
+
   return (
-    <div className="w-[60%] h-[60%] bg-gray-800/95 backdrop-blur-sm rounded-xl p-4 shadow-xl flex flex-col">
-      <div className="text-center mb-4">
-        <h2 className="text-xl font-bold text-white mb-2">Make Your Bid</h2>
+    <div className="w-full max-w-md mx-auto bg-gray-800/95 backdrop-blur-sm rounded-xl p-6 shadow-xl">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-white mb-2">Make Your Bid</h2>
         {currentBid !== undefined && (
-          <p className="text-gray-300 text-sm">Current bid: {currentBid}</p>
+          <p className="text-gray-300">Current bid: {currentBid}</p>
         )}
       </div>
 
-      <div className="flex-1 flex flex-col gap-2">
-        {/* Row 1: Buttons 1-6 */}
-        <div className="flex gap-2 justify-center">
-          {[1, 2, 3, 4, 5, 6].map((bid) => (
+      <div className="flex flex-col gap-4">
+        {/* Row 1: Buttons 1-4 */}
+        <div className="flex justify-center gap-4">
+          {[1, 2, 3, 4].map((bid) => (
             <button
               key={bid}
               onClick={() => handleBidClick(bid)}
-              className={`
-                rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105 w-full
-                sm:text-base sm:p-1.5
-                ${selectedBid === bid 
-                  ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
-                  : 'bg-gray-700 text-white hover:bg-gray-600'}
-              `}
+              className={`${buttonBaseClasses} ${
+                selectedBid === bid ? selectedButtonClasses : unselectedButtonClasses
+              }`}
             >
               {bid}
             </button>
           ))}
         </div>
 
-        {/* Row 2: Buttons 7-13 */}
-        <div className="flex gap-2 justify-center">
-          {[7, 8, 9, 10, 11, 12, 13].map((bid) => (
+        {/* Row 2: Buttons 5-9 */}
+        <div className="flex justify-center gap-4">
+          {[5, 6, 7, 8, 9].map((bid) => (
             <button
               key={bid}
               onClick={() => handleBidClick(bid)}
-              className={`
-                rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105 w-full
-                sm:text-base sm:p-1.5
-                ${selectedBid === bid 
-                  ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
-                  : 'bg-gray-700 text-white hover:bg-gray-600'}
-              `}
+              className={`${buttonBaseClasses} ${
+                selectedBid === bid ? selectedButtonClasses : unselectedButtonClasses
+              }`}
             >
               {bid}
             </button>
           ))}
         </div>
 
-        {/* Row 3: Nil and Confirm */}
-        <div className="flex gap-2 justify-center mt-2">
+        {/* Row 3: Buttons 10-13 */}
+        <div className="flex justify-center gap-4">
+          {[10, 11, 12, 13].map((bid) => (
+            <button
+              key={bid}
+              onClick={() => handleBidClick(bid)}
+              className={`${buttonBaseClasses} ${
+                selectedBid === bid ? selectedButtonClasses : unselectedButtonClasses
+              }`}
+            >
+              {bid}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 4: Special bids */}
+        <div className="flex justify-center gap-4 mt-2">
           <button
             onClick={() => handleBidClick(0)}
-            className={`
-              rounded-lg p-2 text-lg font-bold transition-all transform hover:scale-105 w-1/3
-              sm:text-base sm:p-1.5
-              ${selectedBid === 0 
-                ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
-                : 'bg-gray-700 text-white hover:bg-gray-600'}
-            `}
+            className={`${buttonBaseClasses} !w-24 !rounded-xl ${
+              selectedBid === 0 ? selectedButtonClasses : unselectedButtonClasses
+            }`}
           >
             Nil
           </button>
           <button
-            onClick={handleSubmit}
-            disabled={selectedBid === null || isSubmitting}
-            className={`
-              rounded-lg p-2 text-lg font-bold transition-all w-2/3
-              sm:text-base sm:p-1.5
-              ${selectedBid !== null && !isSubmitting
-                ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105'
-                : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
-            `}
+            disabled={true}
+            className={`${buttonBaseClasses} !w-24 !rounded-xl bg-gray-600 text-gray-400 cursor-not-allowed`}
           >
-            {isSubmitting ? 'Submitting...' : 'Confirm Bid'}
+            Blind Nil
           </button>
         </div>
+
+        {/* Confirm button */}
+        <button
+          onClick={handleSubmit}
+          disabled={selectedBid === null || isSubmitting}
+          className={`
+            w-full py-3 rounded-xl text-lg font-bold transition-all mt-2
+            ${selectedBid !== null && !isSubmitting
+              ? 'bg-green-500 hover:bg-green-600 text-white'
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
+          `}
+        >
+          {isSubmitting ? 'Submitting...' : 'Confirm Bid'}
+        </button>
       </div>
     </div>
   );
