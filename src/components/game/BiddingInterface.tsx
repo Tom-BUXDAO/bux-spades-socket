@@ -69,7 +69,7 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ top: '35%', zIndex: 9999 }}>
+    <div className="fixed inset-0 flex items-center justify-center" style={{ top: '15%', zIndex: 9999 }}>
       <div className="w-[240px] bg-gray-800/95 rounded-2xl p-2 shadow-2xl
         sm:w-[320px] sm:p-3
         md:w-[400px] md:p-4">
@@ -81,65 +81,23 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
         </div>
 
         <div className="space-y-1 sm:space-y-2">
-          {/* Row 1: 1-4 */}
-          <div className="flex justify-between">
-            {[1, 2, 3, 4].map((bid) => (
+          {/* All number buttons */}
+          <div className="grid grid-cols-4 gap-1 sm:gap-2">
+            {[...Array(13)].map((_, i) => (
               <button
-                key={bid}
-                onClick={() => handleBidClick(bid)}
+                key={i + 1}
+                onClick={() => handleBidClick(i + 1)}
                 className={`
-                  w-[45px] h-[45px] text-base
-                  sm:w-[60px] sm:h-[60px] sm:text-lg
-                  md:w-[75px] md:h-[75px] md:text-xl
+                  w-[40px] h-[40px] text-base
+                  sm:w-[55px] sm:h-[55px] sm:text-lg
+                  md:w-[70px] md:h-[70px] md:text-xl
                   rounded-full font-bold transition-all
                   flex items-center justify-center
-                  ${selectedBid === bid 
+                  ${selectedBid === i + 1
                     ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
                     : 'bg-gray-700 text-white hover:bg-gray-600'}`}
               >
-                {bid}
-              </button>
-            ))}
-          </div>
-
-          {/* Row 2: 5-9 */}
-          <div className="flex justify-between">
-            {[5, 6, 7, 8, 9].map((bid) => (
-              <button
-                key={bid}
-                onClick={() => handleBidClick(bid)}
-                className={`
-                  w-[45px] h-[45px] text-base
-                  sm:w-[60px] sm:h-[60px] sm:text-lg
-                  md:w-[75px] md:h-[75px] md:text-xl
-                  rounded-full font-bold transition-all
-                  flex items-center justify-center
-                  ${selectedBid === bid 
-                    ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
-                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
-              >
-                {bid}
-              </button>
-            ))}
-          </div>
-
-          {/* Row 3: 10-13 */}
-          <div className="flex justify-between">
-            {[10, 11, 12, 13].map((bid) => (
-              <button
-                key={bid}
-                onClick={() => handleBidClick(bid)}
-                className={`
-                  w-[45px] h-[45px] text-base
-                  sm:w-[60px] sm:h-[60px] sm:text-lg
-                  md:w-[75px] md:h-[75px] md:text-xl
-                  rounded-full font-bold transition-all
-                  flex items-center justify-center
-                  ${selectedBid === bid 
-                    ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
-                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
-              >
-                {bid}
+                {i + 1}
               </button>
             ))}
           </div>
