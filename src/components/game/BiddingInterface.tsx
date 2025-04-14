@@ -69,7 +69,7 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+    <div className="fixed inset-0 flex items-start justify-center z-50 p-4 pt-20">
       {/* Adjusted modal width and padding */}
       <div className="w-[380px] md:w-[360px] sm:w-[320px] max-sm:w-[280px] bg-gray-800/95 rounded-2xl p-4 max-sm:p-3 shadow-xl">
         {/* Adjusted text size and margin */}
@@ -146,7 +146,7 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
           </div>
 
           {/* Bottom row for special actions - Adjusted height, gap, margin, text size */}
-          <div className="flex justify-between gap-2 max-sm:gap-1.5 mt-3 max-sm:mt-2">
+          <div className="flex justify-between gap-3 max-sm:gap-1.5 mt-3 max-sm:mt-2">
             <button
               onClick={() => handleBidClick(0)}
               className={`
@@ -160,14 +160,14 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
             >
               Nil
             </button>
-            {/* <button // Blind Nil currently disabled
+            <button 
               disabled={true}
               className="h-10 max-sm:h-9 flex-1
                 rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold bg-gray-600 text-gray-400 cursor-not-allowed
                 flex items-center justify-center"
             >
               Blind Nil
-            </button> */}
+            </button>
             <button
               onClick={handleSubmit}
               disabled={selectedBid === null || isSubmitting}
