@@ -69,67 +69,107 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ top: '35%' }}>
-      <div className="w-[200px] sm:w-[280px] md:w-[320px] bg-gray-800/95 rounded-xl p-2 shadow-xl">
-        <div className="text-center mb-1">
-          <h2 className="text-sm sm:text-base font-bold text-white">Make Your Bid</h2>
+    <div className="fixed inset-0 flex items-center justify-center" style={{ top: '35%', zIndex: 9999 }}>
+      <div className="w-[320px] sm:w-[360px] md:w-[400px] bg-gray-800/95 rounded-2xl p-4 shadow-2xl">
+        <div className="text-center mb-3">
+          <h2 className="text-lg sm:text-xl font-bold text-white">Make Your Bid</h2>
           {currentBid !== undefined && (
-            <p className="text-xs text-gray-300">Current bid: {currentBid}</p>
+            <p className="text-gray-300">Current bid: {currentBid}</p>
           )}
         </div>
 
-        <div className="grid grid-cols-4 gap-1">
-          {/* Numbers 1-13 in a grid */}
-          {[...Array(13)].map((_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => handleBidClick(i + 1)}
-              className={`
-                w-[40px] h-[40px] sm:w-[50px] sm:h-[50px]
-                rounded-full text-sm sm:text-base font-bold transition-all
-                flex items-center justify-center
-                ${selectedBid === i + 1
-                  ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
-                  : 'bg-gray-700 text-white hover:bg-gray-600'}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
+        <div className="space-y-2">
+          {/* Row 1: 1-4 */}
+          <div className="flex justify-between">
+            {[1, 2, 3, 4].map((bid) => (
+              <button
+                key={bid}
+                onClick={() => handleBidClick(bid)}
+                className={`
+                  w-[65px] h-[65px] sm:w-[75px] sm:h-[75px]
+                  rounded-full text-lg sm:text-xl font-bold transition-all
+                  flex items-center justify-center
+                  ${selectedBid === bid 
+                    ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
+                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+              >
+                {bid}
+              </button>
+            ))}
+          </div>
 
-        {/* Bottom row for special actions */}
-        <div className="flex justify-between gap-1 mt-1">
-          <button
-            onClick={() => handleBidClick(0)}
-            className={`
-              h-[30px] flex-1
-              rounded-lg text-xs sm:text-sm font-bold transition-all
-              ${selectedBid === 0 
-                ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
-                : 'bg-gray-700 text-white hover:bg-gray-600'}
-            `}
-          >
-            Nil
-          </button>
-          <button
-            disabled={true}
-            className="h-[30px] flex-1 rounded-lg text-xs sm:text-sm font-bold bg-gray-600 text-gray-400 cursor-not-allowed"
-          >
-            Blind Nil
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={selectedBid === null || isSubmitting}
-            className={`
-              h-[30px] flex-1
-              rounded-lg text-xs sm:text-sm font-bold transition-all
-              ${selectedBid !== null && !isSubmitting
-                ? 'bg-green-500 hover:bg-green-600 text-white'
-                : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
-            `}
-          >
-            {isSubmitting ? '...' : 'OK'}
-          </button>
+          {/* Row 2: 5-9 */}
+          <div className="flex justify-between">
+            {[5, 6, 7, 8, 9].map((bid) => (
+              <button
+                key={bid}
+                onClick={() => handleBidClick(bid)}
+                className={`
+                  w-[65px] h-[65px] sm:w-[75px] sm:h-[75px]
+                  rounded-full text-lg sm:text-xl font-bold transition-all
+                  flex items-center justify-center
+                  ${selectedBid === bid 
+                    ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
+                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+              >
+                {bid}
+              </button>
+            ))}
+          </div>
+
+          {/* Row 3: 10-13 */}
+          <div className="flex justify-between">
+            {[10, 11, 12, 13].map((bid) => (
+              <button
+                key={bid}
+                onClick={() => handleBidClick(bid)}
+                className={`
+                  w-[65px] h-[65px] sm:w-[75px] sm:h-[75px]
+                  rounded-full text-lg sm:text-xl font-bold transition-all
+                  flex items-center justify-center
+                  ${selectedBid === bid 
+                    ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
+                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+              >
+                {bid}
+              </button>
+            ))}
+          </div>
+
+          {/* Bottom row for special actions */}
+          <div className="flex justify-between gap-2 mt-3">
+            <button
+              onClick={() => handleBidClick(0)}
+              className={`
+                h-[40px] flex-1
+                rounded-xl text-base sm:text-lg font-bold transition-all
+                ${selectedBid === 0 
+                  ? 'bg-yellow-500 text-black ring-2 ring-yellow-300 shadow-lg' 
+                  : 'bg-gray-700 text-white hover:bg-gray-600'}
+              `}
+            >
+              Nil
+            </button>
+            <button
+              disabled={true}
+              className="h-[40px] flex-1 rounded-xl text-base sm:text-lg font-bold bg-gray-600 text-gray-400 cursor-not-allowed"
+            >
+              Blind Nil
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={selectedBid === null || isSubmitting}
+              className={`
+                h-[40px] flex-1
+                rounded-xl text-base sm:text-lg font-bold transition-all
+                ${selectedBid !== null && !isSubmitting
+                  ? 'bg-green-500 hover:bg-green-600 text-white'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
+              `}
+            >
+              {isSubmitting ? '...' : 'OK'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
