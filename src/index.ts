@@ -841,6 +841,100 @@ io.on('connection', (socket) => {
         io.emit('games_update', Array.from(games.values()));
       }
 
+      // Check if hand is over (13 tricks played)
+      if (game.completedTricks.length === 13) {
+        // Calculate scores for the completed hand
+        const handScores = calculateHandScore(game.players);
+        
+        // Update TOTAL scores and bags, handling bag penalty
+        game.team1Score += handScores.team1.score;
+        game.team1Bags += handScores.team1.bags;
+        if (game.team1Bags >= 10) {
+          console.log(`Team 1 hit ${game.team1Bags} bags. Applying -100 penalty.`);
+          game.team1Score -= 100;
+          game.team1Bags -= 10;
+        }
+        
+        game.team2Score += handScores.team2.score;
+        game.team2Bags += handScores.team2.bags;
+         if (game.team2Bags >= 10) {
+          console.log(`Team 2 hit ${game.team2Bags} bags. Applying -100 penalty.`);
+          game.team2Score -= 100;
+          game.team2Bags -= 10;
+        }
+
+        // Check for game over condition
+        const winningScore = 500; // Or game setting
+        const losingScore = -500; // Or game setting
+        let gameOver = false;
+        let winningTeam: 1 | 2 | null = null;
+
+        if (game.team1Score >= winningScore || game.team2Score <= losingScore) {
+            gameOver = true;
+            winningTeam = 1;
+        } else if (game.team2Score >= winningScore || game.team1Score <= losingScore) {
+            gameOver = true;
+            winningTeam = 2;
+        } else if (game.team1Score >= winningScore && game.team2Score >= winningScore) {
+          // Tie-breaker: highest score wins
+           gameOver = true;
+           winningTeam = game.team1Score >= game.team2Score ? 1 : 2;
+        }
+
+        if (gameOver) {
+          game.status = 'COMPLETE';
+          console.log(`Game ${gameId} is over. Winning team: ${winningTeam}`);
+          // Emit 'game_over' event with final scores and winner
+          io.to(gameId).emit('game_over', {
+            team1Score: game.team1Score,
+            team2Score: game.team2Score,
+            winningTeam: winningTeam,
+            // Include final bag counts for display if needed
+            team1Bags: game.team1Bags,
+            team2Bags: game.team2Bags 
+          });
+           // Optionally: Clean up game state or mark for removal
+           // delete games.delete(gameId); // Or move to an inactive state
+
+        } else {
+          // Hand is over, but game continues - emit hand summary
+          game.status = 'SCORING'; // Or a new 'HAND_SUMMARY' status
+          console.log(`Hand ${game.completedTricks.length / 13} complete for game ${gameId}. Emitting hand summary.`);
+          io.to(gameId).emit('hand_summary', {
+            handScores: handScores, // Detailed scores for this hand
+            totalScores: { // Updated total scores
+              team1: game.team1Score,
+              team2: game.team2Score
+            },
+            totalBags: { // Updated total bags
+               team1: game.team1Bags,
+               team2: game.team2Bags
+            }
+          });
+
+          // Prepare for next hand after a delay (or triggered by client)
+          // Reset player hands, bids, tricks, completed tricks
+          // Determine next dealer and bidder
+          game.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
+          game.completedTricks = [];
+          game.spadesBroken = false;
+          game.dealerPosition = (game.dealerPosition + 1) % game.players.length;
+          const newPlayers = dealCards(game.players); // Deal new hands
+          game.players = newPlayers;
+          // Set bidder to player left of new dealer
+          const bidderIndex = (game.dealerPosition + 1) % game.players.length;
+          game.currentPlayer = game.players[bidderIndex].id;
+          game.status = 'BIDDING';
+          
+          // Emit updated game state to start next bidding round
+          // Add a small delay before emitting the next round state to allow summary modal display
+          setTimeout(() => {
+            io.to(gameId).emit('game_update', game);
+            console.log(`Starting next hand for game ${gameId}, bidder is ${game.currentPlayer}`);
+          }, 5000); // 5 second delay for summary modal
+        }
+      }
+
     } catch (error) {
       console.error('Error handling play_card:', error);
       socket.emit('error', { message: 'Internal server error' });
@@ -943,46 +1037,69 @@ io.on('connection', (socket) => {
 });
 
 function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamScore } {
-  // Initialize team scores
-  const team1: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
-  const team2: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
+  const team1Score: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
+  const team2Score: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
 
-  // Calculate team totals
   players.forEach(player => {
-    const team = player.team === 1 ? team1 : team2;
-    team.tricks += player.tricks || 0;
+    const teamScore = player.team === 1 ? team1Score : team2Score;
     
-    if (player.bid === 0) {
-      team.nilBids++;
-      if (player.tricks === 0) {
-        team.madeNils++;
+    // Accumulate tricks per team
+    teamScore.tricks += player.tricks;
+
+    // Handle bids
+    if (player.bid !== undefined) {
+      if (player.bid === 0) { // Nil Bid
+        teamScore.nilBids++;
+        if (player.tricks === 0) {
+          teamScore.madeNils++;
+          teamScore.score += 100; // Made Nil
+        } else {
+          teamScore.score -= 100; // Failed Nil
+          // Add bags for failed nil tricks - IMPORTANT SPADES RULE
+          teamScore.bags += player.tricks; 
+        }
+      } else { // Regular Bid
+        teamScore.bid += player.bid;
+        // Regular bids don't directly contribute bags here, 
+        // bags are calculated based on team total tricks vs team total bid below.
       }
-    } else if (player.bid !== undefined) {
-      team.bid += player.bid;
     }
   });
 
-  // Calculate scores for each team
-  [team1, team2].forEach(team => {
-    // Score nil bids
-    team.score += team.madeNils * 100;     // +100 for each made nil
-    team.score -= (team.nilBids - team.madeNils) * 100;  // -100 for each failed nil
-
-    // Score regular bid
-    if (team.bid > 0) {
-      if (team.tricks >= team.bid) {
-        // Made bid
-        team.score += team.bid * 10;  // 10 points per bid book
-        team.bags = team.tricks - team.bid;  // Extra books are bags
-        team.score += team.bags;  // 1 point per bag
+  // Calculate score and bags for Team 1 (non-nil bids)
+  if (team1Score.bid > 0) { // Only calculate if there was a non-nil bid
+      if (team1Score.tricks >= team1Score.bid) {
+          // Made contract
+          team1Score.score += team1Score.bid * 10;
+          // Calculate bags correctly
+          team1Score.bags += team1Score.tricks - team1Score.bid; 
       } else {
-        // Set (failed to make bid)
-        team.score -= team.bid * 10;  // -10 points per bid book
+          // Failed contract (Set)
+          team1Score.score -= team1Score.bid * 10;
+          // No bags when set
       }
-    }
-  });
+  }
 
-  return { team1, team2 };
+  // Calculate score and bags for Team 2 (non-nil bids)
+  if (team2Score.bid > 0) { // Only calculate if there was a non-nil bid
+      if (team2Score.tricks >= team2Score.bid) {
+          // Made contract
+          team2Score.score += team2Score.bid * 10;
+           // Calculate bags correctly
+          team2Score.bags += team2Score.tricks - team2Score.bid;
+      } else {
+          // Failed contract (Set)
+          team2Score.score -= team2Score.bid * 10;
+          // No bags when set
+      }
+  }
+  
+  // Ensure bags are non-negative (though logic above should handle this)
+  team1Score.bags = Math.max(0, team1Score.bags);
+  team2Score.bags = Math.max(0, team2Score.bags);
+
+  // Return calculated scores AND bags for the hand
+  return { team1: team1Score, team2: team2Score };
 }
 
 httpServer.listen(process.env.PORT || 3001, () => {
