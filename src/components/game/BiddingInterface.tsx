@@ -54,7 +54,7 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   
   // Extra safeguard - hide if not my turn or if we're submitting
   if (!currentlyMyTurn || isSubmitting) {
-    console.log(`BiddingInterface: Hiding - currentlyMyTurn: ${currentlyMyTurn}, submitting: ${isSubmitting}`);
+    // console.log(`BiddingInterface: Hiding - currentlyMyTurn: ${currentlyMyTurn}, submitting: ${isSubmitting}`);
     return null;
   }
 
@@ -69,106 +69,118 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ top: '15%', zIndex: 9999 }}>
-      <div className="w-[400px] max-sm:w-[140px] bg-gray-800/95 rounded-2xl max-sm:rounded-xl p-4 max-sm:p-2 shadow-xl">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+      {/* Adjusted modal width and padding */}
+      <div className="w-[380px] md:w-[360px] sm:w-[320px] max-sm:w-[280px] bg-gray-800/95 rounded-2xl p-4 max-sm:p-3 shadow-xl">
+        {/* Adjusted text size and margin */}
         <div className="text-center mb-3 max-sm:mb-2">
-          <h2 className="text-xl max-sm:text-xs font-bold text-white">Make Your Bid</h2>
+          <h2 className="text-lg max-sm:text-base font-bold text-white">Make Your Bid</h2>
           {currentBid !== undefined && (
-            <p className="text-base max-sm:text-[10px] text-gray-300">Current bid: {currentBid}</p>
+            <p className="text-sm max-sm:text-xs text-gray-300">Current bid: {currentBid}</p>
           )}
         </div>
 
-        <div className="space-y-2 max-sm:space-y-1">
-          {/* Row 1: 1-4 */}
-          <div className="flex justify-between">
+        {/* Adjusted spacing */}
+        <div className="space-y-2 max-sm:space-y-1.5">
+          {/* Row 1: 1-4 - Added gap */}
+          <div className="flex justify-center gap-3 max-sm:gap-2">
             {[1, 2, 3, 4].map((bid) => (
               <button
                 key={bid}
                 onClick={() => handleBidClick(bid)}
+                // Standardized button size and text size
                 className={`
-                  w-[75px] h-[75px] max-sm:w-[28px] max-sm:h-[28px]
-                  rounded-full text-xl max-sm:text-[10px] font-bold transition-all
-                  flex items-center justify-center
+                  w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11
+                  rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all
+                  flex items-center justify-center flex-shrink-0
                   ${selectedBid === bid 
                     ? 'bg-yellow-500 text-black ring-2 max-sm:ring-1 ring-yellow-300 shadow-lg' 
-                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+                    : 'bg-gray-700 text-white hover:bg-gray-600'}`
+                }
               >
                 {bid}
               </button>
             ))}
           </div>
 
-          {/* Row 2: 5-9 */}
-          <div className="flex justify-between px-[37.5px] max-sm:px-[14px]">
+          {/* Row 2: 5-9 - Added gap, removed padding */}
+          <div className="flex justify-center gap-3 max-sm:gap-2">
             {[5, 6, 7, 8, 9].map((bid) => (
               <button
                 key={bid}
                 onClick={() => handleBidClick(bid)}
-                className={`
-                  w-[75px] h-[75px] max-sm:w-[28px] max-sm:h-[28px]
-                  rounded-full text-xl max-sm:text-[10px] font-bold transition-all
-                  flex items-center justify-center
+                // Standardized button size and text size
+                 className={`
+                  w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11
+                  rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all
+                  flex items-center justify-center flex-shrink-0
                   ${selectedBid === bid 
                     ? 'bg-yellow-500 text-black ring-2 max-sm:ring-1 ring-yellow-300 shadow-lg' 
-                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+                    : 'bg-gray-700 text-white hover:bg-gray-600'}`
+                }
               >
                 {bid}
               </button>
             ))}
           </div>
 
-          {/* Row 3: 10-13 */}
-          <div className="flex justify-between">
+          {/* Row 3: 10-13 - Added gap */}
+          <div className="flex justify-center gap-3 max-sm:gap-2">
             {[10, 11, 12, 13].map((bid) => (
               <button
                 key={bid}
                 onClick={() => handleBidClick(bid)}
+                // Standardized button size and text size
                 className={`
-                  w-[75px] h-[75px] max-sm:w-[28px] max-sm:h-[28px]
-                  rounded-full text-xl max-sm:text-[10px] font-bold transition-all
-                  flex items-center justify-center
+                  w-16 h-16 md:w-14 md:h-14 sm:w-12 sm:h-12 max-sm:w-11 max-sm:h-11
+                  rounded-full text-xl md:text-lg sm:text-base max-sm:text-sm font-bold transition-all
+                  flex items-center justify-center flex-shrink-0
                   ${selectedBid === bid 
                     ? 'bg-yellow-500 text-black ring-2 max-sm:ring-1 ring-yellow-300 shadow-lg' 
-                    : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+                    : 'bg-gray-700 text-white hover:bg-gray-600'}`
+                }
               >
                 {bid}
               </button>
             ))}
           </div>
 
-          {/* Bottom row for special actions */}
-          <div className="flex justify-between gap-2 max-sm:gap-1 mt-3 max-sm:mt-1">
+          {/* Bottom row for special actions - Adjusted height, gap, margin, text size */}
+          <div className="flex justify-between gap-2 max-sm:gap-1.5 mt-3 max-sm:mt-2">
             <button
               onClick={() => handleBidClick(0)}
               className={`
-                h-[40px] max-sm:h-[20px] flex-1
-                rounded-xl max-sm:rounded-md text-lg max-sm:text-[10px] font-bold transition-all
+                h-10 max-sm:h-9 flex-1
+                rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold transition-all
+                flex items-center justify-center
                 ${selectedBid === 0 
-                  ? 'bg-yellow-500 text-black ring-2 max-sm:ring-1 ring-yellow-300 shadow-lg' 
-                  : 'bg-gray-700 text-white hover:bg-gray-600'}
-              `}
+                  ? 'bg-blue-500 text-white ring-2 max-sm:ring-1 ring-blue-300 shadow-lg' // Changed Nil color
+                  : 'bg-gray-700 text-white hover:bg-gray-600'}`
+                }
             >
               Nil
             </button>
-            <button
+            {/* <button // Blind Nil currently disabled
               disabled={true}
-              className="h-[40px] max-sm:h-[20px] flex-1
-                rounded-xl max-sm:rounded-md text-lg max-sm:text-[10px] font-bold bg-gray-600 text-gray-400 cursor-not-allowed"
+              className="h-10 max-sm:h-9 flex-1
+                rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold bg-gray-600 text-gray-400 cursor-not-allowed
+                flex items-center justify-center"
             >
               Blind Nil
-            </button>
+            </button> */}
             <button
               onClick={handleSubmit}
               disabled={selectedBid === null || isSubmitting}
               className={`
-                h-[40px] max-sm:h-[20px] flex-1
-                rounded-xl max-sm:rounded-md text-lg max-sm:text-[10px] font-bold transition-all
+                h-10 max-sm:h-9 flex-1
+                rounded-lg max-sm:rounded-md text-base max-sm:text-xs font-bold transition-all
+                flex items-center justify-center
                 ${selectedBid !== null && !isSubmitting
                   ? 'bg-green-500 hover:bg-green-600 text-white'
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
-              `}
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`
+                }
             >
-              {isSubmitting ? '...' : 'OK'}
+              {isSubmitting ? 'Submitting...' : 'Submit Bid'} 
             </button>
           </div>
         </div>
