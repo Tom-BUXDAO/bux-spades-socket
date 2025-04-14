@@ -77,9 +77,10 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
   return (
     // Wrap in fragment
     <>
-      {/* Apply unique class */}
-      <div className={`${modalContainerClass} fixed inset-0 flex items-start justify-center z-50 p-4 pt-20`}>
-        {/* Apply unique class */}
+      {/* Apply unique class - Changed positioning to absolute center within parent */}
+      {/* Removed inset-0, flex, items-center, justify-center, p-4 */}
+      <div className={`${modalContainerClass} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50`}>
+        {/* Apply unique class - Content styles remain */}
         <div className={`${modalContentClass} w-[380px] md:w-[360px] sm:w-[320px] max-sm:w-[280px] bg-gray-800/95 rounded-2xl p-4 max-sm:p-3 shadow-xl`}>
           <div className="text-center mb-3 max-sm:mb-2">
             <h2 className="text-lg max-sm:text-base font-bold text-white">Make Your Bid</h2>
