@@ -70,11 +70,11 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
 
   return (
     <div className="fixed inset-0 flex items-center justify-center" style={{ top: '15%', zIndex: 9999 }}>
-      <div className="w-[160px] sm:w-[400px] bg-gray-800/95 rounded-2xl p-1.5 sm:p-4 shadow-2xl">
-        <div className="text-center mb-1.5 sm:mb-3">
-          <h2 className="text-sm sm:text-xl font-bold text-white">Make Your Bid</h2>
+      <div className="w-[120px] sm:w-[400px] bg-gray-800/95 rounded-2xl p-1 sm:p-4 shadow-2xl">
+        <div className="text-center mb-1 sm:mb-3">
+          <h2 className="text-xs sm:text-xl font-bold text-white">Make Your Bid</h2>
           {currentBid !== undefined && (
-            <p className="text-xs sm:text-base text-gray-300">Current bid: {currentBid}</p>
+            <p className="text-[10px] sm:text-base text-gray-300">Current bid: {currentBid}</p>
           )}
         </div>
 
@@ -86,8 +86,8 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
                 key={bid}
                 onClick={() => handleBidClick(bid)}
                 className={`
-                  w-[32px] h-[32px] sm:w-[75px] sm:h-[75px]
-                  rounded-full text-xs sm:text-xl font-bold transition-all
+                  w-[24px] h-[24px] sm:w-[75px] sm:h-[75px]
+                  rounded-full text-[10px] sm:text-xl font-bold transition-all
                   flex items-center justify-center
                   ${selectedBid === bid 
                     ? 'bg-yellow-500 text-black ring-1 sm:ring-2 ring-yellow-300 shadow-lg' 
@@ -99,14 +99,14 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
           </div>
 
           {/* Row 2: 5-9 with offset */}
-          <div className="flex justify-between px-[16px] sm:px-[37.5px]">
+          <div className="flex justify-between px-[12px] sm:px-[37.5px]">
             {[5, 6, 7, 8, 9].map((bid) => (
               <button
                 key={bid}
                 onClick={() => handleBidClick(bid)}
                 className={`
-                  w-[32px] h-[32px] sm:w-[75px] sm:h-[75px]
-                  rounded-full text-xs sm:text-xl font-bold transition-all
+                  w-[24px] h-[24px] sm:w-[75px] sm:h-[75px]
+                  rounded-full text-[10px] sm:text-xl font-bold transition-all
                   flex items-center justify-center
                   ${selectedBid === bid 
                     ? 'bg-yellow-500 text-black ring-1 sm:ring-2 ring-yellow-300 shadow-lg' 
@@ -124,8 +124,8 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
                 key={bid}
                 onClick={() => handleBidClick(bid)}
                 className={`
-                  w-[32px] h-[32px] sm:w-[75px] sm:h-[75px]
-                  rounded-full text-xs sm:text-xl font-bold transition-all
+                  w-[24px] h-[24px] sm:w-[75px] sm:h-[75px]
+                  rounded-full text-[10px] sm:text-xl font-bold transition-all
                   flex items-center justify-center
                   ${selectedBid === bid 
                     ? 'bg-yellow-500 text-black ring-1 sm:ring-2 ring-yellow-300 shadow-lg' 
@@ -137,12 +137,12 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
           </div>
 
           {/* Bottom row for special actions */}
-          <div className="flex justify-between gap-0.5 sm:gap-2 mt-1.5 sm:mt-3">
+          <div className="flex justify-between gap-0.5 sm:gap-2 mt-1 sm:mt-3">
             <button
               onClick={() => handleBidClick(0)}
               className={`
-                h-[24px] sm:h-[40px] flex-1
-                rounded-lg sm:rounded-xl text-xs sm:text-lg font-bold transition-all
+                h-[20px] sm:h-[40px] flex-1
+                rounded-md sm:rounded-xl text-[10px] sm:text-lg font-bold transition-all
                 ${selectedBid === 0 
                   ? 'bg-yellow-500 text-black ring-1 sm:ring-2 ring-yellow-300 shadow-lg' 
                   : 'bg-gray-700 text-white hover:bg-gray-600'}
@@ -152,8 +152,8 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
             </button>
             <button
               disabled={true}
-              className="h-[24px] sm:h-[40px] flex-1
-                rounded-lg sm:rounded-xl text-xs sm:text-lg font-bold bg-gray-600 text-gray-400 cursor-not-allowed"
+              className="h-[20px] sm:h-[40px] flex-1
+                rounded-md sm:rounded-xl text-[10px] sm:text-lg font-bold bg-gray-600 text-gray-400 cursor-not-allowed"
             >
               Blind Nil
             </button>
@@ -161,8 +161,8 @@ export default function BiddingInterface({ onBid, currentBid, gameId, playerId, 
               onClick={handleSubmit}
               disabled={selectedBid === null || isSubmitting}
               className={`
-                h-[24px] sm:h-[40px] flex-1
-                rounded-lg sm:rounded-xl text-xs sm:text-lg font-bold transition-all
+                h-[20px] sm:h-[40px] flex-1
+                rounded-md sm:rounded-xl text-[10px] sm:text-lg font-bold transition-all
                 ${selectedBid !== null && !isSubmitting
                   ? 'bg-green-500 hover:bg-green-600 text-white'
                   : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
