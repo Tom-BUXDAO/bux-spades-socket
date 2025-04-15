@@ -81,6 +81,7 @@ interface Game {
     minPoints: number;
     maxPoints: number;
   };
+  winningTeam?: 'team1' | 'team2' | null;
 }
 
 interface TeamScore {
@@ -930,6 +931,7 @@ io.on('connection', (socket) => {
 
         if (gameOver) {
           game.status = 'COMPLETE';
+          game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
           console.log(`Game ${gameId} is over. Winning team: ${winningTeam}`);
           // Emit 'game_over' event with final scores and winner
           io.to(gameId).emit('game_over', {
@@ -940,9 +942,11 @@ io.on('connection', (socket) => {
             team1Bags: game.team1Bags,
             team2Bags: game.team2Bags 
           });
-           // Optionally: Clean up game state or mark for removal
-           // delete games.delete(gameId); // Or move to an inactive state
-
+          // Emit a final game_update so the client can update UI
+          io.to(gameId).emit('game_update', game);
+          io.emit('games_update', Array.from(games.values()));
+          // Optionally: Clean up game state or mark for removal
+          // delete games.delete(gameId); // Or move to an inactive state
         } else {
           // Hand is over, but game continues - emit hand summary
           game.status = 'SCORING'; // Or a new 'HAND_SUMMARY' status
