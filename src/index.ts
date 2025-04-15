@@ -856,7 +856,7 @@ io.on('connection', (socket) => {
         
         // Update TOTAL scores and bags, handling bag penalty
         game.team1Score += handScores.team1.score;
-        game.team1Bags += handScores.team1.bags;
+        game.team1Bags = (game.team1Bags || 0) + handScores.team1.bags;
         if (game.team1Bags >= 10) {
           console.log(`Team 1 hit ${game.team1Bags} bags. Applying -100 penalty.`);
           game.team1Score -= 100;
@@ -864,7 +864,7 @@ io.on('connection', (socket) => {
         }
         
         game.team2Score += handScores.team2.score;
-        game.team2Bags += handScores.team2.bags;
+        game.team2Bags = (game.team2Bags || 0) + handScores.team2.bags;
          if (game.team2Bags >= 10) {
           console.log(`Team 2 hit ${game.team2Bags} bags. Applying -100 penalty.`);
           game.team2Score -= 100;
@@ -1048,13 +1048,11 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
   const team1Score: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
   const team2Score: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
 
+  // --- Pass 1: Accumulate totals and handle Nil bids ---
   players.forEach(player => {
     const teamScore = player.team === 1 ? team1Score : team2Score;
-    
-    // Accumulate tricks per team
-    teamScore.tricks += player.tricks;
+    teamScore.tricks += player.tricks; // Accumulate ALL tricks for the team
 
-    // Handle bids
     if (player.bid !== undefined) {
       if (player.bid === 0) { // Nil Bid
         teamScore.nilBids++;
@@ -1062,51 +1060,55 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
           teamScore.madeNils++;
           teamScore.score += 100; // Made Nil
         } else {
-          teamScore.score -= 100; // Failed Nil
-          // Add bags for failed nil tricks - IMPORTANT SPADES RULE
-          teamScore.bags += player.tricks; 
+          teamScore.score -= 100; // Failed Nil Penalty
+          // Per user rule: Failed Nil tricks count as bags for the team
+          teamScore.bags += player.tricks;
         }
-      } else { // Regular Bid
-        teamScore.bid += player.bid;
-        // Regular bids don't directly contribute bags here, 
-        // bags are calculated based on team total tricks vs team total bid below.
+      } else { // Regular (Contract) Bid
+        teamScore.bid += player.bid; // Accumulate the contract bid
       }
     }
   });
 
-  // Calculate score and bags for Team 1 (non-nil bids)
-  if (team1Score.bid > 0) { // Only calculate if there was a non-nil bid
-      if (team1Score.tricks >= team1Score.bid) {
-          // Made contract
-          team1Score.score += team1Score.bid * 10;
-          // Calculate bags correctly
-          team1Score.bags += team1Score.tricks - team1Score.bid; 
-      } else {
-          // Failed contract (Set)
-          team1Score.score -= team1Score.bid * 10;
-          // No bags when set
+  // --- Pass 2: Score the contracts using total team tricks ---
+
+  // Team 1 Contract Score
+  if (team1Score.bid > 0) { // Only score if there was a contract bid
+    if (team1Score.tricks >= team1Score.bid) { // Compare TOTAL team tricks to contract bid
+      // Made contract
+      team1Score.score += team1Score.bid * 10;
+      const overbooks = team1Score.tricks - team1Score.bid;
+      if (overbooks > 0) {
+        // Add bags from contract overbooks (in addition to any failed nil bags)
+        team1Score.bags += overbooks;
+        team1Score.score += overbooks; // Add points for overbooks
       }
+    } else {
+      // Failed contract (Set)
+      team1Score.score -= team1Score.bid * 10;
+      // No additional bags when set (only bags from failed nil, if any)
+    }
   }
 
-  // Calculate score and bags for Team 2 (non-nil bids)
-  if (team2Score.bid > 0) { // Only calculate if there was a non-nil bid
-      if (team2Score.tricks >= team2Score.bid) {
-          // Made contract
-          team2Score.score += team2Score.bid * 10;
-           // Calculate bags correctly
-          team2Score.bags += team2Score.tricks - team2Score.bid;
-      } else {
-          // Failed contract (Set)
-          team2Score.score -= team2Score.bid * 10;
-          // No bags when set
+  // Team 2 Contract Score
+  if (team2Score.bid > 0) { // Only score if there was a contract bid
+     if (team2Score.tricks >= team2Score.bid) { // Compare TOTAL team tricks to contract bid
+      // Made contract
+      team2Score.score += team2Score.bid * 10;
+      const overbooks = team2Score.tricks - team2Score.bid;
+      if (overbooks > 0) {
+         // Add bags from contract overbooks (in addition to any failed nil bags)
+        team2Score.bags += overbooks;
+        team2Score.score += overbooks; // Add points for overbooks
       }
+    } else {
+      // Failed contract (Set)
+      team2Score.score -= team2Score.bid * 10;
+       // No additional bags when set (only bags from failed nil, if any)
+    }
   }
-  
-  // Ensure bags are non-negative (though logic above should handle this)
-  team1Score.bags = Math.max(0, team1Score.bags);
-  team2Score.bags = Math.max(0, team2Score.bags);
 
-  // Return calculated scores AND bags for the hand
+  // Final bags = (bags from failed nils) + (bags from contract overbooks)
   return { team1: team1Score, team2: team2Score };
 }
 
