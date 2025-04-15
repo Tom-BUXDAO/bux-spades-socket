@@ -63,8 +63,6 @@ interface Game {
   currentPlayer: string;
   currentTrick: Card[];
   completedTricks: { cards: Card[]; winningCard: Card; winningPlayerId: string }[];
-  team1Score: number;
-  team2Score: number;
   team1Bags: number;
   team2Bags: number;
   spadesBroken: boolean;
@@ -326,8 +324,6 @@ io.on('connection', (socket) => {
         players: [player],
         currentPlayer: user.id,
         currentTrick: [],
-        team1Score: 0,
-        team2Score: 0,
         team1Bags: 0,
         team2Bags: 0,
         spadesBroken: false,
@@ -895,21 +891,22 @@ io.on('connection', (socket) => {
         const handScores = calculateHandScore(game.players);
         
         // Update TOTAL scores and bags, handling bag penalty
-        game.team1Score += handScores.team1.score;
+        game.scores = game.scores || { team1: 0, team2: 0 };
         game.team1Bags = (game.team1Bags || 0) + handScores.team1.bags;
         if (game.team1Bags >= 10) {
           console.log(`Team 1 hit ${game.team1Bags} bags. Applying -100 penalty.`);
-          game.team1Score -= 100;
+          game.scores.team1 -= 100;
           game.team1Bags -= 10;
         }
+        game.scores.team1 += handScores.team1.score;
         
-        game.team2Score += handScores.team2.score;
         game.team2Bags = (game.team2Bags || 0) + handScores.team2.bags;
-         if (game.team2Bags >= 10) {
+        if (game.team2Bags >= 10) {
           console.log(`Team 2 hit ${game.team2Bags} bags. Applying -100 penalty.`);
-          game.team2Score -= 100;
+          game.scores.team2 -= 100;
           game.team2Bags -= 10;
         }
+        game.scores.team2 += handScores.team2.score;
 
         // Check for game over condition
         const winningScore = game.rules?.maxPoints ?? 500;
@@ -917,16 +914,16 @@ io.on('connection', (socket) => {
         let gameOver = false;
         let winningTeam: 1 | 2 | null = null;
 
-        if (game.team1Score >= winningScore || game.team2Score <= losingScore) {
+        if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
             gameOver = true;
             winningTeam = 1;
-        } else if (game.team2Score >= winningScore || game.team1Score <= losingScore) {
+        } else if (game.scores.team2 >= winningScore || game.scores.team1 <= losingScore) {
             gameOver = true;
             winningTeam = 2;
-        } else if (game.team1Score >= winningScore && game.team2Score >= winningScore) {
+        } else if (game.scores.team1 >= winningScore && game.scores.team2 >= winningScore) {
           // Tie-breaker: highest score wins
            gameOver = true;
-           winningTeam = game.team1Score >= game.team2Score ? 1 : 2;
+           winningTeam = game.scores.team1 >= game.scores.team2 ? 1 : 2;
         }
 
         if (gameOver) {
@@ -935,8 +932,8 @@ io.on('connection', (socket) => {
           console.log(`Game ${gameId} is over. Winning team: ${winningTeam}`);
           // Emit 'game_over' event with final scores and winner
           io.to(gameId).emit('game_over', {
-            team1Score: game.team1Score,
-            team2Score: game.team2Score,
+            team1Score: game.scores.team1,
+            team2Score: game.scores.team2,
             winningTeam: winningTeam,
             // Include final bag counts for display if needed
             team1Bags: game.team1Bags,
@@ -954,8 +951,8 @@ io.on('connection', (socket) => {
           io.to(gameId).emit('hand_summary', {
             handScores: handScores, // Detailed scores for this hand
             totalScores: { // Updated total scores
-              team1: game.team1Score,
-              team2: game.team2Score
+              team1: game.scores.team1,
+              team2: game.scores.team2
             },
             totalBags: { // Updated total bags
                team1: game.team1Bags,
