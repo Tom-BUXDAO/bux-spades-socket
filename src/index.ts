@@ -911,8 +911,8 @@ io.on('connection', (socket) => {
         }
 
         // Check for game over condition
-        const winningScore = 500; // Or game setting
-        const losingScore = -500; // Or game setting
+        const winningScore = game.rules?.maxPoints ?? 500;
+        const losingScore = game.rules?.minPoints ?? -500;
         let gameOver = false;
         let winningTeam: 1 | 2 | null = null;
 
