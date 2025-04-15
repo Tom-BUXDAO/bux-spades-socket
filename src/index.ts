@@ -75,6 +75,12 @@ interface Game {
     team1: number;
     team2: number;
   };
+  rules: {
+    allowNil: boolean;
+    allowBlindNil: boolean;
+    minPoints: number;
+    maxPoints: number;
+  };
 }
 
 interface TeamScore {
@@ -270,7 +276,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('create_game', ({ user }) => {
+  socket.on('create_game', ({ user, rules, gameRules }) => {
     try {
       if (!user || !user.id) {
         socket.emit('error', { message: 'Invalid user data provided' });
@@ -331,6 +337,12 @@ io.on('connection', (socket) => {
         scores: {
           team1: 0,
           team2: 0
+        },
+        rules: (rules || gameRules) ? { ...rules, ...gameRules } : {
+          allowNil: false,
+          allowBlindNil: false,
+          minPoints: -150,
+          maxPoints: 500
         }
       };
 
