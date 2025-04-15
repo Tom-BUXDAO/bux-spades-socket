@@ -813,6 +813,21 @@ io.on('connection', (socket) => {
           if (game.players.every(p => p.hand.length === 0)) {
             // Calculate scores and start new hand
             const scores = calculateHandScore(game.players);
+            
+            // Store the hand summary before resetting
+            const handSummary = {
+              team1: {
+                bid: game.players.filter(p => p.team === 1).reduce((sum, p) => sum + (p.bid || 0), 0),
+                tricks: game.players.filter(p => p.team === 1).reduce((sum, p) => sum + (p.tricks || 0), 0),
+                score: scores.team1.score
+              },
+              team2: {
+                bid: game.players.filter(p => p.team === 2).reduce((sum, p) => sum + (p.bid || 0), 0),
+                tricks: game.players.filter(p => p.team === 2).reduce((sum, p) => sum + (p.tricks || 0), 0),
+                score: scores.team2.score
+              }
+            };
+            
             game.scores = {
               team1: (game.scores?.team1 || 0) + scores.team1.score,
               team2: (game.scores?.team2 || 0) + scores.team2.score
@@ -822,14 +837,26 @@ io.on('connection', (socket) => {
             game.status = 'BIDDING';
             game.currentPlayer = game.players[game.dealerPosition].id;
             game.spadesBroken = false;
-            game.players.forEach(p => {
-              p.hand = [];
-              p.tricks = 0;
-              p.bid = undefined;
-            });
+            game.currentTrick = [];
+            game.completedTricks = [];
             
-            // Deal new hands
-            game.players = dealCards(game.players);
+            // Explicitly reset player state
+            game.players = game.players.map(p => ({
+              ...p,
+              hand: [],
+              tricks: 0,
+              bid: undefined
+            }));
+            
+            // Emit hand summary before dealing new cards
+            io.to(gameId).emit('hand_summary', handSummary);
+            
+            // Deal new hands after a delay to allow for hand summary display
+            setTimeout(() => {
+              game.players = dealCards(game.players);
+              io.to(gameId).emit('game_update', game);
+              io.emit('games_update', Array.from(games.values()));
+            }, 5000); // 5 second delay for hand summary display
           }
 
           // Broadcast updated game state after the delay
