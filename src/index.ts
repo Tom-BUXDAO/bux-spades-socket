@@ -768,10 +768,18 @@ io.on('connection', (socket) => {
             continue;
           }
           
-          if (currentCard.suit === leadSuit && currentCard.rank > winningCard.rank) {
+          // If current card is a spade and winning card is not a spade, spade wins
+          if (currentCard.suit === 'S' && winningCard.suit !== 'S') {
             winningCard = currentCard;
             winningPlayer = currentPlayer;
-          } else if (currentCard.suit === 'S' && winningCard.suit !== 'S') {
+          }
+          // If both cards are spades, higher spade wins
+          else if (currentCard.suit === 'S' && winningCard.suit === 'S' && currentCard.rank > winningCard.rank) {
+            winningCard = currentCard;
+            winningPlayer = currentPlayer;
+          }
+          // If current card matches lead suit and winning card is not a spade, higher card wins
+          else if (currentCard.suit === leadSuit && winningCard.suit !== 'S' && currentCard.rank > winningCard.rank) {
             winningCard = currentCard;
             winningPlayer = currentPlayer;
           }
