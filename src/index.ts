@@ -914,16 +914,33 @@ io.on('connection', (socket) => {
         let gameOver = false;
         let winningTeam: 1 | 2 | null = null;
 
-        if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
+        // If both teams are below minPoints, highest score wins
+        if (game.scores.team1 <= losingScore && game.scores.team2 <= losingScore) {
             gameOver = true;
-            winningTeam = 1;
-        } else if (game.scores.team2 >= winningScore || game.scores.team1 <= losingScore) {
+            winningTeam = game.scores.team1 > game.scores.team2 ? 1 : 2;
+        }
+        // If both teams are above maxPoints, highest score wins
+        else if (game.scores.team1 >= winningScore && game.scores.team2 >= winningScore) {
+            gameOver = true;
+            winningTeam = game.scores.team1 > game.scores.team2 ? 1 : 2;
+        }
+        // If one team is below minPoints, they lose
+        else if (game.scores.team1 <= losingScore) {
             gameOver = true;
             winningTeam = 2;
-        } else if (game.scores.team1 >= winningScore && game.scores.team2 >= winningScore) {
-          // Tie-breaker: highest score wins
-           gameOver = true;
-           winningTeam = game.scores.team1 >= game.scores.team2 ? 1 : 2;
+        }
+        else if (game.scores.team2 <= losingScore) {
+            gameOver = true;
+            winningTeam = 1;
+        }
+        // If one team is above maxPoints, they win
+        else if (game.scores.team1 >= winningScore) {
+            gameOver = true;
+            winningTeam = 1;
+        }
+        else if (game.scores.team2 >= winningScore) {
+            gameOver = true;
+            winningTeam = 2;
         }
 
         if (gameOver) {
