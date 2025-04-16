@@ -380,14 +380,6 @@ io.on('connection', (socket) => {
         
         // Always join the socket room for this game
         socket.join(gameId);
-        console.log(`Socket ${socket.id} joined room ${gameId}`);
-        
-        // Associate this userId with the current socket
-        currentUserId = userId;
-        if (!userConnections.has(userId)) {
-            userConnections.set(userId, new Set());
-        }
-        userConnections.get(userId)!.add(socket.id);
         
         const game = games.get(gameId);
         if (!game) {
@@ -431,9 +423,11 @@ io.on('connection', (socket) => {
         // Create player object
         let player: Player;
         if (testPlayer) {
+            // If position is specified, team is based on position (0,2 = team1, 1,3 = team2)
+            // If position is not specified, balance teams
             const team = position !== undefined 
-                ? (position % 2 === 0 ? 1 : 2) 
-                : testPlayer.team;
+                ? (position % 2 === 0 ? 1 : 2)
+                : determineTeam(game.players);
             
             player = {
                 id: userId,
@@ -448,9 +442,10 @@ io.on('connection', (socket) => {
                 isDealer: false
             };
         } else {
+            // Same team assignment logic for regular players
             const team = position !== undefined 
-                ? (position % 2 === 0 ? 1 : 2) 
-                : (game.players.length % 2) + 1 as 1 | 2;
+                ? (position % 2 === 0 ? 1 : 2)
+                : determineTeam(game.players);
             
             player = {
                 id: userId,
@@ -486,6 +481,8 @@ io.on('connection', (socket) => {
                 nextPosition++;
             }
             player.position = nextPosition;
+            // Ensure team matches position when auto-assigning
+            player.team = nextPosition % 2 === 0 ? 1 : 2;
             game.players.push(player);
         }
         
@@ -1101,6 +1098,19 @@ function determineWinningCard(trick: PlayedCard[], leadCard: Card | null): Playe
     }
 
     return winningCard;
+}
+
+// Helper function to determine team assignment
+function determineTeam(players: Player[]): 1 | 2 {
+    const team1Count = players.filter(p => p.team === 1).length;
+    const team2Count = players.filter(p => p.team === 2).length;
+    
+    // If teams are uneven, assign to the team with fewer players
+    if (team1Count < team2Count) return 1;
+    if (team2Count < team1Count) return 2;
+    
+    // If teams are even, alternate based on current player count
+    return (players.length % 2 === 0) ? 1 : 2;
 }
 
 httpServer.listen(process.env.PORT || 3001, () => {
