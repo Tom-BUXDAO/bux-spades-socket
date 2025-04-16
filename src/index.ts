@@ -61,7 +61,7 @@ interface Game {
   id: string;
   status: 'WAITING' | 'BIDDING' | 'PLAYING' | 'COMPLETE';
   players: Player[];
-  currentPlayer: string;
+  currentPlayer: number;
   currentTrick: PlayedCard[];
   completedTricks: CompletedTrick[];
   scores: {
@@ -102,8 +102,6 @@ interface TeamScore {
   score: number;
   bags: number;
 }
-
-type GameStatus = 'WAITING' | 'BIDDING' | 'PLAYING' | 'SCORING' | 'COMPLETE';
 
 // Store active games
 const games = new Map<string, Game>();
@@ -340,26 +338,27 @@ io.on('connection', (socket) => {
         id: gameId,
         status: "WAITING",
         players: [creator],
-        currentPlayer: user.id,
+        currentPlayer: creator.position,
         currentTrick: [],
-        team1Bags: 0,
-        team2Bags: 0,
-        spadesBroken: false,
         completedTricks: [],
-        createdAt: Date.now(),
-        cardPlayers: [],
-        dealerPosition: 0,
         scores: {
           team1: 0,
           team2: 0
         },
+        team1Bags: 0,
+        team2Bags: 0,
+        spadesBroken: false,
         rules: (rules || gameRules) ? { ...rules, ...gameRules } : {
           allowNil: true,
           allowBlindNil: false,
           minPoints: -250,
           maxPoints: 500
         },
-        leadCard: null
+        winningTeam: null,
+        leadCard: null,
+        dealerPosition: 0,
+        createdAt: Date.now(),
+        cardPlayers: []
       };
 
       games.set(gameId, game);
@@ -438,7 +437,7 @@ io.on('connection', (socket) => {
           team: team,
           browserSessionId: testPlayer.browserSessionId || socket.id,
           image: testPlayer.image || undefined,
-          position: position || "0",
+          position: position || 0,
           tricksTaken: 0,
           isDealer: false
         };
@@ -459,7 +458,7 @@ io.on('connection', (socket) => {
           tricks: 0,
           team: team,
           browserSessionId: socket.id,
-          position: position || "0",
+          position: position || 0,
           tricksTaken: 0,
           isDealer: false
         };
@@ -504,7 +503,7 @@ io.on('connection', (socket) => {
         while (usedPositions.has(nextPosition)) {
           nextPosition++;
         }
-        player.position = nextPosition.toString();
+        player.position = nextPosition;
         game.players.push(player);
         console.log(`Player ${player.name} assigned to next available position ${nextPosition}`);
       }
@@ -575,8 +574,8 @@ io.on('connection', (socket) => {
       return;
     }
     
-    game.currentPlayer = firstPlayer.id;
-    console.log(`First player to lead is ${firstPlayer.name} (${firstPlayer.id}) at position ${firstPosition}`);
+    game.currentPlayer = firstPlayer.position;
+    console.log(`First player to lead is ${firstPlayer.name} (${firstPlayer.position}) at position ${firstPosition}`);
     
     // Update game state in memory
     games.set(gameId, game);
@@ -641,8 +640,8 @@ io.on('connection', (socket) => {
     }
     
     // Just add 1 and mod 4 to get next position
-    const nextPosition = (currentPlayer.position.charCodeAt(0) - '0'.charCodeAt(0) + 1) % 4;
-    const nextPlayer = game.players.find(p => p.position === nextPosition.toString());
+    const nextPosition = (currentPlayer.position + 1) % 4;
+    const nextPlayer = game.players.find(p => p.position === nextPosition);
     
     if (!nextPlayer) {
       console.log(`Could not find next player at position ${nextPosition}`);
@@ -650,8 +649,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    game.currentPlayer = nextPlayer.id;
-    console.log(`Next player is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPosition}`);
+    game.currentPlayer = nextPlayer.position;
+    console.log(`Next player is ${nextPlayer.name} (${nextPlayer.position}) at position ${nextPosition}`);
 
     // Check if all players have bid
     const allPlayersBid = game.players.every(p => p.bid !== undefined);
@@ -675,7 +674,7 @@ io.on('connection', (socket) => {
       // Find the next player after the dealer
       const dealerPosition = dealer.position;
       const firstPosition = (dealerPosition + 1) % 4;
-      const firstPlayer = game.players.find(p => p.position === firstPosition.toString());
+      const firstPlayer = game.players.find(p => p.position === firstPosition);
       
       console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
       console.log(`First player should be at position ${firstPosition}`);
@@ -685,8 +684,8 @@ io.on('connection', (socket) => {
         return;
       }
       
-      game.currentPlayer = firstPlayer.id;
-      console.log(`First player to lead is ${firstPlayer.name} (${firstPlayer.id}) at position ${firstPosition}`);
+      game.currentPlayer = firstPlayer.position;
+      console.log(`First player to lead is ${firstPlayer.name} (${firstPlayer.position}) at position ${firstPosition}`);
     }
 
     // Update game state in memory
