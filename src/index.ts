@@ -336,9 +336,9 @@ io.on('connection', (socket) => {
           team2: 0
         },
         rules: (rules || gameRules) ? { ...rules, ...gameRules } : {
-          allowNil: false,
+          allowNil: true,
           allowBlindNil: false,
-          minPoints: -150,
+          minPoints: -250,
           maxPoints: 500
         }
       };
@@ -909,8 +909,8 @@ io.on('connection', (socket) => {
         game.scores.team2 += handScores.team2.score;
 
         // Check for game over condition
-        const winningScore = game.rules?.maxPoints ?? 500;
-        const losingScore = game.rules?.minPoints ?? -500;
+        const winningScore = game.rules.maxPoints;
+        const losingScore = game.rules.minPoints;
         let gameOver = false;
         let winningTeam: 1 | 2 | null = null;
 
