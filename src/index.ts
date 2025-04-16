@@ -47,41 +47,51 @@ interface Player {
   id: string;
   name: string;
   hand: Card[];
-  tricks: number;
-  team: number;
   bid?: number;
-  browserSessionId?: string;
-  isDealer?: boolean;
-  image?: string;
-  position: number;
   tricksTaken: number;
+  position: number;
+  team?: number;
+  browserSessionId?: string;
+  image?: string;
+  isDealer?: boolean;
+  tricks: number;
 }
 
 interface Game {
   id: string;
-  status: GameStatus;
+  status: 'WAITING' | 'BIDDING' | 'PLAYING' | 'COMPLETE';
   players: Player[];
   currentPlayer: string;
-  currentTrick: Card[];
-  completedTricks: { cards: Card[]; winningCard: Card; winningPlayerId: string }[];
-  team1Bags: number;
-  team2Bags: number;
-  spadesBroken: boolean;
-  createdAt: number;
-  cardPlayers: string[];
-  dealerPosition: number;
+  currentTrick: PlayedCard[];
+  completedTricks: CompletedTrick[];
   scores: {
     team1: number;
     team2: number;
   };
+  team1Bags: number;
+  team2Bags: number;
   rules: {
-    allowNil: boolean;
-    allowBlindNil: boolean;
     minPoints: number;
     maxPoints: number;
   };
   winningTeam?: 'team1' | 'team2' | null;
   leadCard: Card | null;
+  dealerPosition: number;
+  spadesBroken: boolean;
+  createdAt: number;
+  cardPlayers: string[];
+}
+
+interface PlayedCard {
+  card: Card;
+  playerId: string;
+  playerName: string;
+}
+
+interface CompletedTrick {
+  cards: PlayedCard[];
+  winningPlayerId: string;
+  winningPlayerName: string;
 }
 
 interface TeamScore {
@@ -311,23 +321,25 @@ io.on('connection', (socket) => {
       }
 
       // Create a new player object with complete information
-      const player: Player = {
-        id: user.id,
-        name: user.name || "Unknown Player",
+      const creator: Player = {
+        id: socket.id,
+        name: user.name,
         hand: [],
-        tricks: 0,
-        team: 1,
         bid: undefined,
-        image: user.image,
+        tricks: 0,
+        tricksTaken: 0,
         position: 0, // Game creator always starts at position 0 (South)
-        tricksTaken: 0
+        team: undefined,
+        browserSessionId: socket.id,
+        image: user.image,
+        isDealer: false
       };
       
       // Create new game with the player
       const game: Game = {
         id: gameId,
         status: "WAITING",
-        players: [player],
+        players: [creator],
         currentPlayer: user.id,
         currentTrick: [],
         team1Bags: 0,
@@ -426,8 +438,9 @@ io.on('connection', (socket) => {
           team: team,
           browserSessionId: testPlayer.browserSessionId || socket.id,
           image: testPlayer.image || undefined,
-          position: position || 0,
-          tricksTaken: 0
+          position: position || "0",
+          tricksTaken: 0,
+          isDealer: false
         };
         
         console.log(`Created test player ${testPlayer.name} with team ${team} for position ${position}`);
@@ -446,8 +459,9 @@ io.on('connection', (socket) => {
           tricks: 0,
           team: team,
           browserSessionId: socket.id,
-          position: position || 0,
-          tricksTaken: 0
+          position: position || "0",
+          tricksTaken: 0,
+          isDealer: false
         };
         
         console.log(`Created regular player with team ${team} for position ${position}`);
@@ -490,7 +504,7 @@ io.on('connection', (socket) => {
         while (usedPositions.has(nextPosition)) {
           nextPosition++;
         }
-        player.position = nextPosition;
+        player.position = nextPosition.toString();
         game.players.push(player);
         console.log(`Player ${player.name} assigned to next available position ${nextPosition}`);
       }
@@ -627,8 +641,8 @@ io.on('connection', (socket) => {
     }
     
     // Just add 1 and mod 4 to get next position
-    const nextPosition = (currentPlayer.position + 1) % 4;
-    const nextPlayer = game.players.find(p => p.position === nextPosition);
+    const nextPosition = (currentPlayer.position.charCodeAt(0) - '0'.charCodeAt(0) + 1) % 4;
+    const nextPlayer = game.players.find(p => p.position === nextPosition.toString());
     
     if (!nextPlayer) {
       console.log(`Could not find next player at position ${nextPosition}`);
@@ -661,7 +675,7 @@ io.on('connection', (socket) => {
       // Find the next player after the dealer
       const dealerPosition = dealer.position;
       const firstPosition = (dealerPosition + 1) % 4;
-      const firstPlayer = game.players.find(p => p.position === firstPosition);
+      const firstPlayer = game.players.find(p => p.position === firstPosition.toString());
       
       console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
       console.log(`First player should be at position ${firstPosition}`);
@@ -723,11 +737,12 @@ io.on('connection', (socket) => {
     }
 
     // Add card to current trick
-    game.currentTrick.push({
+    const playedCard: PlayedCard = {
         card,
         playerId: socket.id,
         playerName: currentPlayer.name
-    });
+    };
+    game.currentTrick.push(playedCard);
 
     // Remove card from player's hand
     currentPlayer.hand.splice(cardIndex, 1);
@@ -759,6 +774,7 @@ io.on('connection', (socket) => {
 
         // Update tricks taken
         winningPlayer.tricksTaken++;
+        winningPlayer.tricks++;
 
         // Add completed trick
         game.completedTricks.push({
@@ -774,19 +790,19 @@ io.on('connection', (socket) => {
         // Check if hand is complete
         if (game.completedTricks.length === 13) {
             // Calculate hand scores
-            const handScores = calculateHandScores(game);
+            const handScores = calculateHandScore(game.players);
             
             // Update team scores
-            game.scores.team1 += handScores.team1;
-            game.scores.team2 += handScores.team2;
+            game.scores.team1 += handScores.team1.score;
+            game.scores.team2 += handScores.team2.score;
 
             // Check if game is over using game's min/max points
-            if (game.scores.team1 <= game.minPoints || game.scores.team1 >= game.maxPoints ||
-                game.scores.team2 <= game.minPoints || game.scores.team2 >= game.maxPoints) {
+            if (game.scores.team1 <= game.rules.minPoints || game.scores.team1 >= game.rules.maxPoints ||
+                game.scores.team2 <= game.rules.minPoints || game.scores.team2 >= game.rules.maxPoints) {
                 
                 // Determine winner
                 let winningTeam: 1 | 2;
-                if (game.scores.team1 >= game.maxPoints || game.scores.team2 <= game.minPoints) {
+                if (game.scores.team1 >= game.rules.maxPoints || game.scores.team2 <= game.rules.minPoints) {
                     winningTeam = 1;
                 } else {
                     winningTeam = 2;
@@ -844,8 +860,32 @@ io.on('connection', (socket) => {
                 const currentGame = games.get(gameId);
                 if (!currentGame || currentGame.status !== 'PLAYING') return;
 
-                // Start new hand
-                startNewHand(gameId);
+                // Reset for new hand
+                currentGame.players.forEach(p => { 
+                    p.tricksTaken = 0; 
+                    p.tricks = 0;
+                    p.bid = undefined; 
+                    p.isDealer = false;
+                });
+                currentGame.completedTricks = [];
+                currentGame.leadCard = null;
+                currentGame.dealerPosition = (currentGame.dealerPosition + 1) % currentGame.players.length;
+                currentGame.players = dealCards(currentGame.players);
+                currentGame.currentPlayer = currentGame.players[(currentGame.dealerPosition + 1) % currentGame.players.length].position;
+                currentGame.status = 'BIDDING';
+                currentGame.spadesBroken = false;
+                currentGame.cardPlayers = [];
+
+                // Set new dealer
+                const newDealer = currentGame.players.find(p => p.position === currentGame.dealerPosition);
+                if (newDealer) {
+                    newDealer.isDealer = true;
+                }
+
+                // Update game state
+                games.set(gameId, currentGame);
+                io.to(gameId).emit('game_update', currentGame);
+                io.emit('games_update', Array.from(games.values()));
             }, 5000);
         } else {
             // Set next player as current player
@@ -862,7 +902,9 @@ io.on('connection', (socket) => {
                     position: p.position,
                     hand: p.hand,
                     bid: p.bid,
-                    tricksTaken: p.tricksTaken
+                    tricksTaken: p.tricksTaken,
+                    tricks: p.tricks,
+                    isDealer: p.isDealer
                 }))
             });
         }
@@ -882,7 +924,9 @@ io.on('connection', (socket) => {
                 position: p.position,
                 hand: p.hand,
                 bid: p.bid,
-                tricksTaken: p.tricksTaken
+                tricksTaken: p.tricksTaken,
+                tricks: p.tricks,
+                isDealer: p.isDealer
             }))
         });
     }
@@ -1054,29 +1098,29 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
   return { team1: team1Score, team2: team2Score };
 }
 
-function determineWinningCard(trick: Card[], leadCard: Card | null): Card {
-  if (!trick.length) throw new Error('Empty trick');
-  
-  let winningCard = trick[0];
-
-  for (let i = 1; i < trick.length; i++) {
-    const currentCard = trick[i];
+function determineWinningCard(trick: PlayedCard[], leadCard: Card | null): PlayedCard {
+    if (!trick.length) throw new Error('Empty trick');
     
-    // If current card is a spade and winning card is not a spade, spade wins
-    if (currentCard.suit === 'S' && winningCard.suit !== 'S') {
-      winningCard = currentCard;
-    }
-    // If both cards are spades, higher spade wins
-    else if (currentCard.suit === 'S' && winningCard.suit === 'S' && currentCard.rank > winningCard.rank) {
-      winningCard = currentCard;
-    }
-    // If current card matches lead suit and winning card is not a spade, higher card wins
-    else if (currentCard.suit === leadCard?.suit && winningCard.suit !== 'S' && currentCard.rank > winningCard.rank) {
-      winningCard = currentCard;
-    }
-  }
+    let winningCard = trick[0];
 
-  return winningCard;
+    for (let i = 1; i < trick.length; i++) {
+        const currentCard = trick[i];
+        
+        // If current card is a spade and winning card is not, spade wins
+        if (currentCard.card.suit === 'S' && winningCard.card.suit !== 'S') {
+            winningCard = currentCard;
+        }
+        // If both cards are spades, higher rank wins
+        else if (currentCard.card.suit === 'S' && winningCard.card.suit === 'S' && currentCard.card.rank > winningCard.card.rank) {
+            winningCard = currentCard;
+        }
+        // If current card matches lead suit and winning card is not a spade, higher card wins
+        else if (currentCard.card.suit === leadCard?.suit && winningCard.card.suit !== 'S' && currentCard.card.rank > winningCard.card.rank) {
+            winningCard = currentCard;
+        }
+    }
+
+    return winningCard;
 }
 
 httpServer.listen(process.env.PORT || 3001, () => {
