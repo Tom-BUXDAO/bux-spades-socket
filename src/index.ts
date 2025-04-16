@@ -415,84 +415,61 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (game.players.length >= 4 && position === undefined) {
+        if (game.players.length >= 4) {
             socket.emit('error', { message: 'Game is full' });
             return;
         }
 
-        // Create player object
-        let player: Player;
-        if (testPlayer) {
-            // If position is specified, team is based on position (0,2 = team1, 1,3 = team2)
-            // If position is not specified, balance teams
-            const team = position !== undefined 
-                ? (position % 2 === 0 ? 1 : 2)
-                : determineTeam(game.players);
-            
-            player = {
-                id: userId,
-                name: testPlayer.name,
-                hand: [],
-                tricks: 0,
-                team: team,
-                browserSessionId: socket.id,
-                image: testPlayer.image || undefined,
-                position: position || 0,
-                tricksTaken: 0,
-                isDealer: false
-            };
-        } else {
-            // Same team assignment logic for regular players
-            const team = position !== undefined 
-                ? (position % 2 === 0 ? 1 : 2)
-                : determineTeam(game.players);
-            
-            player = {
-                id: userId,
-                name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
-                hand: [],
-                tricks: 0,
-                team: team,
-                browserSessionId: socket.id,
-                position: position || 0,
-                tricksTaken: 0,
-                isDealer: false
-            };
+        // If position is not specified, find the first available position
+        let assignedPosition = position;
+        if (assignedPosition === undefined) {
+            const takenPositions = game.players.map(p => p.position);
+            for (let i = 0; i < 4; i++) {
+                if (!takenPositions.includes(i)) {
+                    assignedPosition = i;
+                    break;
+                }
+            }
         }
 
-        // HANDLE POSITION PLACEMENT
-        if (position !== undefined) {
-            if (position < 0 || position > 3) {
-                socket.emit('error', { message: 'Invalid position (must be 0-3)' });
-                return;
-            }
-            
-            if (game.players.some(p => p.position === position)) {
-                socket.emit('error', { message: `Position ${position} is already taken` });
-                return;
-            }
-            
-            player.position = position;
-            game.players.push(player);
-        } else {
-            const usedPositions = new Set(game.players.map(p => p.position));
-            let nextPosition = 0;
-            while (usedPositions.has(nextPosition)) {
-                nextPosition++;
-            }
-            player.position = nextPosition;
-            // Ensure team matches position when auto-assigning
-            player.team = nextPosition % 2 === 0 ? 1 : 2;
-            game.players.push(player);
+        // Validate the position
+        if (assignedPosition === undefined || assignedPosition < 0 || assignedPosition > 3) {
+            socket.emit('error', { message: 'Invalid position' });
+            return;
         }
-        
-        // Update the game
+
+        // Check if position is already taken
+        if (game.players.some(p => p.position === assignedPosition)) {
+            socket.emit('error', { message: 'Position already taken' });
+            return;
+        }
+
+        // Team is strictly based on position: 0,2 = team 1, 1,3 = team 2
+        const team = assignedPosition % 2 === 0 ? 1 : 2;
+
+        // Create player object
+        const player: Player = {
+            id: userId,
+            name: testPlayer ? testPlayer.name : userId,
+            hand: [],
+            tricks: 0,
+            team: team,
+            browserSessionId: socket.id,
+            image: testPlayer?.image,
+            position: assignedPosition,
+            tricksTaken: 0,
+            isDealer: false
+        };
+
+        // Add player to game
+        game.players.push(player);
         games.set(gameId, game);
-        io.emit('games_update', Array.from(games.values()));
+
+        // Notify all clients about the game update
         io.to(gameId).emit('game_update', game);
-        
-        // Send a targeted update to this client
-        socket.emit('game_update', game);
+        io.emit('games_update', Array.from(games.values()));
+
+        console.log(`Player ${player.name} joined game ${gameId} at position ${assignedPosition} on team ${team}`);
     } catch (error) {
         console.error('Error joining game:', error);
         socket.emit('error', { message: 'Failed to join game' });
@@ -1098,19 +1075,6 @@ function determineWinningCard(trick: PlayedCard[], leadCard: Card | null): Playe
     }
 
     return winningCard;
-}
-
-// Helper function to determine team assignment
-function determineTeam(players: Player[]): 1 | 2 {
-    const team1Count = players.filter(p => p.team === 1).length;
-    const team2Count = players.filter(p => p.team === 2).length;
-    
-    // If teams are uneven, assign to the team with fewer players
-    if (team1Count < team2Count) return 1;
-    if (team2Count < team1Count) return 2;
-    
-    // If teams are even, alternate based on current player count
-    return (players.length % 2 === 0) ? 1 : 2;
 }
 
 httpServer.listen(process.env.PORT || 3001, () => {
