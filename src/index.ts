@@ -420,48 +420,29 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // If position is not specified, find first available position that maintains team balance
-        let assignedPosition = position;
-        if (assignedPosition === undefined) {
+        // If position is specified, validate it
+        if (position !== undefined) {
+            if (position < 0 || position > 3) {
+                socket.emit('error', { message: 'Invalid position' });
+                return;
+            }
+            if (game.players.some(p => p.position === position)) {
+                socket.emit('error', { message: 'Position already taken' });
+                return;
+            }
+        } else {
+            // Find first available position
             const takenPositions = game.players.map(p => p.position);
-            // Try positions in order (0,1,2,3) but ensure team balance
             for (let i = 0; i < 4; i++) {
                 if (!takenPositions.includes(i)) {
-                    const wouldBeTeam = i % 2 === 0 ? 1 : 2;
-                    const teamCount = game.players.filter(p => p.team === wouldBeTeam).length;
-                    if (teamCount < 2) {
-                        assignedPosition = i;
-                        break;
-                    }
-                }
-            }
-            // If we couldn't find a balanced position, take first available
-            if (assignedPosition === undefined) {
-                for (let i = 0; i < 4; i++) {
-                    if (!takenPositions.includes(i)) {
-                        assignedPosition = i;
-                        break;
-                    }
+                    position = i;
+                    break;
                 }
             }
         }
 
-        // Validate the position
-        if (assignedPosition === undefined || assignedPosition < 0 || assignedPosition > 3) {
-            socket.emit('error', { message: 'Invalid position' });
-            return;
-        }
-
-        // Check if position is already taken
-        if (game.players.some(p => p.position === assignedPosition)) {
-            socket.emit('error', { message: 'Position already taken' });
-            return;
-        }
-
-        // Team is strictly based on position:
-        // North/South (positions 0,2) are Team 1
-        // East/West (positions 1,3) are Team 2
-        const team = assignedPosition % 2 === 0 ? 1 : 2;
+        // Team is based on position: 0,2 = team 1 (blue), 1,3 = team 2 (red)
+        const team = position % 2 === 0 ? 1 : 2;
 
         // Create player object
         const player: Player = {
@@ -472,7 +453,7 @@ io.on('connection', (socket) => {
             team: team,
             browserSessionId: socket.id,
             image: testPlayer?.image,
-            position: assignedPosition,
+            position: position,
             tricksTaken: 0,
             isDealer: false
         };
@@ -485,7 +466,7 @@ io.on('connection', (socket) => {
         io.to(gameId).emit('game_update', game);
         io.emit('games_update', Array.from(games.values()));
 
-        console.log(`Player ${player.name} joined game ${gameId} at position ${assignedPosition} on team ${team}`);
+        console.log(`Player ${player.name} joined game ${gameId} at position ${position} on team ${team}`);
     } catch (error) {
         console.error('Error joining game:', error);
         socket.emit('error', { message: 'Failed to join game' });
