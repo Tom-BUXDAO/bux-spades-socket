@@ -420,14 +420,28 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // If position is not specified, find the first available position
+        // If position is not specified, find first available position that maintains team balance
         let assignedPosition = position;
         if (assignedPosition === undefined) {
             const takenPositions = game.players.map(p => p.position);
+            // Try positions in order (0,1,2,3) but ensure team balance
             for (let i = 0; i < 4; i++) {
                 if (!takenPositions.includes(i)) {
-                    assignedPosition = i;
-                    break;
+                    const wouldBeTeam = i % 2 === 0 ? 1 : 2;
+                    const teamCount = game.players.filter(p => p.team === wouldBeTeam).length;
+                    if (teamCount < 2) {
+                        assignedPosition = i;
+                        break;
+                    }
+                }
+            }
+            // If we couldn't find a balanced position, take first available
+            if (assignedPosition === undefined) {
+                for (let i = 0; i < 4; i++) {
+                    if (!takenPositions.includes(i)) {
+                        assignedPosition = i;
+                        break;
+                    }
                 }
             }
         }
@@ -444,7 +458,9 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Team is strictly based on position: 0,2 = team 1, 1,3 = team 2
+        // Team is strictly based on position:
+        // North/South (positions 0,2) are Team 1
+        // East/West (positions 1,3) are Team 2
         const team = assignedPosition % 2 === 0 ? 1 : 2;
 
         // Create player object
