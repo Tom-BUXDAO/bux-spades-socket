@@ -58,7 +58,7 @@ interface Player {
 
 interface Game {
   id: string;
-  status: 'WAITING' | 'BIDDING' | 'PLAYING' | 'SCORING' | 'COMPLETE';
+  status: GameStatus;
   players: Player[];
   currentPlayer: string;
   currentTrick: Card[];
@@ -90,6 +90,8 @@ interface TeamScore {
   score: number;
   bags: number;
 }
+
+type GameStatus = 'WAITING' | 'BIDDING' | 'PLAYING' | 'SCORING' | 'COMPLETE';
 
 // Store active games
 const games = new Map<string, Game>();
@@ -887,6 +889,12 @@ io.on('connection', (socket) => {
 
       // Check if hand is over (13 tricks played)
       if (game.completedTricks.length === 13) {
+        // If game is already complete, don't process anything else
+        if (game.status === 'COMPLETE' as GameStatus) {
+          console.log('Game is already complete - ignoring hand completion');
+          return;
+        }
+
         // Calculate scores for the completed hand
         const handScores = calculateHandScore(game.players);
         
@@ -914,42 +922,64 @@ io.on('connection', (socket) => {
         let gameOver = false;
         let winningTeam: 1 | 2 | null = null;
 
-        // If both teams are below minPoints, highest score wins
-        if (game.scores.team1 <= losingScore && game.scores.team2 <= losingScore) {
-            gameOver = true;
-            winningTeam = game.scores.team1 > game.scores.team2 ? 1 : 2;
-        }
-        // If both teams are above maxPoints, highest score wins
-        else if (game.scores.team1 >= winningScore && game.scores.team2 >= winningScore) {
-            gameOver = true;
-            winningTeam = game.scores.team1 > game.scores.team2 ? 1 : 2;
-        }
-        // If one team is below minPoints, they lose
-        else if (game.scores.team1 <= losingScore) {
+        console.log(`Checking game over - Team 1: ${game.scores.team1}, Team 2: ${game.scores.team2}`);
+        console.log(`Win/Lose thresholds - Win: ${winningScore}, Lose: ${losingScore}`);
+
+        // If either team is below minPoints, they lose immediately
+        if (game.scores.team1 <= losingScore) {
+            console.log('Team 1 hit losing score - Game Over');
             gameOver = true;
             winningTeam = 2;
         }
         else if (game.scores.team2 <= losingScore) {
+            console.log('Team 2 hit losing score - Game Over');
             gameOver = true;
             winningTeam = 1;
         }
-        // If one team is above maxPoints, they win
+        // If either team is above maxPoints, they win immediately
         else if (game.scores.team1 >= winningScore) {
+            console.log('Team 1 hit winning score - Game Over');
             gameOver = true;
             winningTeam = 1;
         }
         else if (game.scores.team2 >= winningScore) {
+            console.log('Team 2 hit winning score - Game Over');
             gameOver = true;
             winningTeam = 2;
         }
+        // If both teams cross a threshold in the same hand
+        else if (game.scores.team1 <= losingScore && game.scores.team2 <= losingScore) {
+            console.log('Both teams below minimum - comparing scores');
+            gameOver = true;
+            winningTeam = game.scores.team1 > game.scores.team2 ? 1 : 2;
+        }
+        else if (game.scores.team1 >= winningScore && game.scores.team2 >= winningScore) {
+            console.log('Both teams above maximum - comparing scores');
+            gameOver = true;
+            winningTeam = game.scores.team1 > game.scores.team2 ? 1 : 2;
+        }
 
         if (gameOver) {
+          console.log(`Game Over detected - Winner: Team ${winningTeam}`);
+          
+          // Lock the game state first
           game.status = 'COMPLETE';
           game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
-          console.log(`Game ${gameId} is over. Winning team: ${winningTeam}`);
+          game.currentPlayer = ''; // Clear current player
+          game.completedTricks = []; // Clear tricks
+          game.currentTrick = []; // Clear current trick
+          game.spadesBroken = false; // Reset spades
+          
+          // Clear all player hands and bids to prevent further play
+          game.players = game.players.map(p => ({
+            ...p,
+            hand: [],
+            tricks: 0,
+            bid: undefined
+          }));
           
           // First emit the final hand summary
-          io.to(gameId).emit('hand_summary', {
+          const finalSummary = {
             handScores: handScores,
             totalScores: {
               team1: game.scores.team1,
@@ -961,56 +991,84 @@ io.on('connection', (socket) => {
             },
             isGameOver: true,
             winningTeam: winningTeam
-          });
+          };
+          console.log('Emitting final hand summary:', finalSummary);
+          io.to(gameId).emit('hand_summary', finalSummary);
 
           // Then emit game_over event
-          io.to(gameId).emit('game_over', {
+          const gameOverData = {
             team1Score: game.scores.team1,
             team2Score: game.scores.team2,
             winningTeam: winningTeam,
             team1Bags: game.team1Bags,
             team2Bags: game.team2Bags 
-          });
+          };
+          console.log('Emitting game over:', gameOverData);
+          io.to(gameId).emit('game_over', gameOverData);
 
-          // Update game state
+          // Update game state one last time
+          console.log('Emitting final game update with status COMPLETE');
           io.to(gameId).emit('game_update', game);
           io.emit('games_update', Array.from(games.values()));
 
-          // Do not prepare for next hand since game is over
-          return;
-        } else {
-          // Hand is over, but game continues - emit hand summary
-          game.status = 'SCORING';
-          console.log(`Hand ${game.completedTricks.length / 13} complete for game ${gameId}. Emitting hand summary.`);
-          io.to(gameId).emit('hand_summary', {
-            handScores: handScores,
-            totalScores: {
-              team1: game.scores.team1,
-              team2: game.scores.team2
-            },
-            totalBags: {
-              team1: game.team1Bags,
-              team2: game.team2Bags
-            },
-            isGameOver: false
-          });
-
-          // Prepare for next hand after a delay
-          game.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
-          game.completedTricks = [];
-          game.spadesBroken = false;
-          game.dealerPosition = (game.dealerPosition + 1) % game.players.length;
-          const newPlayers = dealCards(game.players);
-          game.players = newPlayers;
-          const bidderIndex = (game.dealerPosition + 1) % game.players.length;
-          game.currentPlayer = game.players[bidderIndex].id;
-          game.status = 'BIDDING';
+          // Save the completed game state
+          games.set(gameId, game);
           
-          setTimeout(() => {
-            io.to(gameId).emit('game_update', game);
-            console.log(`Starting next hand for game ${gameId}, bidder is ${game.currentPlayer}`);
-          }, 5000);
+          // Do not proceed to any other logic
+          return;
         }
+
+        // Only proceed with new hand logic if game is NOT over
+        game.status = 'SCORING';
+        console.log(`Hand ${game.completedTricks.length / 13} complete for game ${gameId}. Emitting hand summary.`);
+        
+        // Emit regular hand summary for ongoing game
+        const handSummary = {
+          handScores: handScores,
+          totalScores: {
+            team1: game.scores.team1,
+            team2: game.scores.team2
+          },
+          totalBags: {
+            team1: game.team1Bags,
+            team2: game.team2Bags
+          },
+          isGameOver: false
+        };
+        io.to(gameId).emit('hand_summary', handSummary);
+
+        // Prepare next hand state
+        const nextHandState: Game = {
+          ...game,
+          players: game.players.map(p => ({ ...p, tricks: 0, bid: undefined as number | undefined })),
+          completedTricks: [],
+          currentTrick: [],
+          spadesBroken: false,
+          dealerPosition: (game.dealerPosition + 1) % game.players.length,
+          status: 'BIDDING' as GameStatus
+        };
+
+        // Deal new cards
+        nextHandState.players = dealCards(nextHandState.players);
+        const bidderIndex = (nextHandState.dealerPosition + 1) % nextHandState.players.length;
+        nextHandState.currentPlayer = nextHandState.players[bidderIndex].id;
+
+        // Schedule the next hand update
+        setTimeout(() => {
+          // Double check game isn't complete before applying next hand
+          const currentGame = games.get(gameId);
+          if (currentGame && currentGame.status !== 'COMPLETE' as GameStatus) {
+            games.set(gameId, nextHandState);
+            io.to(gameId).emit('game_update', nextHandState);
+            io.emit('games_update', Array.from(games.values()));
+            console.log(`Starting next hand for game ${gameId}, bidder is ${nextHandState.currentPlayer}`);
+          } else {
+            console.log('Game completed during hand transition - not starting next hand');
+          }
+        }, 5000);
+
+        // Save current game state
+        games.set(gameId, game);
       }
 
     } catch (error) {
