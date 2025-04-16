@@ -947,56 +947,69 @@ io.on('connection', (socket) => {
           game.status = 'COMPLETE';
           game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
           console.log(`Game ${gameId} is over. Winning team: ${winningTeam}`);
-          // Emit 'game_over' event with final scores and winner
+          
+          // First emit the final hand summary
+          io.to(gameId).emit('hand_summary', {
+            handScores: handScores,
+            totalScores: {
+              team1: game.scores.team1,
+              team2: game.scores.team2
+            },
+            totalBags: {
+              team1: game.team1Bags,
+              team2: game.team2Bags
+            },
+            isGameOver: true,
+            winningTeam: winningTeam
+          });
+
+          // Then emit game_over event
           io.to(gameId).emit('game_over', {
             team1Score: game.scores.team1,
             team2Score: game.scores.team2,
             winningTeam: winningTeam,
-            // Include final bag counts for display if needed
             team1Bags: game.team1Bags,
             team2Bags: game.team2Bags 
           });
-          // Emit a final game_update so the client can update UI
+
+          // Update game state
           io.to(gameId).emit('game_update', game);
           io.emit('games_update', Array.from(games.values()));
-          // Optionally: Clean up game state or mark for removal
-          // delete games.delete(gameId); // Or move to an inactive state
+
+          // Do not prepare for next hand since game is over
+          return;
         } else {
           // Hand is over, but game continues - emit hand summary
-          game.status = 'SCORING'; // Or a new 'HAND_SUMMARY' status
+          game.status = 'SCORING';
           console.log(`Hand ${game.completedTricks.length / 13} complete for game ${gameId}. Emitting hand summary.`);
           io.to(gameId).emit('hand_summary', {
-            handScores: handScores, // Detailed scores for this hand
-            totalScores: { // Updated total scores
+            handScores: handScores,
+            totalScores: {
               team1: game.scores.team1,
               team2: game.scores.team2
             },
-            totalBags: { // Updated total bags
-               team1: game.team1Bags,
-               team2: game.team2Bags
-            }
+            totalBags: {
+              team1: game.team1Bags,
+              team2: game.team2Bags
+            },
+            isGameOver: false
           });
 
-          // Prepare for next hand after a delay (or triggered by client)
-          // Reset player hands, bids, tricks, completed tricks
-          // Determine next dealer and bidder
+          // Prepare for next hand after a delay
           game.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
           game.completedTricks = [];
           game.spadesBroken = false;
           game.dealerPosition = (game.dealerPosition + 1) % game.players.length;
-          const newPlayers = dealCards(game.players); // Deal new hands
+          const newPlayers = dealCards(game.players);
           game.players = newPlayers;
-          // Set bidder to player left of new dealer
           const bidderIndex = (game.dealerPosition + 1) % game.players.length;
           game.currentPlayer = game.players[bidderIndex].id;
           game.status = 'BIDDING';
           
-          // Emit updated game state to start next bidding round
-          // Add a small delay before emitting the next round state to allow summary modal display
           setTimeout(() => {
             io.to(gameId).emit('game_update', game);
             console.log(`Starting next hand for game ${gameId}, bidder is ${game.currentPlayer}`);
-          }, 5000); // 5 second delay for summary modal
+          }, 5000);
         }
       }
 
