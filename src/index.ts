@@ -319,9 +319,12 @@ io.on('connection', (socket) => {
       const gameType = rules?.gameType || gameRules?.gameType || 'REGULAR';
       const validatedRules = {
         gameType,
-        allowNil: gameType === 'REGULAR' || gameType === 'SOLO',
-        allowBlindNil: gameType === 'REGULAR' || gameType === 'SOLO',
-        minPoints: rules?.minPoints || gameRules?.minPoints || 500,
+        // For REGULAR and SOLO games, use client settings. For other game types, nil bids are not allowed
+        allowNil: (gameType === 'REGULAR' || gameType === 'SOLO') ? 
+          (rules?.allowNil ?? gameRules?.allowNil ?? true) : false,
+        allowBlindNil: (gameType === 'REGULAR' || gameType === 'SOLO') ? 
+          (rules?.allowBlindNil ?? gameRules?.allowBlindNil ?? false) : false,
+        minPoints: rules?.minPoints || gameRules?.minPoints || -150,
         maxPoints: rules?.maxPoints || gameRules?.maxPoints || 500
       };
       
