@@ -13,6 +13,11 @@ app.get('/', (_req: express.Request, res: express.Response) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+// Add healthcheck endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Configure CORS
 const io = new Server(httpServer, {
   cors: {
