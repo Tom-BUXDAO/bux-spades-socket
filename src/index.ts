@@ -799,51 +799,73 @@ io.on('connection', (socket) => {
         if (winningPlayer) {
           winningPlayer.tricks += 1;
           game.completedTricks.push({
-          cards: game.currentTrick,
-          winningCard,
-          winningPlayerId: winningPlayer.id
+            cards: game.currentTrick,
+            winningCard,
+            winningPlayerId: winningPlayer.id
           });
         }
 
-        // Clear current trick
-            game.currentTrick = [];
-        
-        // Set next player - if no winning player, move to next player in sequence
-        if (winningPlayer) {
-          game.currentPlayer = winningPlayer.id;
-      } else {
-          // Find current player's position
-          const currentPlayerPos = game.players.find(p => p.id === userId)?.position;
-          if (currentPlayerPos !== undefined) {
-            // Get next player in sequence
-            const nextPosition = (currentPlayerPos + 1) % 4;
-            const nextPlayer = game.players.find(p => p.position === nextPosition);
-            if (nextPlayer) {
-              game.currentPlayer = nextPlayer.id;
+        // Send trick completion event before clearing
+        io.to(gameId).emit('trick_complete', {
+          cards: game.currentTrick,
+          winningCard,
+          winningPlayerId: winningPlayer?.id
+        });
+
+        // Update game state without clearing trick yet
+        games.set(gameId, game);
+        io.to(gameId).emit('game_update', game);
+
+        // Delay clearing the trick
+        setTimeout(() => {
+          // Get fresh game state
+          const currentGame = games.get(gameId);
+          if (!currentGame) return;
+
+          // Clear current trick
+          currentGame.currentTrick = [];
+          
+          // Set next player
+          if (winningPlayer) {
+            currentGame.currentPlayer = winningPlayer.id;
+          } else {
+            // Find current player's position
+            const currentPlayerPos = currentGame.players.find(p => p.id === userId)?.position;
+            if (currentPlayerPos !== undefined) {
+              // Get next player in sequence
+              const nextPosition = (currentPlayerPos + 1) % 4;
+              const nextPlayer = currentGame.players.find(p => p.position === nextPosition);
+              if (nextPlayer) {
+                currentGame.currentPlayer = nextPlayer.id;
+              }
             }
           }
-        }
+
+          // Update game state
+          games.set(gameId, currentGame);
+          io.to(gameId).emit('game_update', currentGame);
+        }, 3000); // 3 second delay
 
         // If this was the last trick of the hand
-      if (game.completedTricks.length === 13) {
+        if (game.completedTricks.length === 13) {
           // Calculate scores
-        const handScores = calculateHandScore(game.players);
-        
+          const handScores = calculateHandScore(game.players);
+          
           // Update total scores and bags
-        game.scores = game.scores || { team1: 0, team2: 0 };
-        game.team1Bags = (game.team1Bags || 0) + handScores.team1.bags;
-        if (game.team1Bags >= 10) {
-          game.scores.team1 -= 100;
-          game.team1Bags -= 10;
-        }
-        game.scores.team1 += handScores.team1.score;
-        
-        game.team2Bags = (game.team2Bags || 0) + handScores.team2.bags;
-        if (game.team2Bags >= 10) {
-          game.scores.team2 -= 100;
-          game.team2Bags -= 10;
-        }
-        game.scores.team2 += handScores.team2.score;
+          game.scores = game.scores || { team1: 0, team2: 0 };
+          game.team1Bags = (game.team1Bags || 0) + handScores.team1.bags;
+          if (game.team1Bags >= 10) {
+            game.scores.team1 -= 100;
+            game.team1Bags -= 10;
+          }
+          game.scores.team1 += handScores.team1.score;
+          
+          game.team2Bags = (game.team2Bags || 0) + handScores.team2.bags;
+          if (game.team2Bags >= 10) {
+            game.scores.team2 -= 100;
+            game.team2Bags -= 10;
+          }
+          game.scores.team2 += handScores.team2.score;
 
           // Check if game is over
           const winningScore = game.rules.maxPoints;
@@ -855,11 +877,11 @@ io.on('connection', (socket) => {
               
               // Determine winner
               let winningTeam: 1 | 2;
-        if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
-            winningTeam = 1;
+            if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
+                winningTeam = 1;
               } else {
-            winningTeam = 2;
-        }
+                winningTeam = 2;
+            }
 
               // Set game as complete
               game.status = 'FINISHED';
