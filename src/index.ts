@@ -627,11 +627,14 @@ io.on('connection', (socket) => {
       }
     }
     
-    // For WHIZ games, validate bid is 0 or 13
-    if (gameType === 'WHIZ' && bid !== 0 && bid !== 13) {
-      console.log(`Invalid bid ${bid} for WHIZ game - must be 0 or 13`);
-      socket.emit('error', { message: 'In WHIZ games, bids must be 0 or 13' });
-      return;
+    // For WHIZ games, validate bid is either the number of spades or nil
+    if (gameType === 'WHIZ') {
+      const playerSpades = player.hand.filter(card => card.suit === 'S').length;
+      if (bid !== playerSpades && bid !== 0) {
+        console.log(`Invalid bid ${bid} for WHIZ game - must be number of spades (${playerSpades}) or nil (0)`);
+        socket.emit('error', { message: `In WHIZ games, you can only bid your number of spades (${playerSpades}) or nil (0)` });
+        return;
+      }
     }
     
     // For SOLO games, validate nil bids
