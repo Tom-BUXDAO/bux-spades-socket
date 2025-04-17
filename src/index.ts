@@ -983,31 +983,31 @@ io.on('connection', (socket) => {
   socket.off('update_hand_scores', () => {});
 
   socket.on('leave_game', ({ gameId, userId }) => {
-    console.log("Player leaving game:", userId, "from game:", gameId);
+    console.log('\n=== LEAVE GAME EVENT ===');
+    console.log(`Player ${userId} leaving game ${gameId}`);
     
     const game = games.get(gameId);
-    if (!game) return;
-
-    // Remove the player from the game
-    const playerIndex = game.players.findIndex(p => p.id === userId);
-    if (playerIndex !== -1) {
-      // If game creator leaves, remove the whole game
-      if (playerIndex === 0 || game.players.length === 1) {
-        console.log("Game creator or last player left, removing game:", gameId);
-        games.delete(gameId);
-        io.to(gameId).emit("game_removed", { gameId });
-        socket.leave(gameId);
-      } else {
-        // Otherwise just remove the player
-        game.players.splice(playerIndex, 1);
-        games.set(gameId, game);
-        io.to(gameId).emit("game_update", game);
-      }
-      
-      // Broadcast updated games list
-      io.emit("games_update", Array.from(games.values()));
+    if (!game) {
+      console.log(`Game ${gameId} not found`);
+      return;
     }
 
+    // Remove player from the game
+    game.players = game.players.filter(p => p.id !== userId);
+    
+    // If game is finished or no players left, remove the game
+    if (game.status === 'FINISHED' || game.players.length === 0) {
+      console.log(`Removing game ${gameId} (status: ${game.status}, players: ${game.players.length})`);
+      games.delete(gameId);
+      io.emit('games_update', Array.from(games.values()));
+    } else {
+      // Update game state if game continues
+      games.set(gameId, game);
+      io.to(gameId).emit('game_update', game);
+      io.emit('games_update', Array.from(games.values()));
+    }
+    
+    // Leave the socket room
     socket.leave(gameId);
   });
 
