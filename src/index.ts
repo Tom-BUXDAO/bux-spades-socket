@@ -939,6 +939,54 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Add handler for updating hand scores
+  socket.on('update_hand_scores', ({ gameId, handScores }) => {
+    try {
+      console.log('Received hand scores update:', { gameId, handScores });
+      
+      const game = games.get(gameId);
+      if (!game) {
+        console.error('Game not found:', gameId);
+        return;
+      }
+
+      // Update game scores
+      game.scores.team1 = (game.scores.team1 || 0) + handScores.team1Score.score;
+      game.scores.team2 = (game.scores.team2 || 0) + handScores.team2Score.score;
+
+      // Update bags
+      game.team1Bags = (game.team1Bags || 0) + handScores.team1Score.bags;
+      game.team2Bags = (game.team2Bags || 0) + handScores.team2Score.bags;
+
+      // Check if game is over
+      const isGameOver = game.scores.team1 >= game.rules.maxPoints || 
+                        game.scores.team2 >= game.rules.maxPoints ||
+                        game.scores.team1 <= game.rules.minPoints ||
+                        game.scores.team2 <= game.rules.minPoints;
+
+      if (isGameOver) {
+        game.status = 'FINISHED';
+        game.winningTeam = game.scores.team1 > game.scores.team2 ? 'team1' : 'team2';
+        
+        // Emit game over event
+        io.to(gameId).emit('game_over', {
+          team1Score: game.scores.team1,
+          team2Score: game.scores.team2,
+          winningTeam: game.winningTeam === 'team1' ? 1 : 2
+        });
+      }
+
+      // Save and broadcast updates
+      games.set(gameId, game);
+      io.to(gameId).emit('game_update', game);
+      io.emit('games_update', Array.from(games.values()));
+
+    } catch (error) {
+      console.error('Error handling update_hand_scores:', error);
+      socket.emit('error', { message: 'Internal server error' });
+    }
+  });
+
   socket.on('leave_game', ({ gameId, userId }) => {
     console.log("Player leaving game:", userId, "from game:", gameId);
     
