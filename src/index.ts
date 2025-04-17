@@ -767,9 +767,20 @@ io.on('connection', (socket) => {
         // Clear current trick
         game.currentTrick = [];
         
-        // Set next player
+        // Set next player - if no winning player, move to next player in sequence
         if (winningPlayer) {
           game.currentPlayer = winningPlayer.id;
+        } else {
+          // Find current player's position
+          const currentPlayerPos = game.players.find(p => p.id === userId)?.position;
+          if (currentPlayerPos !== undefined) {
+            // Get next player in sequence
+            const nextPosition = (currentPlayerPos + 1) % 4;
+            const nextPlayer = game.players.find(p => p.position === nextPosition);
+            if (nextPlayer) {
+              game.currentPlayer = nextPlayer.id;
+            }
+          }
         }
 
         // If this was the last trick of the hand
