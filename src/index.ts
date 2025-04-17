@@ -14,7 +14,7 @@ app.get('/', (_req: express.Request, res: express.Response) => {
 });
 
 // Add healthcheck endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).send('OK');
 });
 
