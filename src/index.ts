@@ -652,7 +652,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Just add 1 and mod 4 to get next position
+    // Find the next player in bidding order
     const nextPosition = (currentPlayer.position + 1) % 4;
     const nextPlayer = game.players.find(p => p.position === nextPosition);
     
@@ -662,6 +662,7 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Update the current player to the next player
     game.currentPlayer = nextPlayer.id;
     console.log(`Next player is ${nextPlayer.name} (${nextPlayer.id}) at position ${nextPosition}`);
 
