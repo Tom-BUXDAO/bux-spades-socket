@@ -317,12 +317,19 @@ io.on('connection', (socket) => {
       
       // Validate game type and set appropriate rules
       const gameType = rules?.gameType || gameRules?.gameType || 'REGULAR';
+      
+      // Ensure required rules are provided
+      if (!rules?.minPoints || !rules?.maxPoints) {
+        socket.emit('error', { message: 'Game rules must include minPoints and maxPoints' });
+        return;
+      }
+      
       const validatedRules = {
         gameType,
         allowNil: (rules?.allowNil ?? gameRules?.allowNil) ?? (gameType === 'REGULAR' || gameType === 'SOLO'),
         allowBlindNil: (rules?.allowBlindNil ?? gameRules?.allowBlindNil) ?? false,
-        minPoints: rules?.minPoints || gameRules?.minPoints || -250,
-        maxPoints: rules?.maxPoints || gameRules?.maxPoints || 500
+        minPoints: rules.minPoints,
+        maxPoints: rules.maxPoints
       };
       
       // Create new game with the player
