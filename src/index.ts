@@ -875,6 +875,7 @@ io.on('connection', (socket) => {
               });
 
               // Final game update
+              games.set(gameId, game);
               io.to(gameId).emit('game_update', game);
               io.emit('games_update', Array.from(games.values()));
               
@@ -901,22 +902,28 @@ io.on('connection', (socket) => {
           // Save current state
           games.set(gameId, game);
 
-          // Start new hand after delay
-          setTimeout(() => {
-              // Reset for new hand
-              game.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
-              game.completedTricks = [];
-              game.spadesBroken = false;
-              game.dealerPosition = (game.dealerPosition + 1) % game.players.length;
-              game.players = dealCards(game.players);
-              game.currentPlayer = game.players[(game.dealerPosition + 1) % game.players.length].id;
-              game.status = 'BIDDING';
+          // Start new hand after delay ONLY if game is not over
+          if (game.status === 'PLAYING') {
+            setTimeout(() => {
+              // Double check game isn't finished before starting new hand
+              const currentGame = games.get(gameId);
+              if (currentGame && currentGame.status === 'PLAYING') {
+                // Reset for new hand
+                game.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
+                game.completedTricks = [];
+                game.spadesBroken = false;
+                game.dealerPosition = (game.dealerPosition + 1) % game.players.length;
+                game.players = dealCards(game.players);
+                game.currentPlayer = game.players[(game.dealerPosition + 1) % game.players.length].id;
+                game.status = 'BIDDING';
 
-              // Update game state
-              games.set(gameId, game);
-              io.to(gameId).emit('game_update', game);
-              io.emit('games_update', Array.from(games.values()));
-          }, 5000);
+                // Update game state
+                games.set(gameId, game);
+                io.to(gameId).emit('game_update', game);
+                io.emit('games_update', Array.from(games.values()));
+              }
+            }, 5000);
+          }
         } else {
           // Not end of hand, just update state
           games.set(gameId, game);
@@ -939,53 +946,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Add handler for updating hand scores
-  socket.on('update_hand_scores', ({ gameId, handScores }) => {
-    try {
-      console.log('Received hand scores update:', { gameId, handScores });
-      
-      const game = games.get(gameId);
-      if (!game) {
-        console.error('Game not found:', gameId);
-        return;
-      }
-
-      // Update game scores
-      game.scores.team1 = (game.scores.team1 || 0) + handScores.team1Score.score;
-      game.scores.team2 = (game.scores.team2 || 0) + handScores.team2Score.score;
-
-      // Update bags
-      game.team1Bags = (game.team1Bags || 0) + handScores.team1Score.bags;
-      game.team2Bags = (game.team2Bags || 0) + handScores.team2Score.bags;
-
-      // Check if game is over
-      const isGameOver = game.scores.team1 >= game.rules.maxPoints || 
-                        game.scores.team2 >= game.rules.maxPoints ||
-                        game.scores.team1 <= game.rules.minPoints ||
-                        game.scores.team2 <= game.rules.minPoints;
-
-      if (isGameOver) {
-        game.status = 'FINISHED';
-        game.winningTeam = game.scores.team1 > game.scores.team2 ? 'team1' : 'team2';
-        
-        // Emit game over event
-        io.to(gameId).emit('game_over', {
-          team1Score: game.scores.team1,
-          team2Score: game.scores.team2,
-          winningTeam: game.winningTeam === 'team1' ? 1 : 2
-        });
-      }
-
-      // Save and broadcast updates
-      games.set(gameId, game);
-      io.to(gameId).emit('game_update', game);
-      io.emit('games_update', Array.from(games.values()));
-
-    } catch (error) {
-      console.error('Error handling update_hand_scores:', error);
-      socket.emit('error', { message: 'Internal server error' });
-    }
-  });
+  // Remove the update_hand_scores handler since we're handling scores in play_card
+  socket.off('update_hand_scores', () => {});
 
   socket.on('leave_game', ({ gameId, userId }) => {
     console.log("Player leaving game:", userId, "from game:", gameId);
