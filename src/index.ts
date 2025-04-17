@@ -689,21 +689,32 @@ io.on('connection', (socket) => {
 
   // Update the play_card handler
   socket.on('play_card', async ({ gameId, userId, card }) => {
+    console.log('\n=== PLAY CARD EVENT ===');
+    console.log(`Received play_card event for game: ${gameId}, user: ${userId}`);
+    console.log('Card:', card);
+    
     try {
       const game = games.get(gameId);
       if (!game) {
+        console.log('Game not found:', gameId);
         socket.emit('error', { message: 'Game not found' });
         return;
       }
 
+      console.log('Game status:', game.status);
+      console.log('Current player:', game.currentPlayer);
+      console.log('User trying to play:', userId);
+
       // Validate game state
       if (game.status !== 'PLAYING') {
+        console.log('Game not in playing state:', game.status);
         socket.emit('error', { message: 'Game is not in playing state' });
         return;
       }
 
       // Validate turn
       if (game.currentPlayer !== userId) {
+        console.log('Not player turn. Current:', game.currentPlayer, 'Trying to play:', userId);
         socket.emit('error', { message: 'Not your turn' });
         return;
       }
@@ -711,6 +722,7 @@ io.on('connection', (socket) => {
       // Find the current player
       const currentPlayer = game.players.find(p => p.id === userId);
       if (!currentPlayer) {
+        console.log('Player not found:', userId);
         socket.emit('error', { message: 'Player not found' });
         return;
       }
@@ -720,9 +732,13 @@ io.on('connection', (socket) => {
         c.suit === card.suit && c.rank === card.rank
       );
       if (cardIndex === -1) {
+        console.log('Card not in hand:', card);
+        console.log('Player hand:', currentPlayer.hand);
         socket.emit('error', { message: 'Card not in hand' });
         return;
       }
+
+      console.log('Card validation passed, playing card');
 
       // Remove card from player's hand
       currentPlayer.hand.splice(cardIndex, 1);
@@ -741,6 +757,13 @@ io.on('connection', (socket) => {
       // Update spades broken status
       if (card.suit === 'S') {
         game.spadesBroken = true;
+      }
+
+      // Set next player
+      const nextPosition = (currentPlayer.position + 1) % 4;
+      const nextPlayer = game.players.find(p => p.position === nextPosition);
+      if (nextPlayer) {
+        game.currentPlayer = nextPlayer.id;
       }
 
       // Handle trick completion
@@ -878,6 +901,14 @@ io.on('connection', (socket) => {
           io.emit('games_update', Array.from(games.values()));
         }
       }
+
+      // Update game state
+      games.set(gameId, game);
+      
+      // Broadcast updates
+      console.log('Broadcasting game update after card play');
+      io.to(gameId).emit('game_update', game);
+      io.emit('games_update', Array.from(games.values()));
 
     } catch (error) {
       console.error('Error handling play_card:', error);
