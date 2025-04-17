@@ -339,9 +339,7 @@ io.on('connection', (socket) => {
         },
         rules: (rules || gameRules) ? { ...rules, ...gameRules } : {
           allowNil: true,
-          allowBlindNil: false,
-          minPoints: -250,
-          maxPoints: 500
+          allowBlindNil: false
         }
       };
 
@@ -813,21 +811,6 @@ io.on('connection', (socket) => {
               game.status = 'COMPLETE';
               game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
               
-              // Send final hand summary
-              io.to(gameId).emit('hand_summary', {
-                  handScores,
-                  totalScores: {
-                      team1: game.scores.team1,
-                      team2: game.scores.team2
-                  },
-                  totalBags: {
-                      team1: game.team1Bags,
-                      team2: game.team2Bags
-                  },
-                  isGameOver: true,
-                  winningTeam
-              });
-
               // Send game over event
               io.to(gameId).emit('game_over', {
                   team1Score: game.scores.team1,
@@ -847,7 +830,7 @@ io.on('connection', (socket) => {
           }
 
           // If we get here, game continues
-          // Send regular hand summary
+          // Send hand summary
           io.to(gameId).emit('hand_summary', {
               handScores,
               totalScores: {
