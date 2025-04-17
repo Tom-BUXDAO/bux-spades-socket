@@ -899,8 +899,10 @@ io.on('connection', (socket) => {
               isGameOver: false
           });
 
-          // Save current state
+          // Save current state and broadcast updates immediately
           games.set(gameId, game);
+          io.to(gameId).emit('game_update', game);
+          io.emit('games_update', Array.from(games.values()));
 
           // Start new hand after delay ONLY if game is not over
           if (game.status === 'PLAYING') {
@@ -909,17 +911,17 @@ io.on('connection', (socket) => {
               const currentGame = games.get(gameId);
               if (currentGame && currentGame.status === 'PLAYING') {
                 // Reset for new hand
-                game.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
-                game.completedTricks = [];
-                game.spadesBroken = false;
-                game.dealerPosition = (game.dealerPosition + 1) % game.players.length;
-                game.players = dealCards(game.players);
-                game.currentPlayer = game.players[(game.dealerPosition + 1) % game.players.length].id;
-                game.status = 'BIDDING';
+                currentGame.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
+                currentGame.completedTricks = [];
+                currentGame.spadesBroken = false;
+                currentGame.dealerPosition = (currentGame.dealerPosition + 1) % currentGame.players.length;
+                currentGame.players = dealCards(currentGame.players);
+                currentGame.currentPlayer = currentGame.players[(currentGame.dealerPosition + 1) % currentGame.players.length].id;
+                currentGame.status = 'BIDDING';
 
                 // Update game state
-                games.set(gameId, game);
-                io.to(gameId).emit('game_update', game);
+                games.set(gameId, currentGame);
+                io.to(gameId).emit('game_update', currentGame);
                 io.emit('games_update', Array.from(games.values()));
               }
             }, 5000);
