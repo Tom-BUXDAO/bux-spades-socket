@@ -1086,19 +1086,9 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
       teamScore.nilBids++;
       if (player.tricks === 0) {
         teamScore.madeNils++;
-        // Nil bid success scoring varies by game type
-        if (gameType === 'REGULAR') {
-          teamScore.score += 100;
-        } else if (gameType === 'SOLO') {
-          teamScore.score += 200;
-        }
+        teamScore.score += gameType === 'SOLO' ? 200 : 100;
       } else {
-        // Nil bid failure scoring varies by game type
-        if (gameType === 'REGULAR') {
-          teamScore.score -= 100;
-        } else if (gameType === 'SOLO') {
-          teamScore.score -= 200;
-        }
+        teamScore.score -= gameType === 'SOLO' ? 200 : 100;
       }
     } else {
       // Accumulate non-nil bids and tricks
@@ -1109,53 +1099,38 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
 
   // Second pass: Score team bids
   if (gameType === 'WHIZ') {
-    // WHIZ game scoring - individual scoring remains unchanged
-    players.forEach(player => {
-      const teamScore = player.team === 1 ? team1Score : team2Score;
-      if (player.bid !== undefined && player.bid > 0) { // Skip nil bids as they're already handled
-        if (player.bid === 13 && player.tricks === 13) {
-          teamScore.score += 500;
-        } else if (player.bid === 13) {
-          teamScore.score -= 500;
+    // WHIZ game scoring - team must make exactly their bid
+    [team1Score, team2Score].forEach(teamScore => {
+      if (teamScore.bid > 0) { // Skip nil bids as they're already handled
+        if (teamScore.tricks === teamScore.bid) {
+          teamScore.score += teamScore.bid * 10;
+        } else {
+          teamScore.score -= teamScore.bid * 10;
         }
       }
     });
   } else if (gameType === 'MIRROR') {
-    // MIRROR game scoring - individual scoring remains unchanged
-    players.forEach(player => {
-      const teamScore = player.team === 1 ? team1Score : team2Score;
-      if (player.bid !== undefined && player.bid > 0) {
-        if (player.tricks === player.bid) {
-          teamScore.score += player.bid * 10;
-          teamScore.bags += player.tricks - player.bid;
+    // MIRROR game scoring - partners must have matching bids
+    [team1Score, team2Score].forEach(teamScore => {
+      if (teamScore.bid > 0) {
+        if (teamScore.tricks >= teamScore.bid) {
+          teamScore.score += teamScore.bid * 10;
+          teamScore.bags = teamScore.tricks - teamScore.bid;
         } else {
-          teamScore.score -= Math.abs(player.tricks - player.bid) * 10;
+          teamScore.score -= teamScore.bid * 10;
         }
       }
     });
   } else {
     // Regular and SOLO game scoring - evaluate team bids
-    // Team 1
-    if (team1Score.tricks >= team1Score.bid) {
-      team1Score.score += team1Score.bid * 10;
-      team1Score.bags += team1Score.tricks - team1Score.bid;
-    } else {
-      team1Score.score -= team1Score.bid * 10;
-    }
-    
-    // Team 2
-    if (team2Score.tricks >= team2Score.bid) {
-      team2Score.score += team2Score.bid * 10;
-      team2Score.bags += team2Score.tricks - team2Score.bid;
-    } else {
-      team2Score.score -= team2Score.bid * 10;
-    }
-  }
-  
-  // Add bag points (varies by game type)
-  if (gameType !== 'WHIZ') {
-    team1Score.score += team1Score.bags;
-    team2Score.score += team2Score.bags;
+    [team1Score, team2Score].forEach(teamScore => {
+      if (teamScore.tricks >= teamScore.bid) {
+        teamScore.score += teamScore.bid * 10;
+        teamScore.bags = teamScore.tricks - teamScore.bid;
+      } else {
+        teamScore.score -= teamScore.bid * 10;
+      }
+    });
   }
   
   return { team1: team1Score, team2: team2Score };
