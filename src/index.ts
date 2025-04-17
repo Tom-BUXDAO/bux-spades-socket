@@ -319,9 +319,9 @@ io.on('connection', (socket) => {
       const gameType = rules?.gameType || gameRules?.gameType || 'REGULAR';
       const validatedRules = {
         gameType,
-        allowNil: gameType === 'REGULAR' || gameType === 'SOLO',
-        allowBlindNil: gameType === 'REGULAR' || gameType === 'SOLO',
-        minPoints: rules?.minPoints || gameRules?.minPoints || 500,
+        allowNil: (rules?.allowNil ?? gameRules?.allowNil) ?? (gameType === 'REGULAR' || gameType === 'SOLO'),
+        allowBlindNil: (rules?.allowBlindNil ?? gameRules?.allowBlindNil) ?? false,
+        minPoints: rules?.minPoints || gameRules?.minPoints || -250,
         maxPoints: rules?.maxPoints || gameRules?.maxPoints || 500
       };
       
