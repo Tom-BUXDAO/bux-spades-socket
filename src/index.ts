@@ -351,6 +351,11 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // Ensure scores object is properly initialized
+      if (!game.scores || typeof game.scores.team1 !== 'number' || typeof game.scores.team2 !== 'number') {
+        game.scores = { team1: 0, team2: 0 };
+      }
+
       games.set(gameId, game);
       socket.join(gameId);
       
@@ -924,28 +929,38 @@ io.on('connection', (socket) => {
           io.to(gameId).emit('game_update', game);
           io.emit('games_update', Array.from(games.values()));
 
-          // Start new hand after delay ONLY if game is not over
-          if (game.status === 'PLAYING') {
-            setTimeout(() => {
-              // Double check game isn't finished before starting new hand
-              const currentGame = games.get(gameId);
-              if (currentGame && currentGame.status === 'PLAYING') {
-                // Reset for new hand
-                currentGame.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
-                currentGame.completedTricks = [];
-                currentGame.spadesBroken = false;
-                currentGame.dealerPosition = (currentGame.dealerPosition + 1) % currentGame.players.length;
-                currentGame.players = dealCards(currentGame.players);
-                currentGame.currentPlayer = currentGame.players[(currentGame.dealerPosition + 1) % currentGame.players.length].id;
-                currentGame.status = 'BIDDING';
-
-                // Update game state
-                games.set(gameId, currentGame);
-                io.to(gameId).emit('game_update', currentGame);
-                io.emit('games_update', Array.from(games.values()));
+          // Schedule new hand after delay
+          setTimeout(() => {
+            // Get fresh game state
+            const currentGame = games.get(gameId);
+            // Double check game exists and isn't finished
+            if (currentGame && currentGame.status === 'PLAYING') {
+              // Reset for new hand
+              currentGame.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
+              currentGame.completedTricks = [];
+              currentGame.spadesBroken = false;
+              
+              // Update dealer
+              const oldDealerIndex = currentGame.players.findIndex(p => p.isDealer);
+              if (oldDealerIndex !== -1) {
+                currentGame.players[oldDealerIndex].isDealer = false;
+                const newDealerIndex = (oldDealerIndex + 1) % currentGame.players.length;
+                currentGame.players[newDealerIndex].isDealer = true;
+                
+                // Next player to bid is to the left of the dealer
+                currentGame.currentPlayer = currentGame.players[(newDealerIndex + 1) % currentGame.players.length].id;
               }
-            }, 5000);
-          }
+
+              // Deal new cards
+              currentGame.players = dealCards(currentGame.players);
+              currentGame.status = 'BIDDING';
+
+              // Update game state
+              games.set(gameId, currentGame);
+              io.to(gameId).emit('game_update', currentGame);
+              io.emit('games_update', Array.from(games.values()));
+            }
+          }, 5000);
         } else {
           // Not end of hand, just update state
           games.set(gameId, game);
