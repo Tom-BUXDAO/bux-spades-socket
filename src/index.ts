@@ -69,6 +69,7 @@ interface Game {
     team2: number;
   };
   rules: {
+    gameType: 'REGULAR' | 'WHIZ' | 'SOLO' | 'MIRROR';
     allowNil: boolean;
     allowBlindNil: boolean;
     minPoints: number;
@@ -314,6 +315,16 @@ io.on('connection', (socket) => {
         position: 0 // Game creator always starts at position 0 (South)
       };
       
+      // Validate game type and set appropriate rules
+      const gameType = rules?.gameType || gameRules?.gameType || 'REGULAR';
+      const validatedRules = {
+        gameType,
+        allowNil: gameType === 'REGULAR' || gameType === 'SOLO',
+        allowBlindNil: gameType === 'REGULAR' || gameType === 'SOLO',
+        minPoints: rules?.minPoints || gameRules?.minPoints || 500,
+        maxPoints: rules?.maxPoints || gameRules?.maxPoints || 500
+      };
+      
       // Create new game with the player
       const game: Game = {
         id: gameId,
@@ -332,7 +343,7 @@ io.on('connection', (socket) => {
           team1: 0,
           team2: 0
         },
-        rules: rules || gameRules
+        rules: validatedRules
       };
 
       if (!game.rules?.minPoints || !game.rules?.maxPoints) {
@@ -349,7 +360,7 @@ io.on('connection', (socket) => {
       // Update all clients with the new game list
       io.emit('games_update', Array.from(games.values()));
       
-      console.log(`Game ${gameId} created by user ${user.name} (${user.id})`);
+      console.log(`Game ${gameId} created by user ${user.name} (${user.id}) with type ${gameType}`);
     } catch (error) {
       console.error('Error creating game:', error);
       socket.emit('error', { message: 'Failed to create game' });
@@ -603,9 +614,36 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Validate bid based on game type
+    const player = game.players[playerIndex];
+    const gameType = game.rules.gameType;
+    
+    // For MIRROR games, auto-bid based on partner's bid
+    if (gameType === 'MIRROR') {
+      const partner = game.players.find(p => p.team === player.team && p.id !== player.id);
+      if (partner && partner.bid !== undefined) {
+        bid = partner.bid;
+        console.log(`MIRROR game: Auto-bidding ${bid} to match partner's bid`);
+      }
+    }
+    
+    // For WHIZ games, validate bid is 0 or 13
+    if (gameType === 'WHIZ' && bid !== 0 && bid !== 13) {
+      console.log(`Invalid bid ${bid} for WHIZ game - must be 0 or 13`);
+      socket.emit('error', { message: 'In WHIZ games, bids must be 0 or 13' });
+      return;
+    }
+    
+    // For SOLO games, validate nil bids
+    if (gameType === 'SOLO' && bid === 0 && !game.rules.allowNil) {
+      console.log(`Nil bid not allowed in SOLO game`);
+      socket.emit('error', { message: 'Nil bids are not allowed in SOLO games' });
+      return;
+    }
+
     // Update the player's bid
     game.players[playerIndex].bid = bid;
-    console.log(`Player ${game.players[playerIndex].name} bid ${bid}`);
+    console.log(`Player ${game.players[playerIndex].name} bid ${bid} in ${gameType} game`);
 
     // Determine the next player
     const currentPlayer = game.players.find(p => p.id === userId);
@@ -636,7 +674,7 @@ io.on('connection', (socket) => {
       // Debug log all players and their positions
       console.log('Current players and positions:');
       game.players.forEach(p => {
-        console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''}`);
+        console.log(`${p.name} at position ${p.position}${p.isDealer ? ' (DEALER)' : ''} bid ${p.bid}`);
       });
       
       // After bidding, the player to the left of the dealer bids first
@@ -651,9 +689,6 @@ io.on('connection', (socket) => {
       const firstPosition = (dealerPosition + 1) % 4;
       const firstPlayer = game.players.find(p => p.position === firstPosition);
       
-      console.log(`Dealer ${dealer.name} at position ${dealerPosition}`);
-      console.log(`First player should be at position ${firstPosition}`);
-      
       if (!firstPlayer) {
         console.error(`Could not find player at position ${firstPosition}`);
         return;
@@ -666,25 +701,9 @@ io.on('connection', (socket) => {
     // Update game state in memory
     games.set(gameId, game);
     
-    // First, emit to the current room as before
+    // Broadcast the game update to all sockets
     io.to(gameId).emit('game_update', game);
-    
-    // Then broadcast to all connected clients about the games list update
-    // This ensures all clients get the updated game state even if not in the room
     io.emit('games_update', Array.from(games.values()));
-    
-    // Emit direct updates to each player in the game to ensure they get it
-    game.players.forEach(player => {
-      if (player.browserSessionId) {
-        const playerSocket = io.sockets.sockets.get(player.browserSessionId);
-        if (playerSocket) {
-          console.log(`Sending direct game_update to player ${player.name} (${player.id})`);
-          playerSocket.emit('game_update', game);
-        }
-      }
-    });
-    
-    console.log(`Updated game state after bid. Game status: ${game.status}, Current player: ${game.currentPlayer}`);
   });
 
   // Update the play_card handler
@@ -1012,70 +1031,103 @@ io.on('connection', (socket) => {
 });
 
 function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamScore } {
-  const team1Score: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
-  const team2Score: TeamScore = { bid: 0, tricks: 0, nilBids: 0, madeNils: 0, score: 0, bags: 0 };
-
-  // --- Pass 1: Accumulate totals and handle Nil bids ---
+  // Initialize scores
+  const team1Score: TeamScore = {
+    bid: 0,
+    tricks: 0,
+    nilBids: 0,
+    madeNils: 0,
+    score: 0,
+    bags: 0
+  };
+  
+  const team2Score: TeamScore = {
+    bid: 0,
+    tricks: 0,
+    nilBids: 0,
+    madeNils: 0,
+    score: 0,
+    bags: 0
+  };
+  
+  // Get game type from the first player's game
+  const game = Array.from(games.values()).find(g => 
+    g.players.some(p => p.id === players[0].id)
+  );
+  const gameType = game?.rules.gameType || 'REGULAR';
+  
+  // Calculate team scores
   players.forEach(player => {
     const teamScore = player.team === 1 ? team1Score : team2Score;
-    teamScore.tricks += player.tricks; // Accumulate ALL tricks for the team
-
-    if (player.bid !== undefined) {
-      if (player.bid === 0) { // Nil Bid
-        teamScore.nilBids++;
-        if (player.tricks === 0) {
-          teamScore.madeNils++;
-          teamScore.score += 100; // Made Nil
-        } else {
-          teamScore.score -= 100; // Failed Nil Penalty
-          // Per user rule: Failed Nil tricks count as bags for the team
-          teamScore.bags += player.tricks;
+    
+    if (player.bid === undefined) {
+      console.error(`Player ${player.name} has no bid!`);
+      return;
+    }
+    
+    // Handle nil bids
+    if (player.bid === 0) {
+      teamScore.nilBids++;
+      if (player.tricks === 0) {
+        teamScore.madeNils++;
+        // Nil bid success scoring varies by game type
+        if (gameType === 'REGULAR') {
+          teamScore.score += 100;
+        } else if (gameType === 'SOLO') {
+          teamScore.score += 200;
         }
-      } else { // Regular (Contract) Bid
-        teamScore.bid += player.bid; // Accumulate the contract bid
+      } else {
+        // Nil bid failure scoring varies by game type
+        if (gameType === 'REGULAR') {
+          teamScore.score -= 100;
+        } else if (gameType === 'SOLO') {
+          teamScore.score -= 200;
+        }
+      }
+    } else {
+      // Regular bid scoring
+      teamScore.bid += player.bid;
+      teamScore.tricks += player.tricks;
+      
+      // WHIZ game scoring
+      if (gameType === 'WHIZ') {
+        if (player.bid === 13 && player.tricks === 13) {
+          teamScore.score += 500;
+        } else if (player.bid === 13) {
+          teamScore.score -= 500;
+        } else if (player.bid === 0 && player.tricks === 0) {
+          teamScore.score += 100;
+        } else if (player.bid === 0) {
+          teamScore.score -= 100;
+        }
+      } 
+      // MIRROR game scoring
+      else if (gameType === 'MIRROR') {
+        if (player.tricks === player.bid) {
+          teamScore.score += player.bid * 10;
+          teamScore.bags += player.tricks - player.bid;
+        } else {
+          teamScore.score -= Math.abs(player.tricks - player.bid) * 10;
+        }
+      }
+      // Regular and SOLO game scoring
+      else {
+        if (player.tricks >= player.bid) {
+          teamScore.score += player.bid * 10;
+          teamScore.bags += player.tricks - player.bid;
+        } else {
+          teamScore.score -= player.bid * 10;
+        }
       }
     }
   });
-
-  // --- Pass 2: Score the contracts using total team tricks ---
-
-  // Team 1 Contract Score
-  if (team1Score.bid > 0) { // Only score if there was a contract bid
-    if (team1Score.tricks >= team1Score.bid) { // Compare TOTAL team tricks to contract bid
-      // Made contract
-      team1Score.score += team1Score.bid * 10;
-      const overbooks = team1Score.tricks - team1Score.bid;
-      if (overbooks > 0) {
-        // Add bags from contract overbooks (in addition to any failed nil bags)
-        team1Score.bags += overbooks;
-        team1Score.score += overbooks; // Add points for overbooks
-      }
-    } else {
-      // Failed contract (Set)
-      team1Score.score -= team1Score.bid * 10;
-      // No additional bags when set (only bags from failed nil, if any)
-    }
+  
+  // Add bag points (varies by game type)
+  if (gameType !== 'WHIZ') {
+    team1Score.score += team1Score.bags;
+    team2Score.score += team2Score.bags;
   }
-
-  // Team 2 Contract Score
-  if (team2Score.bid > 0) { // Only score if there was a contract bid
-     if (team2Score.tricks >= team2Score.bid) { // Compare TOTAL team tricks to contract bid
-      // Made contract
-      team2Score.score += team2Score.bid * 10;
-      const overbooks = team2Score.tricks - team2Score.bid;
-      if (overbooks > 0) {
-         // Add bags from contract overbooks (in addition to any failed nil bags)
-        team2Score.bags += overbooks;
-        team2Score.score += overbooks; // Add points for overbooks
-      }
-    } else {
-      // Failed contract (Set)
-      team2Score.score -= team2Score.bid * 10;
-       // No additional bags when set (only bags from failed nil, if any)
-    }
-  }
-
-  // Final bags = (bags from failed nils) + (bags from contract overbooks)
+  
   return { team1: team1Score, team2: team2Score };
 }
 
