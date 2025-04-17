@@ -998,9 +998,9 @@ io.on('connection', (socket) => {
     // Remove player from the game
     game.players = game.players.filter(p => p.id !== userId);
     
-    // If game is finished or no players left, remove the game
-    if (game.status === 'FINISHED' || game.players.length === 0) {
-      console.log(`Removing game ${gameId} (status: ${game.status}, players: ${game.players.length})`);
+    // If no players left, remove the game
+    if (game.players.length === 0) {
+      console.log(`Removing game ${gameId} (no players left)`);
       games.delete(gameId);
       io.emit('games_update', Array.from(games.values()));
     } else {
