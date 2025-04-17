@@ -618,12 +618,13 @@ io.on('connection', (socket) => {
     const player = game.players[playerIndex];
     const gameType = game.rules.gameType;
     
-    // For MIRROR games, auto-bid based on partner's bid
+    // For MIRROR games, validate bid is the number of spades
     if (gameType === 'MIRROR') {
-      const partner = game.players.find(p => p.team === player.team && p.id !== player.id);
-      if (partner && partner.bid !== undefined) {
-        bid = partner.bid;
-        console.log(`MIRROR game: Auto-bidding ${bid} to match partner's bid`);
+      const playerSpades = player.hand.filter(card => card.suit === 'S').length;
+      if (bid !== playerSpades) {
+        console.log(`Invalid bid ${bid} for MIRROR game - must be number of spades (${playerSpades})`);
+        socket.emit('error', { message: `In MIRROR games, you must bid your number of spades (${playerSpades})` });
+        return;
       }
     }
     
@@ -853,18 +854,26 @@ io.on('connection', (socket) => {
           
           // Update total scores and bags
           game.scores = game.scores || { team1: 0, team2: 0 };
+          
+          // Add bags to total score first
+          game.scores.team1 += handScores.team1.bags;
+          game.scores.team2 += handScores.team2.bags;
+          
+          // Then update bag counts
           game.team1Bags = (game.team1Bags || 0) + handScores.team1.bags;
           if (game.team1Bags >= 10) {
             game.scores.team1 -= 100;
             game.team1Bags -= 10;
           }
-          game.scores.team1 += handScores.team1.score;
           
           game.team2Bags = (game.team2Bags || 0) + handScores.team2.bags;
           if (game.team2Bags >= 10) {
             game.scores.team2 -= 100;
             game.team2Bags -= 10;
           }
+          
+          // Finally add the hand score
+          game.scores.team1 += handScores.team1.score;
           game.scores.team2 += handScores.team2.score;
 
           // Check if game is over
@@ -877,29 +886,29 @@ io.on('connection', (socket) => {
               
               // Determine winner
               let winningTeam: 1 | 2;
-            if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
-                winningTeam = 1;
+              if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
+                  winningTeam = 1;
               } else {
-                winningTeam = 2;
-            }
+                  winningTeam = 2;
+              }
 
               // Set game as complete
               game.status = 'FINISHED';
-          game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
+              game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
               
               // Send game over event
-          io.to(gameId).emit('game_over', {
-            team1Score: game.scores.team1,
-            team2Score: game.scores.team2,
-                  winningTeam,
-            team1Bags: game.team1Bags,
-            team2Bags: game.team2Bags 
-          });
+              io.to(gameId).emit('game_over', {
+                team1Score: game.scores.team1,
+                team2Score: game.scores.team2,
+                winningTeam,
+                team1Bags: game.team1Bags,
+                team2Bags: game.team2Bags 
+              });
 
               // Final game update
               games.set(gameId, game);
-          io.to(gameId).emit('game_update', game);
-          io.emit('games_update', Array.from(games.values()));
+              io.to(gameId).emit('game_update', game);
+              io.emit('games_update', Array.from(games.values()));
               
               // Save and exit
               games.set(gameId, game);
@@ -911,12 +920,12 @@ io.on('connection', (socket) => {
           io.to(gameId).emit('hand_summary', {
               handScores,
               totalScores: {
-              team1: game.scores.team1,
-              team2: game.scores.team2
-            },
+                team1: game.scores.team1,
+                team2: game.scores.team2
+              },
               totalBags: {
-               team1: game.team1Bags,
-               team2: game.team2Bags
+                team1: game.team1Bags,
+                team2: game.team2Bags
               },
               isGameOver: false
           });
