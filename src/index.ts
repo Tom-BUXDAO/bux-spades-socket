@@ -540,6 +540,11 @@ io.on('connection', (socket) => {
       isDealer: i === firstDealerIndex
     }));
     
+    // Initialize game scores and bags
+    game.scores = { team1: 0, team2: 0 };
+    game.team1Bags = 0;
+    game.team2Bags = 0;
+    
     // After bidding, the player to the left of the dealer bids first
     const dealer = game.players.find(p => p.isDealer);
     if (!dealer) {
@@ -829,21 +834,36 @@ io.on('connection', (socket) => {
           // Calculate scores
           const handScores = calculateHandScore(game.players);
           
+          // Initialize scores if they don't exist
+          if (!game.scores || typeof game.scores.team1 !== 'number' || typeof game.scores.team2 !== 'number') {
+            game.scores = { team1: 0, team2: 0 };
+          }
+          
+          // Initialize bags if they don't exist
+          if (typeof game.team1Bags !== 'number') game.team1Bags = 0;
+          if (typeof game.team2Bags !== 'number') game.team2Bags = 0;
+          
           // Update total scores and bags
-          game.scores = game.scores || { team1: 0, team2: 0 };
-          game.team1Bags = (game.team1Bags || 0) + handScores.team1.bags;
+          game.team1Bags += handScores.team1.bags;
           if (game.team1Bags >= 10) {
             game.scores.team1 -= 100;
             game.team1Bags -= 10;
           }
           game.scores.team1 += handScores.team1.score;
           
-          game.team2Bags = (game.team2Bags || 0) + handScores.team2.bags;
+          game.team2Bags += handScores.team2.bags;
           if (game.team2Bags >= 10) {
             game.scores.team2 -= 100;
             game.team2Bags -= 10;
           }
           game.scores.team2 += handScores.team2.score;
+
+          console.log('Updated game scores:', {
+            team1: game.scores.team1,
+            team2: game.scores.team2,
+            team1Bags: game.team1Bags,
+            team2Bags: game.team2Bags
+          });
 
           // Check if game is over
           const winningScore = game.rules.maxPoints;
