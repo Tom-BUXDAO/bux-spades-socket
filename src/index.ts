@@ -86,7 +86,7 @@ interface TeamScore {
   bags: number;
 }
 
-type GameStatus = 'WAITING' | 'BIDDING' | 'PLAYING' | 'SCORING' | 'COMPLETE';
+type GameStatus = 'WAITING' | 'BIDDING' | 'PLAYING' | 'FINISHED';
 
 // Store active games
 const games = new Map<string, Game>();
@@ -839,7 +839,7 @@ io.on('connection', (socket) => {
               }
 
               // Set game as complete
-              game.status = 'COMPLETE';
+              game.status = 'FINISHED';
               game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
               
               // Send game over event
