@@ -351,11 +351,6 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Ensure scores object is properly initialized
-      if (!game.scores || typeof game.scores.team1 !== 'number' || typeof game.scores.team2 !== 'number') {
-        game.scores = { team1: 0, team2: 0 };
-      }
-
       games.set(gameId, game);
       socket.join(gameId);
       
@@ -544,11 +539,6 @@ io.on('connection', (socket) => {
       ...p,
       isDealer: i === firstDealerIndex
     }));
-    
-    // Initialize game scores and bags
-    game.scores = { team1: 0, team2: 0 };
-    game.team1Bags = 0;
-    game.team2Bags = 0;
     
     // After bidding, the player to the left of the dealer bids first
     const dealer = game.players.find(p => p.isDealer);
@@ -809,19 +799,19 @@ io.on('connection', (socket) => {
         if (winningPlayer) {
           winningPlayer.tricks += 1;
           game.completedTricks.push({
-            cards: game.currentTrick,
-            winningCard,
-            winningPlayerId: winningPlayer.id
+          cards: game.currentTrick,
+          winningCard,
+          winningPlayerId: winningPlayer.id
           });
         }
 
         // Clear current trick
-        game.currentTrick = [];
+            game.currentTrick = [];
         
         // Set next player - if no winning player, move to next player in sequence
         if (winningPlayer) {
           game.currentPlayer = winningPlayer.id;
-        } else {
+      } else {
           // Find current player's position
           const currentPlayerPos = game.players.find(p => p.id === userId)?.position;
           if (currentPlayerPos !== undefined) {
@@ -835,40 +825,25 @@ io.on('connection', (socket) => {
         }
 
         // If this was the last trick of the hand
-        if (game.completedTricks.length === 13) {
+      if (game.completedTricks.length === 13) {
           // Calculate scores
-          const handScores = calculateHandScore(game.players);
-          
-          // Initialize scores if they don't exist
-          if (!game.scores || typeof game.scores.team1 !== 'number' || typeof game.scores.team2 !== 'number') {
-            game.scores = { team1: 0, team2: 0 };
-          }
-          
-          // Initialize bags if they don't exist
-          if (typeof game.team1Bags !== 'number') game.team1Bags = 0;
-          if (typeof game.team2Bags !== 'number') game.team2Bags = 0;
-          
+        const handScores = calculateHandScore(game.players);
+        
           // Update total scores and bags
-          game.team1Bags += handScores.team1.bags;
-          if (game.team1Bags >= 10) {
-            game.scores.team1 -= 100;
-            game.team1Bags -= 10;
-          }
-          game.scores.team1 += handScores.team1.score;
-          
-          game.team2Bags += handScores.team2.bags;
-          if (game.team2Bags >= 10) {
-            game.scores.team2 -= 100;
-            game.team2Bags -= 10;
-          }
-          game.scores.team2 += handScores.team2.score;
-
-          console.log('Updated game scores:', {
-            team1: game.scores.team1,
-            team2: game.scores.team2,
-            team1Bags: game.team1Bags,
-            team2Bags: game.team2Bags
-          });
+        game.scores = game.scores || { team1: 0, team2: 0 };
+        game.team1Bags = (game.team1Bags || 0) + handScores.team1.bags;
+        if (game.team1Bags >= 10) {
+          game.scores.team1 -= 100;
+          game.team1Bags -= 10;
+        }
+        game.scores.team1 += handScores.team1.score;
+        
+        game.team2Bags = (game.team2Bags || 0) + handScores.team2.bags;
+        if (game.team2Bags >= 10) {
+          game.scores.team2 -= 100;
+          game.team2Bags -= 10;
+        }
+        game.scores.team2 += handScores.team2.score;
 
           // Check if game is over
           const winningScore = game.rules.maxPoints;
@@ -880,29 +855,29 @@ io.on('connection', (socket) => {
               
               // Determine winner
               let winningTeam: 1 | 2;
-              if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
-                  winningTeam = 1;
+        if (game.scores.team1 >= winningScore || game.scores.team2 <= losingScore) {
+            winningTeam = 1;
               } else {
-                  winningTeam = 2;
-              }
+            winningTeam = 2;
+        }
 
               // Set game as complete
               game.status = 'FINISHED';
-              game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
+          game.winningTeam = winningTeam === 1 ? 'team1' : 'team2';
               
               // Send game over event
-              io.to(gameId).emit('game_over', {
-                  team1Score: game.scores.team1,
-                  team2Score: game.scores.team2,
+          io.to(gameId).emit('game_over', {
+            team1Score: game.scores.team1,
+            team2Score: game.scores.team2,
                   winningTeam,
-                  team1Bags: game.team1Bags,
-                  team2Bags: game.team2Bags
-              });
+            team1Bags: game.team1Bags,
+            team2Bags: game.team2Bags 
+          });
 
               // Final game update
               games.set(gameId, game);
-              io.to(gameId).emit('game_update', game);
-              io.emit('games_update', Array.from(games.values()));
+          io.to(gameId).emit('game_update', game);
+          io.emit('games_update', Array.from(games.values()));
               
               // Save and exit
               games.set(gameId, game);
@@ -914,12 +889,12 @@ io.on('connection', (socket) => {
           io.to(gameId).emit('hand_summary', {
               handScores,
               totalScores: {
-                  team1: game.scores.team1,
-                  team2: game.scores.team2
-              },
+              team1: game.scores.team1,
+              team2: game.scores.team2
+            },
               totalBags: {
-                  team1: game.team1Bags,
-                  team2: game.team2Bags
+               team1: game.team1Bags,
+               team2: game.team2Bags
               },
               isGameOver: false
           });
@@ -929,42 +904,32 @@ io.on('connection', (socket) => {
           io.to(gameId).emit('game_update', game);
           io.emit('games_update', Array.from(games.values()));
 
-          // Schedule new hand after delay
+          // Start new hand after delay ONLY if game is not over
+          if (game.status === 'PLAYING') {
           setTimeout(() => {
-            // Get fresh game state
-            const currentGame = games.get(gameId);
-            // Double check game exists and isn't finished
-            if (currentGame && currentGame.status === 'PLAYING') {
-              // Reset for new hand
-              currentGame.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
-              currentGame.completedTricks = [];
-              currentGame.spadesBroken = false;
-              
-              // Update dealer
-              const oldDealerIndex = currentGame.players.findIndex(p => p.isDealer);
-              if (oldDealerIndex !== -1) {
-                currentGame.players[oldDealerIndex].isDealer = false;
-                const newDealerIndex = (oldDealerIndex + 1) % currentGame.players.length;
-                currentGame.players[newDealerIndex].isDealer = true;
-                
-                // Next player to bid is to the left of the dealer
-                currentGame.currentPlayer = currentGame.players[(newDealerIndex + 1) % currentGame.players.length].id;
+              // Double check game isn't finished before starting new hand
+              const currentGame = games.get(gameId);
+              if (currentGame && currentGame.status === 'PLAYING') {
+                // Reset for new hand
+                currentGame.players.forEach(p => { p.tricks = 0; p.bid = undefined; });
+                currentGame.completedTricks = [];
+                currentGame.spadesBroken = false;
+                currentGame.dealerPosition = (currentGame.dealerPosition + 1) % currentGame.players.length;
+                currentGame.players = dealCards(currentGame.players);
+                currentGame.currentPlayer = currentGame.players[(currentGame.dealerPosition + 1) % currentGame.players.length].id;
+                currentGame.status = 'BIDDING';
+
+                // Update game state
+                games.set(gameId, currentGame);
+                io.to(gameId).emit('game_update', currentGame);
+                io.emit('games_update', Array.from(games.values()));
               }
-
-              // Deal new cards
-              currentGame.players = dealCards(currentGame.players);
-              currentGame.status = 'BIDDING';
-
-              // Update game state
-              games.set(gameId, currentGame);
-              io.to(gameId).emit('game_update', currentGame);
-              io.emit('games_update', Array.from(games.values()));
-            }
-          }, 5000);
+            }, 5000);
+          }
         } else {
           // Not end of hand, just update state
           games.set(gameId, game);
-          io.to(gameId).emit('game_update', game);
+            io.to(gameId).emit('game_update', game);
           io.emit('games_update', Array.from(games.values()));
         }
       }
@@ -1118,16 +1083,16 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
     
     // Handle nil bids
     if (player.bid === 0) {
-      teamScore.nilBids++;
-      if (player.tricks === 0) {
-        teamScore.madeNils++;
+        teamScore.nilBids++;
+        if (player.tricks === 0) {
+          teamScore.madeNils++;
         // Nil bid success scoring varies by game type
         if (gameType === 'REGULAR') {
           teamScore.score += 100;
         } else if (gameType === 'SOLO') {
           teamScore.score += 200;
         }
-      } else {
+        } else {
         // Nil bid failure scoring varies by game type
         if (gameType === 'REGULAR') {
           teamScore.score -= 100;
@@ -1157,7 +1122,7 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
         if (player.tricks === player.bid) {
           teamScore.score += player.bid * 10;
           teamScore.bags += player.tricks - player.bid;
-        } else {
+    } else {
           teamScore.score -= Math.abs(player.tricks - player.bid) * 10;
         }
       }
@@ -1166,7 +1131,7 @@ function calculateHandScore(players: Player[]): { team1: TeamScore, team2: TeamS
         if (player.tricks >= player.bid) {
           teamScore.score += player.bid * 10;
           teamScore.bags += player.tricks - player.bid;
-        } else {
+    } else {
           teamScore.score -= player.bid * 10;
         }
       }
