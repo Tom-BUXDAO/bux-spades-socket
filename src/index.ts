@@ -337,11 +337,13 @@ io.on('connection', (socket) => {
           team1: 0,
           team2: 0
         },
-        rules: (rules || gameRules) ? { ...rules, ...gameRules } : {
-          allowNil: true,
-          allowBlindNil: false
-        }
+        rules: rules || gameRules
       };
+
+      if (!game.rules?.minPoints || !game.rules?.maxPoints) {
+        socket.emit('error', { message: 'Game rules must include minPoints and maxPoints' });
+        return;
+      }
 
       games.set(gameId, game);
       socket.join(gameId);
