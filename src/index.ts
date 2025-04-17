@@ -13,21 +13,11 @@ app.get('/', (_req: express.Request, res: express.Response) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// Add healthcheck endpoint
-app.get('/health', (_req, res) => {
-  res.status(200).send('OK');
-});
-
 // Configure CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: [
-      process.env.CLIENT_URL || "http://localhost:3000",
-      "https://bux-spades-buxdaos-projects.vercel.app"
-    ],
-    methods: ["GET", "POST"],
-    credentials: true,
-    allowedHeaders: ["Content-Type"]
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    methods: ["GET", "POST"]
   },
   pingTimeout: 60000,
   pingInterval: 25000,
