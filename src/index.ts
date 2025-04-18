@@ -96,6 +96,10 @@ const games = new Map<string, Game>();
 const userConnections = new Map<string, Set<string>>();
 const lastUserOperations = new Map<string, Map<string, number>>();  // userId -> { operation -> timestamp }
 
+// Track lobby users and messages
+const lobbyUsers = new Set<string>();
+const lobbyMessages: { id: string; userId: string; userName: string; message: string; timestamp: number }[] = [];
+
 // Rate limiting helper function
 function isRateLimited(userId: string, operation: string, limitMs: number): boolean {
   if (!lastUserOperations.has(userId)) {
@@ -165,6 +169,11 @@ process.on('unhandledRejection', (reason, promise) => {
   // Prevent crashes on unhandled promise rejections
 });
 
+// Helper function to update online users count
+function updateOnlineUsersCount() {
+  io.emit('online_users_update', lobbyUsers.size);
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   let currentUserId: string | null = null;
@@ -188,6 +197,51 @@ io.on('connection', (socket) => {
     userConnections.get(userId)!.add(socket.id);
     
     console.log(`User ${userId} authenticated with socket ${socket.id}`);
+  });
+  
+  // Handle joining lobby
+  socket.on('join_lobby', ({ userId }) => {
+    if (!userId) return;
+    
+    lobbyUsers.add(userId);
+    socket.join('lobby');
+    
+    // Send last 50 lobby messages to the user
+    socket.emit('lobby_messages', lobbyMessages.slice(-50));
+    
+    // Update online users count
+    updateOnlineUsersCount();
+  });
+
+  // Handle lobby chat messages
+  socket.on('lobby_message', (message) => {
+    if (!message || !message.userId || !message.message) {
+      socket.emit('error', { message: 'Invalid lobby message data' });
+      return;
+    }
+
+    // Rate limit messages to 1 per second
+    if (isRateLimited(message.userId, 'lobby_message', 1000)) {
+      socket.emit('error', { message: 'Please wait before sending another message' });
+      return;
+    }
+
+    const chatMessage = {
+      id: `${Date.now()}-${message.userId}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: message.userId,
+      userName: message.userName,
+      message: message.message.slice(0, 500), // Limit message length
+      timestamp: Date.now()
+    };
+
+    // Store message
+    lobbyMessages.push(chatMessage);
+    if (lobbyMessages.length > 100) {
+      lobbyMessages.shift(); // Keep only last 100 messages
+    }
+
+    // Broadcast message to lobby
+    io.to('lobby').emit('lobby_message', chatMessage);
   });
   
   // Handle chat messages
@@ -1016,13 +1070,17 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
-    // Remove the socket from user connections
+    
     if (currentUserId) {
-      const connections = userConnections.get(currentUserId);
-      if (connections) {
-        connections.delete(socket.id);
-        if (connections.size === 0) {
+      // Remove socket from user connections
+      const userSockets = userConnections.get(currentUserId);
+      if (userSockets) {
+        userSockets.delete(socket.id);
+        if (userSockets.size === 0) {
           userConnections.delete(currentUserId);
+          // Remove from lobby if this was their last connection
+          lobbyUsers.delete(currentUserId);
+          updateOnlineUsersCount();
         }
       }
     }
