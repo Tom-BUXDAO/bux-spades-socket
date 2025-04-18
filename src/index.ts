@@ -200,17 +200,49 @@ io.on('connection', (socket) => {
   });
   
   // Handle joining lobby
-  socket.on('join_lobby', ({ userId }) => {
-    if (!userId) return;
+  socket.on('join_lobby', ({ userId, userName }) => {
+    console.log(`User ${userName} (${userId}) joined lobby`);
     
-    lobbyUsers.add(userId);
+    // Join the lobby room
     socket.join('lobby');
     
-    // Send last 50 lobby messages to the user
-    socket.emit('lobby_messages', lobbyMessages.slice(-50));
+    // Store user info in socket data
+    socket.data.userId = userId;
+    socket.data.userName = userName;
     
-    // Update online users count
-    updateOnlineUsersCount();
+    // Notify others in lobby that user joined
+    socket.to('lobby').emit('user_joined_lobby', { userId, userName });
+    
+    // Update online users count for everyone in lobby
+    const lobbyRoom = io.sockets.adapter.rooms.get('lobby');
+    const onlineCount = lobbyRoom ? lobbyRoom.size : 0;
+    io.to('lobby').emit('online_users_update', onlineCount);
+
+    // Send welcome message only to the joining user
+    socket.emit('lobby_message', {
+      id: `system-${Date.now()}-welcome`,
+      userId: 'system',
+      userName: 'System',
+      message: `Welcome to the Spades Lobby, ${userName}! 👋`,
+      timestamp: Date.now(),
+      isSystemMessage: true
+    });
+  });
+
+  socket.on('disconnecting', () => {
+    // Check if user was in lobby
+    if (socket.rooms.has('lobby') && socket.data.userName) {
+      // Notify others that user left
+      socket.to('lobby').emit('user_left_lobby', {
+        userId: socket.data.userId,
+        userName: socket.data.userName
+      });
+      
+      // Update online users count (subtract 1 since user hasn't fully disconnected yet)
+      const lobbyRoom = io.sockets.adapter.rooms.get('lobby');
+      const onlineCount = lobbyRoom ? lobbyRoom.size - 1 : 0;
+      io.to('lobby').emit('online_users_update', onlineCount);
+    }
   });
 
   // Handle lobby chat messages
