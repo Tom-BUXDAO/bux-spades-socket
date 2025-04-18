@@ -493,67 +493,95 @@ io.on('connection', (socket) => {
         return;
       }
       
-      if (game.players.length >= 4) {
+      if (game.players.length >= 4 && position === undefined) {
         socket.emit('error', { message: 'Game is full' });
         return;
       }
 
-      // Determine position first
-      let playerPosition: number;
+      // Create player object
+      let player: Player;
+      if (testPlayer) {
+        // Explicitly set team based on position
+        // Team 1: positions 0 (South) and 2 (North)
+        // Team 2: positions 1 (West) and 3 (East)
+        const team = position !== undefined 
+          ? (position % 2 === 0 ? 1 : 2) 
+          : testPlayer.team;
+        
+        player = {
+          id: userId,
+          name: testPlayer.name,
+          hand: [],
+          tricks: 0,
+          team: team,
+          browserSessionId: testPlayer.browserSessionId || socket.id,
+          image: testPlayer.image || undefined,
+          position: position || 0
+        };
+        
+        console.log(`Created test player ${testPlayer.name} with team ${team} for position ${position}`);
+      } else {
+        // Explicitly set team based on position
+        // Team 1: positions 0 (South) and 2 (North) 
+        // Team 2: positions 1 (West) and 3 (East)
+        const team = position !== undefined 
+          ? (position % 2 === 0 ? 1 : 2) 
+          : (game.players.length % 2) + 1 as 1 | 2;
+        
+        player = {
+          id: userId,
+          name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
+          hand: [],
+          tricks: 0,
+          team: team,
+          browserSessionId: socket.id,
+          position: position || 0
+        };
+        
+        console.log(`Created regular player with team ${team} for position ${position}`);
+      }
+
+      // HANDLE POSITION PLACEMENT
       if (position !== undefined) {
-        // Validate requested position
+        console.log(`============EXPLICIT POSITION JOIN REQUEST============`);
+        console.log(`Player ${player.name} requesting EXACT position ${position}`);
+        
+        // Validate position
         if (position < 0 || position > 3) {
           socket.emit('error', { message: 'Invalid position (must be 0-3)' });
           return;
         }
         
-        // Check if position is already taken
+        // Check if position is already taken by checking the position property
         if (game.players.some(p => p.position === position)) {
+          console.log(`Position ${position} already taken by another player!`);
           socket.emit('error', { message: `Position ${position} is already taken` });
           return;
         }
         
-        playerPosition = position;
+        // Set the position explicitly on the player object
+        player.position = position;
+        
+        // No more array index manipulation - just add the player with correct position
+        game.players.push(player);
+        
+        // Debug log each player's position and team
+        console.log(`FINAL PLAYER ARRAY AFTER POSITIONING:`);
+        game.players.forEach(p => {
+          console.log(`Player ${p.name} at explicit position ${p.position} (Team ${p.team})`);
+        });
+        console.log(`================================================`);
       } else {
-        // Find next available position
+        // No position specified, determine next available position
         const usedPositions = new Set(game.players.map(p => p.position));
         let nextPosition = 0;
         while (usedPositions.has(nextPosition)) {
           nextPosition++;
         }
-        playerPosition = nextPosition;
+        player.position = nextPosition;
+        game.players.push(player);
+        console.log(`Player ${player.name} assigned to next available position ${nextPosition}`);
       }
-
-      // Determine team based on position
-      // Team 1: positions 0 (South) and 2 (North)
-      // Team 2: positions 1 (West) and 3 (East)
-      const team = playerPosition % 2 === 0 ? 1 : 2;
-
-      // Create player object
-      const player: Player = {
-        id: userId,
-        name: testPlayer ? testPlayer.name : (userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId),
-        hand: [],
-        tricks: 0,
-        team: team,
-        browserSessionId: testPlayer?.browserSessionId || socket.id,
-        image: testPlayer?.image,
-        position: playerPosition
-      };
-
-      console.log(`Player ${player.name} joining at position ${playerPosition} (Team ${team})`);
-      
-      // Add player to game
-      game.players.push(player);
-      
-      // Sort players array by position to maintain order
-      game.players.sort((a, b) => a.position - b.position);
-      
-      // Debug log final positions
-      console.log('Final player positions:');
-      game.players.forEach(p => {
-        console.log(`- ${p.name}: Position ${p.position} (Team ${p.team})`);
-      });
       
       // Update the game
       games.set(gameId, game);
