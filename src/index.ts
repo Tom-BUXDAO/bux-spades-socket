@@ -17,11 +17,13 @@ app.get('/', (_req: express.Request, res: express.Response) => {
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.CLIENT_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ['websocket', 'polling'],
+  transports: ['websocket'],
   allowEIO3: true,
   connectTimeout: 45000,
   maxHttpBufferSize: 1e8,
