@@ -361,7 +361,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('create_game', ({ user, rules, gameRules }) => {
+  socket.on('create_game', ({ user, gameRules }) => {
     try {
       if (!user || !user.id) {
         socket.emit('error', { message: 'Invalid user data provided' });
@@ -398,35 +398,21 @@ io.on('connection', (socket) => {
         hand: [],
         tricks: 0,
         team: 1,
-        bid: undefined,
-        image: user.image,
-        position: 0 // Game creator always starts at position 0 (South)
+        position: 0, // North position
+        isDealer: true
       };
-      
-      // Validate game type and set appropriate rules
-      const gameType = rules?.gameType || gameRules?.gameType || 'REGULAR';
-      const validatedRules = {
-        gameType,
-        // For REGULAR and SOLO games, use client settings. For other game types, nil bids are not allowed
-        allowNil: (gameType === 'REGULAR' || gameType === 'SOLO') ? 
-          (rules?.allowNil ?? gameRules?.allowNil ?? true) : false,
-        allowBlindNil: (gameType === 'REGULAR' || gameType === 'SOLO') ? 
-          (rules?.allowBlindNil ?? gameRules?.allowBlindNil ?? false) : false,
-        minPoints: rules?.minPoints || gameRules?.minPoints || -150,
-        maxPoints: rules?.maxPoints || gameRules?.maxPoints || 500
-      };
-      
-      // Create new game with the player
-      const game: Game = {
+
+      // Create the new game with default or provided rules
+      const newGame: Game = {
         id: gameId,
-        status: "WAITING",
+        status: 'WAITING',
         players: [player],
         currentPlayer: user.id,
         currentTrick: [],
+        completedTricks: [],
         team1Bags: 0,
         team2Bags: 0,
         spadesBroken: false,
-        completedTricks: [],
         createdAt: Date.now(),
         cardPlayers: [],
         dealerPosition: 0,
@@ -434,24 +420,28 @@ io.on('connection', (socket) => {
           team1: 0,
           team2: 0
         },
-        rules: validatedRules
+        rules: gameRules || {
+          gameType: 'REGULAR',
+          allowNil: true,
+          allowBlindNil: false,
+          minPoints: -250,
+          maxPoints: 500
+        }
       };
 
-      if (!game.rules?.minPoints || !game.rules?.maxPoints) {
-        socket.emit('error', { message: 'Game rules must include minPoints and maxPoints' });
-        return;
-      }
-
-      games.set(gameId, game);
+      // Store the game
+      games.set(gameId, newGame);
+      
+      // Join the game room
       socket.join(gameId);
       
-      // Notify the client about the created game
-      socket.emit('game_created', { gameId, game });
+      // Notify the creator
+      socket.emit('game_created', { gameId, game: newGame });
       
-      // Update all clients with the new game list
+      // Broadcast updated games list to all clients
       io.emit('games_update', Array.from(games.values()));
       
-      console.log(`Game ${gameId} created by user ${user.name} (${user.id}) with type ${gameType}`);
+      console.log(`Game ${gameId} created by ${user.name} (${user.id})`);
     } catch (error) {
       console.error('Error creating game:', error);
       socket.emit('error', { message: 'Failed to create game' });
