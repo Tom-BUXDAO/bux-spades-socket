@@ -16,7 +16,7 @@ app.get('/', (_req: express.Request, res: express.Response) => {
 // Configure CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "https://bux-spades-buxdaos-projects.vercel.app",
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"]
