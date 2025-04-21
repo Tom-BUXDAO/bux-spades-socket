@@ -1300,6 +1300,6 @@ function determineWinningCard(trick: Card[]): Card {
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Socket server running on port ${PORT}`);
   console.log(`CORS enabled for origin: ${process.env.CLIENT_URL || "http://localhost:3000"}`);
 });
