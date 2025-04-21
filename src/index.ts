@@ -185,7 +185,12 @@ io.on('connection', (socket) => {
   socket.emit('games_update', Array.from(games.values()));
 
   socket.on('authenticate', ({ userId }) => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('Authentication failed: No userId provided');
+      socket.emit('error', { message: 'Authentication failed: No userId provided' });
+      socket.disconnect();
+      return;
+    }
     
     // Store the userId for this socket
     currentUserId = userId;
@@ -203,6 +208,11 @@ io.on('connection', (socket) => {
   
   // Handle joining lobby
   socket.on('join_lobby', ({ userId, userName }) => {
+    if (!userId || !userName) {
+      socket.emit('error', { message: 'Invalid user data' });
+      return;
+    }
+    
     console.log(`User ${userName} (${userId}) joined lobby`);
     
     // Join the lobby room
@@ -522,7 +532,7 @@ io.on('connection', (socket) => {
         
         player = {
           id: userId,
-          name: userId.startsWith('guest_') ? `Guest ${userId.split('_')[1].substring(0, 4)}` : userId,
+          name: userId,
           hand: [],
           tricks: 0,
           team: team,
