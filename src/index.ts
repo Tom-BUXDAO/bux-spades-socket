@@ -163,12 +163,21 @@ function dealCards(players: Player[]): Player[] {
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  // Prevent crashes on uncaught exceptions
+  // Log the error but don't crash
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Prevent crashes on unhandled promise rejections
+  // Log the error but don't crash
+});
+
+// Add graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Closing HTTP server...');
+  httpServer.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
 });
 
 // Helper function to update online users count
@@ -1289,6 +1298,8 @@ function determineWinningCard(trick: Card[]): Card {
   return winningCard;
 }
 
-httpServer.listen(process.env.PORT || 3001, () => {
-  console.log(`Server is running on port ${process.env.PORT || 3001}`);
+const PORT = process.env.PORT || 3001;
+httpServer.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+  console.log(`CORS enabled for origin: ${process.env.CLIENT_URL || "http://localhost:3000"}`);
 });
